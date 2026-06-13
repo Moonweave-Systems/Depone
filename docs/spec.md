@@ -1,0 +1,238 @@
+# Dynamic Workflow Designer Skill Spec
+
+Status: Draft, Last updated: 2026-06-14
+
+## Purpose
+
+`dynamic-workflow-designer` helps Codex design large, situation-aware workflows
+for work that is too broad for a single normal agent turn. It fills the gap
+between a thin route selector and a full workflow runtime.
+
+The skill should produce a concrete workflow architecture: phases, workers,
+parallelism, handoff artifacts, verification gates, safety gates, budgets, and
+resume strategy. It may later become a Codex plugin or runtime-backed system,
+but v0 is a spec-first skill.
+
+## Product Position
+
+The existing `workflow-router` skill chooses the smallest suitable workflow and
+keeps execution bounded. This skill does a different job: it designs the
+workflow itself for a very large task.
+
+Positioning:
+
+- `workflow-router`: classify and route ordinary broad work.
+- `dynamic-workflow-designer`: design an ultracode-style workflow for major
+  work before execution.
+- Future `workflow-orchestrator` plugin/runtime: execute saved workflow plans
+  with resumability, monitoring, and subagent coordination.
+
+## Users
+
+Primary user: a local power user who wants Codex to structure large tasks
+across repos, artifacts, research, and verification without losing control of
+scope or evidence.
+
+Secondary user: another agent instance that needs a compact design contract
+before running many agents or starting a long implementation.
+
+## Prior Art
+
+See `docs/github-research.md`.
+
+Key conclusions:
+
+- Claude Dynamic Workflows move orchestration out of chat and into a script.
+- Community repos already explore JavaScript harnesses, MCP runtimes, viewers,
+  journals, and workflow command distribution.
+- This repo should not copy a runtime yet. It should first make Codex reliably
+  produce high-quality workflow designs that can later be executed by existing
+  subagent tools, a plugin, or a dedicated runtime.
+
+## Scope
+
+### V0: Skill And Spec
+
+Deliver a Codex skill that designs workflows and writes inspectable specs.
+
+Required behavior:
+
+1. Identify when a task deserves dynamic workflow design instead of direct work.
+2. Inspect relevant local context before designing repo-specific workflows.
+3. Choose patterns from `references/workflow-patterns.md`.
+4. Produce workflow blueprints with phases, workers, handoffs, gates, budgets,
+   and verification.
+5. Distinguish skill-only execution from plugin/runtime requirements.
+6. Include evaluation fixtures for the generated designs.
+
+### V1: Plugin Bundle
+
+Package the skill with reusable helper assets:
+
+- additional specialized skills or commands
+- worker role prompts
+- optional scripts for plan linting and fixture evaluation
+- optional hooks for verification reminders
+
+The plugin must remain useful even without a durable runtime.
+
+### V2: Runtime Prototype
+
+Only after V0/V1 prove useful, consider a runtime with:
+
+- generated workflow scripts or JSON plans
+- phase graph and status file
+- subagent spawn adapters
+- durable journal
+- resume from completed phase outputs
+- viewer or textual progress map
+
+## Non-Goals
+
+- Do not replace `workflow-router`.
+- Do not build a full durable runtime in the first slice.
+- Do not vendor external runtime code.
+- Do not auto-spawn many subagents without explicit user authorization.
+- Do not hide destructive or costly actions behind workflow generation.
+- Do not treat a workflow blueprint as proof that work is complete.
+
+## Activation Contract
+
+The skill activates when:
+
+- the user names `$dynamic-workflow-designer`
+- the user asks for dynamic workflows, ultracode-style orchestration, or a
+  workflow that can handle a very large task
+- the task clearly requires multi-phase, multi-agent design before execution
+
+The skill should not activate for ordinary small implementation, debugging, or
+review tasks. Those remain `workflow-router` or direct Codex work.
+
+## Workflow Design Output
+
+Every substantial design must include:
+
+| Field | Meaning |
+| --- | --- |
+| Objective | Desired outcome, stated independently of implementation |
+| Surface | Repos, paths, systems, APIs, artifacts, or sources in scope |
+| Assumptions | Guesses that affect the workflow and must be verified |
+| Phases | Named stages with entry and exit criteria |
+| Workers | Roles, ownership, allowed tools, and context boundaries |
+| Handoffs | Artifacts and schemas passed between phases |
+| Parallelism | Fan-out shape, concurrency cap, and fan-in rules |
+| Verification | Checks designed to falsify claims or edits |
+| Gates | Human approval points and safe defaults |
+| Budget | Token, time, retry, agent-count, and file-touch limits |
+| Resume | Cacheable outputs and invalidation rules |
+| Execution path | Direct Codex, subagent plan, plugin, runtime, or backlog |
+
+## Pattern Selection
+
+Use these defaults:
+
+- Sequential for strict dependencies.
+- Pipeline for repeated item-level stages.
+- Parallel fan-out/fan-in for independent surfaces.
+- Adversarial verify for findings and claims.
+- Judge panel for alternatives.
+- Loop until dry for open-ended discovery.
+- Human gate for risky actions.
+- Resume/cache for expensive prefixes.
+
+Prefer pipeline over a barrier unless the next phase needs the complete prior
+set. Barriers are allowed for global deduplication, ranking, cross-item
+comparison, and final synthesis.
+
+## Safety
+
+Workflow designs must explicitly gate:
+
+- force push, hard reset, branch deletion, or history rewrite
+- deleting files or directories
+- dependency installation
+- database migrations
+- production deploys
+- public API changes
+- paid external API usage
+- secret access or external messages
+
+The safe default is to stop, preserve artifacts, and ask the user.
+
+## Verification
+
+A workflow design is acceptable only when it names how success can be checked.
+
+Examples:
+
+- Code migration: changed call sites plus tests, typecheck, and independent
+  review of missed call sites.
+- Research: sources gathered independently, claims extracted, claims verified
+  against sources, unsupported claims filtered.
+- Bug hunt: candidate findings, adversarial refutation, reproduction evidence,
+  and deduped confirmed findings.
+- Artifact work: rendered or parsed artifact evidence, not only file edits.
+
+## Evaluation Fixtures
+
+Future changes should be tested against these prompts:
+
+| Prompt | Expected output focus |
+| --- | --- |
+| "Design a workflow to audit every API route for missing auth." | pipeline scan, adversarial verify, read-only safety |
+| "Plan a 500-file migration from legacyFetch to the new client." | discovery, batching, write gates, regression verification |
+| "Research the current state of on-device LLM inference." | multi-angle research, source verification, citation filtering |
+| "Stress-test three architecture options before we pick one." | judge panel, rubric, synthesis with tradeoffs |
+| "Find every unsupported claim in this PR description." | claim extraction, repo-grounded verification, proof ledger |
+| "Make a workflow runtime for this skill." | plugin/runtime boundary, small first slice, no overbuild |
+
+For each fixture, record:
+
+- selected patterns
+- whether local context was inspected when needed
+- whether risky actions were gated
+- whether verification can falsify the result
+- whether the plan overclaims execution
+
+## Release Criteria
+
+V0 is releasable when:
+
+- `quick_validate.py` passes on the skill folder.
+- `SKILL.md` has no placeholders.
+- `agents/openai.yaml` matches the skill name and purpose.
+- `docs/github-research.md` records prior-art decisions.
+- `docs/spec.md` has fixtures and non-goals.
+- `references/workflow-patterns.md` gives enough pattern guidance for v0.
+- whitespace check passes.
+- secret scan finds no committed secrets.
+
+### Reproducible Check
+
+Run from the repository root:
+
+```bash
+uv run python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" .
+```
+
+```bash
+git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+```
+
+```bash
+rg -n --pcre2 "(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][^'\"]{8,}|-----BEGIN (RSA|OPENSSH) PRIVATE KEY-----" --glob '!LICENSE' .; test $? -eq 1
+```
+
+```bash
+rg -n "T[O]DO|T[B]D|PLACE[H]OLDER|FIX[M]E" --glob '*.md' .; test $? -eq 1
+```
+
+## Open Questions
+
+- Whether v1 should be a Codex plugin, a Claude plugin, or both.
+- Whether a future runtime should wrap existing projects such as
+  `claude-dynamic-workflows-codex` or start with a smaller local adapter.
+- Whether workflow designs should be serialized as Markdown, JSON, JavaScript,
+  or a dual spec plus generated script.
+- Whether forward-testing should use live subagents or fixture-only review for
+  the first release.

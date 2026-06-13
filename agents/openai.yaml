@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dynamic Workflow Designer"
+  short_description: "Design large multi-agent workflows with verification"
+  brand_color: "#4F46E5"
+  default_prompt: "Use $dynamic-workflow-designer to design a scalable workflow for this large task."

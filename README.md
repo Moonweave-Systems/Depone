@@ -124,6 +124,8 @@ a full automatic workflow runtime.
 The V1 first-slice compiler release gate adds:
 
 ```bash
+python scripts/compile_workflow.py --plan workflow.plan.json --out out/v1/<run_id>
+python scripts/compile_workflow.py --resume out/v1/<run_id>
 python scripts/compile_workflow.py --self-test
 python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final
 ```

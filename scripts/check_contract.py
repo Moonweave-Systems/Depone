@@ -6,6 +6,7 @@ import argparse
 import re
 import shutil
 
+import compile_workflow
 import evaluate_plan
 
 
@@ -90,6 +91,39 @@ def require_decision_summary_consistency() -> None:
         require_decision_summary_text(summary, (ROOT / "docs" / "v0.5-decision.md").read_text())
     except evaluate_plan.EvaluationError as exc:
         raise SystemExit(f"V0.5 decision consistency failed: {exc}") from exc
+    finally:
+        shutil.rmtree(out_root, ignore_errors=True)
+
+
+def require_v1_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final",
+        "does not claim runtime execution",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v1-decision.md does not match V1 summary: {missing}")
+
+
+def require_v1_decision_summary_consistency() -> None:
+    out_root = ROOT / "out" / "v1" / "contract-check"
+    if out_root.exists():
+        shutil.rmtree(out_root)
+    try:
+        summary = compile_workflow.evaluate_manifest(ROOT / "fixtures" / "v1" / "manifest.json", out_root)
+        display_summary = dict(summary)
+        display_summary["suite_id"] = "final"
+        require_v1_decision_summary_text(display_summary, (ROOT / "docs" / "v1-decision.md").read_text())
+    except compile_workflow.CompileError as exc:
+        raise SystemExit(f"V1 decision consistency failed: {exc}") from exc
     finally:
         shutil.rmtree(out_root, ignore_errors=True)
 
@@ -337,6 +371,33 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale decision summary passed")
 
+    v1_summary = {
+        "suite_id": "final",
+        "fixture_count": 36,
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "decision": "keep",
+    }
+    good_v1_decision = (
+        "Decision: keep\n"
+        "python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final\n"
+        "- `suite_id`: `final`\n"
+        "- `fixture_count`: 36\n"
+        "- `passed`: 36\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 0\n"
+        "- `decision`: `keep`\n"
+        "This decision does not claim runtime execution.\n"
+    )
+    require_v1_decision_summary_text(v1_summary, good_v1_decision)
+    try:
+        require_v1_decision_summary_text(v1_summary, good_v1_decision.replace("36", "35", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V1 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -384,6 +445,8 @@ def main() -> None:
             "python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out out/v0.5",
             "python scripts/check_release_text.py .",
             "python scripts/check_release_text.py --self-test",
+            "python scripts/compile_workflow.py --plan workflow.plan.json --out out/v1/<run_id>",
+            "python scripts/compile_workflow.py --resume out/v1/<run_id>",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)
@@ -420,6 +483,7 @@ def main() -> None:
     )
     require_fixture_smoke()
     require_decision_summary_consistency()
+    require_v1_decision_summary_consistency()
     print("contract smoke: pass")
 
 

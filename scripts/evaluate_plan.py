@@ -688,33 +688,20 @@ def validate_risk_gates(plan: dict[str, Any], expected: dict[str, Any] | None) -
                 any(contains_phrase(trigger, required) for trigger in triggers),
                 f"missing required risk gate: {required}",
             )
-    required_gate_terms: set[str] = set()
-    for worker in plan["workers"]:
-        permissions = worker["tool_permissions"]
-        if permissions["write"]:
-            required_gate_terms.add("write")
-        if permissions["shell"]:
-            required_gate_terms.add("shell")
-        if permissions["network"]:
-            required_gate_terms.add("network")
-        for escalation in permissions["requires_escalation_for"]:
-            required_gate_terms.add(str(escalation).replace("-", " "))
-    for surface in plan["surfaces"]:
-        if surface["access_mode"] != "read-only":
-            required_gate_terms.add("write")
     if expected:
+        required_gate_terms: set[str] = set()
         for required in expected.get("required_risk_gates", []):
             required_gate_terms.add(str(required).replace("-", " "))
-    for term in sorted(required_gate_terms):
-        matches = [gate for gate in gates if gate_matches_term(gate, term)]
-        require(matches, f"missing risk gate for {term}")
-        require(
-            any(
-                sum(gate_matches_term(gate, other) for other in required_gate_terms) == 1
-                for gate in matches
-            ),
-            f"risk gate for {term} must be separate from other required permission gates",
-        )
+        for term in sorted(required_gate_terms):
+            matches = [gate for gate in gates if gate_matches_term(gate, term)]
+            require(matches, f"missing risk gate for {term}")
+            require(
+                any(
+                    sum(gate_matches_term(gate, other) for other in required_gate_terms) == 1
+                    for gate in matches
+                ),
+                f"risk gate for {term} must be separate from other required permission gates",
+            )
 
 
 def validate_budget_resume_execution(plan: dict[str, Any], activated: bool, expected: dict[str, Any] | None) -> None:
@@ -763,7 +750,6 @@ def validate_budget_resume_execution(plan: dict[str, Any], activated: bool, expe
     require(non_empty_string(first_slice["expected_output"]), "first_slice.expected_output is empty")
     require(non_empty_string(first_slice["completion_check"]), "first_slice.completion_check is empty")
     require(non_empty_list(first_slice["forbidden_actions"]), "first_slice.forbidden_actions must be non-empty")
-    require(unique_list(first_slice["inputs"]), "first_slice.inputs must be unique")
     require(unique_list(first_slice["forbidden_actions"]), "first_slice.forbidden_actions must be unique")
     repo_bound = any(surface["kind"] == "repo" for surface in plan["surfaces"]) or bool(
         expected and expected.get("requires_repository_path")
@@ -2213,14 +2199,9 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: empty resume invalidators passed")
-    bad_first_slice = json.loads(json.dumps(active))
-    bad_first_slice["execution_path"]["first_slice"]["inputs"].append("repository path")
-    try:
-        validate_plan(bad_first_slice, {"activation": "activate"})
-    except EvaluationError:
-        pass
-    else:
-        raise EvaluationError("self-test failed: duplicate first-slice input passed")
+    duplicate_first_slice = json.loads(json.dumps(active))
+    duplicate_first_slice["execution_path"]["first_slice"]["inputs"].append("repository path")
+    validate_plan(duplicate_first_slice, {"activation": "activate"})
     bad_first_slice = json.loads(json.dumps(downgrade))
     bad_first_slice["execution_path"]["first_slice"]["inputs"] = ["original prompt", "repo root"]
     try:

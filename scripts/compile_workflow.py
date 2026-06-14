@@ -174,6 +174,19 @@ def rel(path: Path) -> str:
     return path.resolve().relative_to(ROOT).as_posix()
 
 
+def rel_or_abs(path: Path) -> str:
+    resolved = path.resolve(strict=False)
+    try:
+        return resolved.relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
+def run_source_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else ROOT / path
+
+
 def read_json(path: Path) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text())
@@ -307,27 +320,7 @@ def load_plan(plan_path: Path) -> tuple[dict[str, Any], str]:
     try:
         validate_plan(plan)
     except EvaluationError as exc:
-        message = str(exc)
-        if "first_slice.inputs must be unique" not in message and "missing risk gate for " not in message:
-            raise CompileError("ERR_PLAN_INVALID", str(exc), path=plan_path) from exc
-        validation_plan = copy.deepcopy(plan)
-        if "first_slice.inputs must be unique" in message:
-            inputs = validation_plan["execution_path"]["first_slice"]["inputs"]
-            validation_plan["execution_path"]["first_slice"]["inputs"] = ordered_unique(inputs)
-        risk_match = re.search(r"missing risk gate for ([a-z ]+)", message)
-        if risk_match:
-            term = risk_match.group(1)
-            validation_plan["risk_gates"].append(
-                {
-                    "trigger": term,
-                    "safe_default": f"stop before {term} use and ask for approval",
-                    "requires_user_approval": True,
-                }
-            )
-        try:
-            validate_plan(validation_plan)
-        except EvaluationError as retry_exc:
-            raise CompileError("ERR_PLAN_INVALID", str(retry_exc), path=plan_path) from retry_exc
+        raise CompileError("ERR_PLAN_INVALID", str(exc), path=plan_path) from exc
     if plan["activation"]["decision"] != "activate":
         raise CompileError("ERR_PLAN_DOWNGRADE", "V1 accepts only activated workflow plans", path=plan_path)
     return plan, canonical_hash(plan)
@@ -530,13 +523,13 @@ def snapshot_input(label: str, index: int, plan: dict[str, Any], plan_path: Path
     if label == "workflow.plan.json":
         kind = "path"
         target = plan_path.resolve()
-        normalized = rel(target)
+        normalized = rel_or_abs(target)
         exists = target.is_file()
         entries = [{"path": normalized, "exists": exists, "sha256": path_hash(target)}]
     elif label == "blueprint.md" and (plan_path.parent / "blueprint.md").exists():
         kind = "path"
         target = (plan_path.parent / "blueprint.md").resolve()
-        normalized = rel(target) if target.is_relative_to(ROOT) else str(target)
+        normalized = rel_or_abs(target)
         exists = target.exists()
         entries = [{"path": normalized, "exists": exists, "sha256": path_hash(target)}]
     elif label == "original prompt":
@@ -553,7 +546,7 @@ def snapshot_input(label: str, index: int, plan: dict[str, Any], plan_path: Path
     elif kind == "path":
         target = Path(label.removeprefix("path:").strip())
         target = target if target.is_absolute() else plan_path.parent / target
-        normalized = rel(target.resolve()) if target.resolve(strict=False).is_relative_to(ROOT) else str(target.resolve(strict=False))
+        normalized = rel_or_abs(target)
         exists = target.exists()
         entries = [{"path": normalized, "exists": exists, "sha256": path_hash(target)}]
     elif kind == "glob":
@@ -562,7 +555,7 @@ def snapshot_input(label: str, index: int, plan: dict[str, Any], plan_path: Path
         entries = []
         for match in matches:
             resolved = match.resolve(strict=False)
-            entry_path = rel(resolved) if resolved.is_relative_to(ROOT) else str(resolved)
+            entry_path = rel_or_abs(resolved)
             entries.append({"path": entry_path, "exists": match.exists(), "sha256": path_hash(match)})
         exists = bool(entries)
         normalized = pattern
@@ -694,7 +687,7 @@ def parse_prompt_digest(prompt: str) -> dict[str, Any]:
     return data
 
 
-def verify_prompt_packet(prompt: str, packet: dict[str, Any]) -> None:
+def verify_prompt_packet(prompt: str, packet: dict[str, Any], gates: list[dict[str, Any]] | None = None) -> None:
     for heading in PROMPT_HEADINGS:
         if heading not in prompt:
             raise CompileError("ERR_PROMPT_PACKET_DRIFT", f"prompt missing heading: {heading}")
@@ -715,6 +708,8 @@ def verify_prompt_packet(prompt: str, packet: dict[str, Any]) -> None:
         raise CompileError("ERR_PROMPT_PACKET_DRIFT", "prompt required output section does not match packet JSON")
     if f"Completion check: {packet['completion_check']}" not in section_body(prompt, "## Stop Conditions", ""):
         raise CompileError("ERR_PROMPT_PACKET_DRIFT", "prompt completion check does not match packet JSON")
+    if gates is not None and prompt != render_prompt(packet, gates):
+        raise CompileError("ERR_PROMPT_PACKET_DRIFT", "prompt sections do not match rendered packet contract")
 
 
 def section_body(prompt: str, start: str, end: str) -> str:
@@ -855,11 +850,12 @@ def render_resume(status: dict[str, Any], packet: dict[str, Any] | None = None) 
 
 
 def compile_plan(plan_path: Path, out_dir: Path, *, run_id: str | None = None, mode: str = "compile") -> dict[str, Any]:
+    plan_path = plan_path.resolve(strict=False)
     run_id = run_id or out_dir.name
     out_dir = resolve_v1_out(out_dir)
-    prepare_owned_dir(out_dir, run_id, mode, clear=True)
     plan, source_plan_hash = load_plan(plan_path)
     plan_hash = canonical_hash(plan)
+    prepare_owned_dir(out_dir, run_id, mode, clear=True)
     handoff_schemas = build_handoff_schemas(plan)
     gates, approval_wrappers = build_gates(plan, plan_hash, run_id)
     approval_state = approval_wrappers[0]
@@ -869,14 +865,14 @@ def compile_plan(plan_path: Path, out_dir: Path, *, run_id: str | None = None, m
     prompt_hash = sha256_text(prompt)
     packet = build_packet(plan, plan_path.resolve(), handoff_schemas, gates, prompt_hash)
     prompt = render_prompt(packet, gates)
-    verify_prompt_packet(prompt, packet)
+    verify_prompt_packet(prompt, packet, gates)
     packet_hash = canonical_hash(packet)
     status = build_status(run_id, plan_hash, source_plan_hash, packet, handoff_schemas, gates, approval_state)
     run = {
         "run_id": run_id,
         "schema_version": SCHEMA_VERSION,
         "created_at": now_utc(),
-        "source_plan_path": rel(plan_path.resolve()),
+        "source_plan_path": rel_or_abs(plan_path),
         "source_plan_hash": source_plan_hash,
         "plan_hash": plan_hash,
         "compiler_version": COMPILER_VERSION,
@@ -941,6 +937,33 @@ def hash_invalidator(kind: str, artifact_id: str, expected: str | None, actual: 
     }
 
 
+def read_resume_json(path: Path, kind: str, artifact_id: str, invalidators: list[dict[str, Any]]) -> Any | None:
+    if not path.is_file() or path.is_symlink():
+        invalidators.append(missing_invalidator(kind, artifact_id, "artifact is missing or symlinked"))
+        return None
+    try:
+        return json.loads(path.read_text())
+    except json.JSONDecodeError:
+        invalidators.append(hash_invalidator(kind, artifact_id, None, sha256_text(path.read_text()), "artifact JSON is malformed"))
+        return None
+
+
+def read_resume_text(path: Path, kind: str, artifact_id: str, invalidators: list[dict[str, Any]]) -> str | None:
+    if not path.is_file() or path.is_symlink():
+        invalidators.append(missing_invalidator(kind, artifact_id, "artifact is missing or symlinked"))
+        return None
+    return path.read_text()
+
+
+def input_drift_id(stored: list[dict[str, Any]], recomputed: list[dict[str, Any]]) -> str:
+    stored_by_position = {item.get("source_index"): item for item in stored}
+    for item in recomputed:
+        old = stored_by_position.get(item.get("source_index"))
+        if old != item:
+            return str(old.get("input_id") if isinstance(old, dict) else item.get("input_id"))
+    return PACKET_ID
+
+
 def resume_run(run_dir: Path) -> dict[str, Any]:
     run_dir = resolve_v1_out(run_dir)
     sentinel_path = run_dir / SENTINEL
@@ -950,8 +973,14 @@ def resume_run(run_dir: Path) -> dict[str, Any]:
     status_path = run_dir / "status.json"
     if not run_path.is_file() or not status_path.is_file():
         raise CompileError("ERR_RESUME_MISSING_ARTIFACT", "run.json or status.json is missing", path=run_dir)
-    sentinel = json.loads(sentinel_path.read_text())
-    run = json.loads(run_path.read_text())
+    if sentinel_path.is_symlink() or run_path.is_symlink() or status_path.is_symlink():
+        raise CompileError("ERR_OUT_PATH_SYMLINK", "resume metadata leaf is symlinked", path=run_dir)
+    try:
+        sentinel = json.loads(sentinel_path.read_text())
+        run = json.loads(run_path.read_text())
+        old_status = json.loads(status_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise CompileError("ERR_RESUME_MISSING_ARTIFACT", f"resume metadata JSON is malformed: {exc}", path=run_dir) from exc
     if (
         sentinel.get("tool") != TOOL
         or sentinel.get("schema_version") != SCHEMA_VERSION
@@ -959,57 +988,68 @@ def resume_run(run_dir: Path) -> dict[str, Any]:
         or sentinel.get("mode") not in {"compile", "fixture"}
     ):
         raise CompileError("ERR_OUT_PATH_NOT_OWNED", "resume sentinel does not match run metadata", path=run_dir)
-    old_status = json.loads(status_path.read_text())
     invalidators: list[dict[str, Any]] = []
-    source_plan = ROOT / run["source_plan_path"]
+    source_plan = run_source_path(run["source_plan_path"])
     if not source_plan.is_file():
         invalidators.append(hash_invalidator("plan", str(source_plan), run.get("source_plan_hash"), None, "source plan is missing"))
         plan = None
     else:
-        plan = read_json(source_plan)
-        source_hash = canonical_hash(plan)
-        if source_hash != run["source_plan_hash"]:
-            invalidators.append(hash_invalidator("plan", run["source_plan_path"], run["source_plan_hash"], source_hash, "source plan hash changed"))
+        plan = read_resume_json(source_plan, "plan", run["source_plan_path"], invalidators)
+        if isinstance(plan, dict):
+            source_hash = canonical_hash(plan)
+            if source_hash != run["source_plan_hash"]:
+                invalidators.append(hash_invalidator("plan", run["source_plan_path"], run["source_plan_hash"], source_hash, "source plan hash changed"))
     snapshot_path = run_dir / "plan.snapshot.json"
-    if not snapshot_path.is_file():
-        invalidators.append(missing_invalidator("plan", "plan.snapshot.json", "plan snapshot is missing"))
-        snapshot = None
-    else:
-        snapshot = json.loads(snapshot_path.read_text())
+    snapshot = read_resume_json(snapshot_path, "plan", "plan.snapshot.json", invalidators)
+    if isinstance(snapshot, dict):
         actual = canonical_hash(snapshot)
         expected = old_status["snapshots"]["plan_hash"]
         if actual != expected:
             invalidators.append(hash_invalidator("plan", "plan.snapshot.json", expected, actual, "plan snapshot hash changed"))
     packet_path = run_dir / "packets" / "001-first-slice.packet.json"
     packet: dict[str, Any] | None = None
-    if not packet_path.is_file():
-        invalidators.append(missing_invalidator("packet", PACKET_ID, "packet JSON is missing"))
-    else:
-        packet = json.loads(packet_path.read_text())
+    raw_packet = read_resume_json(packet_path, "packet", PACKET_ID, invalidators)
+    if isinstance(raw_packet, dict):
+        packet = raw_packet
         actual = canonical_hash(packet)
         expected = old_status["snapshots"]["packet_hashes"].get(PACKET_ID)
         if actual != expected:
             invalidators.append(hash_invalidator("packet", PACKET_ID, expected, actual, "packet hash changed"))
-        input_actual = input_snapshot_hash(packet.get("input_snapshots", []))
+        stored_inputs = packet.get("input_snapshots", [])
+        input_actual = input_snapshot_hash(stored_inputs)
         input_expected = old_status["snapshots"]["input_snapshot_hashes"].get(PACKET_ID)
         if input_actual != input_expected:
             invalidators.append(hash_invalidator("input", PACKET_ID, input_expected, input_actual, "input snapshot hash changed"))
+        if isinstance(plan, dict):
+            recomputed_inputs = [
+                snapshot_input(label, index, plan, source_plan.resolve(strict=False))
+                for index, label in enumerate(plan["execution_path"]["first_slice"]["inputs"])
+            ]
+            recomputed_hash = input_snapshot_hash(recomputed_inputs)
+            if recomputed_hash != input_expected:
+                invalidators.append(
+                    hash_invalidator(
+                        "input",
+                        input_drift_id(stored_inputs, recomputed_inputs),
+                        input_expected,
+                        recomputed_hash,
+                        "live input snapshot hash changed",
+                    )
+                )
     prompt_rel = "packets/001-first-slice.prompt.md"
     prompt_path = run_dir / prompt_rel
-    if not prompt_path.is_file():
-        invalidators.append(missing_invalidator("prompt", prompt_rel, "prompt Markdown is missing"))
-    else:
-        actual = sha256_text(prompt_path.read_text())
+    prompt_text = read_resume_text(prompt_path, "prompt", prompt_rel, invalidators)
+    if prompt_text is not None:
+        actual = sha256_text(prompt_text)
         expected = old_status["snapshots"]["prompt_hashes"].get(prompt_rel)
         if actual != expected:
             invalidators.append(hash_invalidator("prompt", prompt_rel, expected, actual, "prompt hash changed"))
     handoff_schemas = []
     for handoff_id, expected in old_status["snapshots"]["handoff_schema_hashes"].items():
         path = run_dir / "handoffs" / f"{handoff_id}.schema.json"
-        if not path.is_file():
-            invalidators.append(missing_invalidator("handoff", handoff_id, "handoff schema is missing"))
+        item = read_resume_json(path, "handoff", handoff_id, invalidators)
+        if not isinstance(item, dict):
             continue
-        item = json.loads(path.read_text())
         handoff_schemas.append(item)
         actual = canonical_hash(item)
         if actual != expected:
@@ -1017,10 +1057,9 @@ def resume_run(run_dir: Path) -> dict[str, Any]:
     approval_path = run_dir / "gates" / "approval-state.json"
     gates = []
     approval_state = {"gates": []}
-    if not approval_path.is_file():
-        invalidators.append(missing_invalidator("gate", "approval-state.json", "approval state is missing"))
-    else:
-        approval_state = json.loads(approval_path.read_text())
+    raw_approval_state = read_resume_json(approval_path, "gate", "approval-state.json", invalidators)
+    if isinstance(raw_approval_state, dict):
+        approval_state = raw_approval_state
         gates = approval_state.get("gates", [])
         actual = canonical_hash(approval_state)
         expected = old_status["snapshots"]["approval_state_hash"]
@@ -1077,6 +1116,10 @@ def mutate_plan(base: dict[str, Any], mutation: dict[str, Any]) -> dict[str, Any
         plan["risk_gates"][0]["trigger"] = mutation["gate_trigger"]
     if "instruction" in mutation:
         plan["execution_path"]["first_slice"]["instruction"] = mutation["instruction"]
+    if "expected_output" in mutation:
+        plan["execution_path"]["first_slice"]["expected_output"] = mutation["expected_output"]
+    if "completion_check" in mutation:
+        plan["execution_path"]["first_slice"]["completion_check"] = mutation["completion_check"]
     if "forbidden_actions" in mutation:
         plan["execution_path"]["first_slice"]["forbidden_actions"] = mutation["forbidden_actions"]
     if "inputs" in mutation:
@@ -1093,11 +1136,85 @@ def write_fixture_plan(temp_root: Path, fixture: dict[str, Any]) -> Path:
         plan = mutate_plan(plan, fixture["mutation"])
         mutated_path = temp_root / f"{fixture['id']}.workflow.plan.json"
         write_json_atomic(mutated_path, plan)
+        for entry in fixture.get("input_files", []):
+            input_path = mutated_path.parent / entry["path"]
+            write_text_atomic(input_path, entry["content"])
         return mutated_path
     return plan_path
 
 
+def validate_fixture_id(fixture_id: str) -> None:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", fixture_id) or fixture_id in {".", ".."}:
+        raise CompileError("ERR_OUT_PATH_UNSAFE", "fixture ID must be one safe path segment", fixture_id=fixture_id)
+
+
+def fixture_run_dir(suite_dir: Path, fixture_id: str) -> Path:
+    validate_fixture_id(fixture_id)
+    path = (suite_dir / fixture_id).resolve(strict=False)
+    try:
+        path.relative_to(suite_dir.resolve(strict=False))
+    except ValueError as exc:
+        raise CompileError("ERR_OUT_PATH_UNSAFE", "fixture output escapes suite directory", fixture_id=fixture_id) from exc
+    return path
+
+
+def validate_generated_artifacts(result: dict[str, Any]) -> None:
+    out_dir = result["out_dir"]
+    packet = result["packet"]
+    status = result["status"]
+    gates = result["gates"]
+    handoffs = result["handoffs"]
+    expected_files = {
+        SENTINEL,
+        "README.md",
+        "run.json",
+        "status.json",
+        "resume.md",
+        "plan.snapshot.json",
+        "plan.sha256",
+        "packets/001-first-slice.packet.json",
+        "packets/001-first-slice.prompt.md",
+        "gates/approval-state.json",
+        "context/phases.json",
+        "context/workers.json",
+        "context/parallelism.json",
+    }
+    expected_files.update(f"handoffs/{item['handoff_id']}.schema.json" for item in handoffs)
+    expected_files.update(f"gates/{gate['gate_id']}.approval.md" for gate in gates)
+    actual_files = {
+        path.relative_to(out_dir).as_posix()
+        for path in out_dir.rglob("*")
+        if path.is_file() or path.is_symlink()
+    }
+    if actual_files != expected_files:
+        raise CompileError("ERR_SELF_TEST_WRONG_REASON", f"generated file set mismatch: {sorted(actual_files ^ expected_files)}")
+    packet_path = out_dir / "packets" / "001-first-slice.packet.json"
+    prompt_path = out_dir / "packets" / "001-first-slice.prompt.md"
+    approval_path = out_dir / "gates" / "approval-state.json"
+    disk_packet = json.loads(packet_path.read_text())
+    disk_prompt = prompt_path.read_text()
+    approval_state = json.loads(approval_path.read_text())
+    verify_prompt_packet(disk_prompt, disk_packet, gates)
+    snapshots = status["snapshots"]
+    if canonical_hash(disk_packet) != snapshots["packet_hashes"][PACKET_ID]:
+        raise CompileError("ERR_SELF_TEST_WRONG_REASON", "packet hash snapshot mismatch")
+    if sha256_text(disk_prompt) != snapshots["prompt_hashes"]["packets/001-first-slice.prompt.md"]:
+        raise CompileError("ERR_SELF_TEST_WRONG_REASON", "prompt hash snapshot mismatch")
+    if input_snapshot_hash(disk_packet["input_snapshots"]) != snapshots["input_snapshot_hashes"][PACKET_ID]:
+        raise CompileError("ERR_SELF_TEST_WRONG_REASON", "input hash snapshot mismatch")
+    if canonical_hash(approval_state) != snapshots["approval_state_hash"]:
+        raise CompileError("ERR_SELF_TEST_WRONG_REASON", "approval state hash snapshot mismatch")
+    for handoff in handoffs:
+        path = out_dir / "handoffs" / f"{handoff['handoff_id']}.schema.json"
+        if canonical_hash(json.loads(path.read_text())) != snapshots["handoff_schema_hashes"][handoff["handoff_id"]]:
+            raise CompileError("ERR_SELF_TEST_WRONG_REASON", "handoff schema hash snapshot mismatch")
+    for gate in gates:
+        if canonical_hash(gate) != snapshots["gate_approval_hashes"][gate["gate_id"]]:
+            raise CompileError("ERR_SELF_TEST_WRONG_REASON", "gate approval hash snapshot mismatch")
+
+
 def check_fixture_result(fixture: dict[str, Any], result: dict[str, Any]) -> None:
+    validate_generated_artifacts(result)
     status = result["status"]["packet_statuses"][0]["status"]
     expected_status = fixture.get("expected_status")
     if expected_status and status != expected_status:
@@ -1121,11 +1238,11 @@ def run_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Path) -> di
         fixture_type = fixture["type"]
         if fixture_type == "compile":
             plan_path = write_fixture_plan(temp_root, fixture)
-            result = compile_plan(plan_path, suite_dir / fixture_id, run_id=f"{suite_dir.name}/{fixture_id}", mode="fixture")
+            result = compile_plan(plan_path, fixture_run_dir(suite_dir, fixture_id), run_id=f"{suite_dir.name}/{fixture_id}", mode="fixture")
             check_fixture_result(fixture, result)
         elif fixture_type == "error":
             plan_path = write_fixture_plan(temp_root, fixture)
-            out = Path(fixture.get("out_override", suite_dir / fixture_id))
+            out = Path(fixture.get("out_override", fixture_run_dir(suite_dir, fixture_id)))
             if fixture.get("make_symlink"):
                 target = suite_dir / f"{fixture_id}-target"
                 target.mkdir(parents=True, exist_ok=True)
@@ -1142,10 +1259,10 @@ def run_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Path) -> di
                 raise CompileError(fixture["expected_error"], "expected fixture failure did not occur", fixture_id=fixture_id)
         elif fixture_type == "drift":
             plan_path = write_fixture_plan(temp_root, fixture)
-            result = compile_plan(plan_path, suite_dir / fixture_id, run_id=f"{suite_dir.name}/{fixture_id}", mode="fixture")
+            result = compile_plan(plan_path, fixture_run_dir(suite_dir, fixture_id), run_id=f"{suite_dir.name}/{fixture_id}", mode="fixture")
             prompt = render_prompt(result["packet"], result["gates"]).replace(result["packet"]["objective"], "changed objective", 1)
             try:
-                verify_prompt_packet(prompt, result["packet"])
+                verify_prompt_packet(prompt, result["packet"], result["gates"])
             except CompileError as exc:
                 if exc.code != fixture["expected_error"]:
                     raise
@@ -1153,7 +1270,7 @@ def run_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Path) -> di
                 raise CompileError("ERR_PROMPT_PACKET_DRIFT", "prompt drift was not detected", fixture_id=fixture_id)
         elif fixture_type == "resume":
             plan_path = write_fixture_plan(temp_root, fixture)
-            result = compile_plan(plan_path, suite_dir / fixture_id, run_id=f"{suite_dir.name}/{fixture_id}", mode="fixture")
+            result = compile_plan(plan_path, fixture_run_dir(suite_dir, fixture_id), run_id=f"{suite_dir.name}/{fixture_id}", mode="fixture")
             run_dir = result["out_dir"]
             mutate_run_artifact(run_dir, plan_path, fixture["mutate_artifact"])
             status = resume_run(run_dir)
@@ -1189,6 +1306,9 @@ def mutate_run_artifact(run_dir: Path, plan_path: Path, mutation: str) -> None:
         data = json.loads(path.read_text())
         data["objective"] += " changed"
         write_json_atomic(path, data)
+    elif mutation == "malformed_packet":
+        path = run_dir / "packets" / "001-first-slice.packet.json"
+        write_text_atomic(path, "{not-json\n")
     elif mutation == "prompt":
         path = run_dir / "packets" / "001-first-slice.prompt.md"
         write_text_atomic(path, path.read_text() + "\nchanged\n")
@@ -1202,6 +1322,19 @@ def mutate_run_artifact(run_dir: Path, plan_path: Path, mutation: str) -> None:
         data = json.loads(path.read_text())
         data["gates"][0]["approved"] = True
         write_json_atomic(path, data)
+    elif mutation == "compiler":
+        path = run_dir / "run.json"
+        data = json.loads(path.read_text())
+        data["compiler_version"] = "0.0.0-stale"
+        write_json_atomic(path, data)
+    elif mutation == "live_input":
+        run = json.loads((run_dir / "run.json").read_text())
+        source_plan = run_source_path(run["source_plan_path"])
+        write_text_atomic(source_plan.parent / "live-input.txt", "changed\n")
+    elif mutation == "approval_symlink":
+        path = run_dir / "gates" / "approval-state.json"
+        path.unlink()
+        path.symlink_to(run_dir / "run.json")
     elif mutation == "missing_handoff":
         handoffs = sorted((run_dir / "handoffs").glob("*.schema.json"))
         handoffs[0].unlink()
@@ -1217,6 +1350,14 @@ def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
     fixture_ids = [fixture["id"] for fixture in fixtures]
     failures = []
     passed = 0
+    for fixture_id in fixture_ids:
+        validate_fixture_id(fixture_id)
+    required_duplicates = sorted({item for item in required if required.count(item) > 1})
+    for fixture_id in required:
+        try:
+            validate_fixture_id(fixture_id)
+        except CompileError as exc:
+            failures.append(exc.to_record())
     temp_root = suite_dir / "_fixture-plans"
     temp_root.mkdir(parents=True, exist_ok=True)
     for fixture in fixtures:
@@ -1231,6 +1372,8 @@ def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
         failures.append({"code": "ERR_PLAN_INVALID", "message": "required fixture missing", "fixture_id": fixture_id})
     for fixture_id in duplicate:
         failures.append({"code": "ERR_PLAN_INVALID", "message": "duplicate fixture ID", "fixture_id": fixture_id})
+    for fixture_id in required_duplicates:
+        failures.append({"code": "ERR_PLAN_INVALID", "message": "duplicate required fixture ID", "fixture_id": fixture_id})
     skipped = len(set(required) - set(fixture_ids))
     failed = len(failures)
     summary = {

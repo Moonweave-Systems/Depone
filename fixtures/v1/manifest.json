@@ -7,6 +7,18 @@
       "type": "compile"
     },
     {
+      "expected_status": "ready",
+      "id": "positive-repo-migration",
+      "mutation": {
+        "completion_check": "migration inventory validates and no file changes were made",
+        "expected_output": "migration-inventory.json with batches, owners, and rollback notes",
+        "instruction": "Inventory files for a repo-wide migration and produce batch boundaries without changing files.",
+        "plan_id": "positive-repo-migration"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
       "expected_blocked_categories": [
         "write"
       ],
@@ -244,6 +256,12 @@
       "expected_synthetic_count": 0,
       "id": "risk-near-miss-no-false-positive",
       "mutation": {
+        "completion_check": "networking notes and shellfish examples are listed without risk-token matches",
+        "expected_output": "networking inventory with shellfish appendix",
+        "forbidden_actions": [
+          "networking changes",
+          "shellfish edits"
+        ],
         "instruction": "Inventory networking notes and shellfish examples without changing files.",
         "plan_id": "risk-near-miss-no-false-positive"
       },
@@ -324,6 +342,13 @@
       "type": "resume"
     },
     {
+      "expected_invalidator": "ERR_RESUME_STALE_PACKET",
+      "id": "resume-malformed-packet",
+      "mutate_artifact": "malformed_packet",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
       "expected_invalidator": "ERR_RESUME_STALE_PROMPT",
       "id": "resume-stale-prompt",
       "mutate_artifact": "prompt",
@@ -338,9 +363,45 @@
       "type": "resume"
     },
     {
+      "expected_invalidator": "ERR_RESUME_STALE_INPUT",
+      "id": "resume-stale-live-input",
+      "input_files": [
+        {
+          "content": "before\n",
+          "path": "live-input.txt"
+        }
+      ],
+      "mutate_artifact": "live_input",
+      "mutation": {
+        "inputs": [
+          "workflow.plan.json",
+          "original prompt",
+          "repository path",
+          "path:live-input.txt"
+        ],
+        "plan_id": "resume-stale-live-input"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
       "expected_invalidator": "ERR_RESUME_STALE_GATE",
       "id": "resume-stale-gate",
       "mutate_artifact": "gate",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_COMPILER",
+      "id": "resume-stale-compiler",
+      "mutate_artifact": "compiler",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_MISSING_ARTIFACT",
+      "id": "resume-symlink-gate",
+      "mutate_artifact": "approval_symlink",
       "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
       "type": "resume"
     },
@@ -354,6 +415,7 @@
   ],
   "required_fixture_ids": [
     "positive-ready-readonly",
+    "positive-repo-migration",
     "positive-blocked-write",
     "negative-downgrade",
     "negative-outside-out",
@@ -380,9 +442,13 @@
     "resume-stale-source-plan",
     "resume-stale-plan-snapshot",
     "resume-stale-packet",
+    "resume-malformed-packet",
     "resume-stale-prompt",
     "resume-stale-input",
+    "resume-stale-live-input",
     "resume-stale-gate",
+    "resume-stale-compiler",
+    "resume-symlink-gate",
     "resume-missing-handoff"
   ],
   "suite_id": "v1-first-slice"

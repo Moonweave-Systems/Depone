@@ -1,0 +1,389 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "ready",
+      "id": "positive-ready-readonly",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "write"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "positive-blocked-write",
+      "mutation": {
+        "gate_trigger": "write action",
+        "plan_id": "positive-blocked-write",
+        "surface_write": true
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_error": "ERR_PLAN_DOWNGRADE",
+      "id": "negative-downgrade",
+      "plan": "fixtures/v1/plans/downgrade.workflow.plan.json",
+      "type": "error"
+    },
+    {
+      "expected_error": "ERR_OUT_PATH_UNSAFE",
+      "id": "negative-outside-out",
+      "out_override": "/tmp/compile-workflow-outside",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "error"
+    },
+    {
+      "expected_error": "ERR_OUT_PATH_SYMLINK",
+      "id": "negative-symlink-run-path",
+      "make_symlink": true,
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "error"
+    },
+    {
+      "expected_blocked_categories": [
+        "write"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-write",
+      "mutation": {
+        "gate_trigger": "write action",
+        "plan_id": "risk-write",
+        "risk": "write"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "shell-process"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-shell-process",
+      "mutation": {
+        "gate_trigger": "shell action",
+        "plan_id": "risk-shell-process",
+        "risk": "shell-process"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "network"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-network",
+      "mutation": {
+        "gate_trigger": "network action",
+        "plan_id": "risk-network",
+        "risk": "network"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "dependency-install"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-dependency-install",
+      "mutation": {
+        "gate_trigger": "dependency install",
+        "plan_id": "risk-dependency-install",
+        "risk": "dependency-install"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "database-migration"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-database-migration",
+      "mutation": {
+        "gate_trigger": "database migration",
+        "plan_id": "risk-database-migration",
+        "risk": "database-migration"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "production-deploy"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-production-deploy",
+      "mutation": {
+        "gate_trigger": "production deploy",
+        "plan_id": "risk-production-deploy",
+        "risk": "production-deploy"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "public-api-change"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-public-api-change",
+      "mutation": {
+        "gate_trigger": "public API change",
+        "plan_id": "risk-public-api-change",
+        "risk": "public-api-change"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "external-message"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-external-message",
+      "mutation": {
+        "gate_trigger": "external message action",
+        "plan_id": "risk-external-message",
+        "risk": "external-message"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "paid-api"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-paid-api",
+      "mutation": {
+        "gate_trigger": "paid API",
+        "plan_id": "risk-paid-api",
+        "risk": "paid-api"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "secret-access"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-secret-access",
+      "mutation": {
+        "gate_trigger": "secret access",
+        "plan_id": "risk-secret-access",
+        "risk": "secret-access"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "history-rewrite"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-history-rewrite",
+      "mutation": {
+        "gate_trigger": "force push",
+        "plan_id": "risk-history-rewrite",
+        "risk": "history-rewrite",
+        "risk_token": "force push"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "delete"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "id": "risk-delete",
+      "mutation": {
+        "gate_trigger": "delete",
+        "plan_id": "risk-delete",
+        "risk": "delete"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "network"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "expected_synthetic_count": 1,
+      "id": "risk-synthetic-gate",
+      "mutation": {
+        "neutral_gate": true,
+        "plan_id": "risk-synthetic-gate",
+        "risk": "network"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "write"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "expected_synthetic_count": 0,
+      "id": "risk-v05-alias-no-duplicate-synthetic",
+      "mutation": {
+        "gate_trigger": "write action",
+        "plan_id": "risk-v05-alias-no-duplicate-synthetic",
+        "risk": "write"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_status": "ready",
+      "expected_synthetic_count": 0,
+      "id": "risk-near-miss-no-false-positive",
+      "mutation": {
+        "instruction": "Inventory networking notes and shellfish examples without changing files.",
+        "plan_id": "risk-near-miss-no-false-positive"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "delete",
+        "secret-access"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "expected_synthetic_count": 2,
+      "id": "risk-multiple-synthetic-ordering",
+      "mutation": {
+        "forbidden_actions": [
+          "secret access",
+          "delete"
+        ],
+        "neutral_gate": true,
+        "plan_id": "risk-multiple-synthetic-ordering"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "check_duplicate_inputs": true,
+      "expected_status": "ready",
+      "id": "input-duplicate-labels",
+      "mutation": {
+        "inputs": [
+          "workflow.plan.json",
+          "original prompt",
+          "repository path",
+          "path:README.md",
+          "path:README.md"
+        ],
+        "plan_id": "input-duplicate-labels"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_error": "ERR_PROMPT_PACKET_DRIFT",
+      "id": "drift-prompt-packet",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "drift"
+    },
+    {
+      "expected_resume_state": "resumable",
+      "id": "resume-clean",
+      "mutate_artifact": "none",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_PLAN",
+      "id": "resume-stale-source-plan",
+      "mutate_artifact": "source_plan",
+      "mutation": {
+        "plan_id": "resume-stale-source-plan"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_PLAN",
+      "id": "resume-stale-plan-snapshot",
+      "mutate_artifact": "plan_snapshot",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_PACKET",
+      "id": "resume-stale-packet",
+      "mutate_artifact": "packet",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_PROMPT",
+      "id": "resume-stale-prompt",
+      "mutate_artifact": "prompt",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_INPUT",
+      "id": "resume-stale-input",
+      "mutate_artifact": "input",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_STALE_GATE",
+      "id": "resume-stale-gate",
+      "mutate_artifact": "gate",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    },
+    {
+      "expected_invalidator": "ERR_RESUME_MISSING_ARTIFACT",
+      "id": "resume-missing-handoff",
+      "mutate_artifact": "missing_handoff",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "resume"
+    }
+  ],
+  "required_fixture_ids": [
+    "positive-ready-readonly",
+    "positive-blocked-write",
+    "negative-downgrade",
+    "negative-outside-out",
+    "negative-symlink-run-path",
+    "risk-write",
+    "risk-shell-process",
+    "risk-network",
+    "risk-dependency-install",
+    "risk-database-migration",
+    "risk-production-deploy",
+    "risk-public-api-change",
+    "risk-external-message",
+    "risk-paid-api",
+    "risk-secret-access",
+    "risk-history-rewrite",
+    "risk-delete",
+    "risk-synthetic-gate",
+    "risk-v05-alias-no-duplicate-synthetic",
+    "risk-near-miss-no-false-positive",
+    "risk-multiple-synthetic-ordering",
+    "input-duplicate-labels",
+    "drift-prompt-packet",
+    "resume-clean",
+    "resume-stale-source-plan",
+    "resume-stale-plan-snapshot",
+    "resume-stale-packet",
+    "resume-stale-prompt",
+    "resume-stale-input",
+    "resume-stale-gate",
+    "resume-missing-handoff"
+  ],
+  "suite_id": "v1-first-slice"
+}

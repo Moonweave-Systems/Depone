@@ -7,26 +7,32 @@
   "observation_evidence": {
     "activation_decision": {
       "interpretation": "Routes requests, but does not emit a fixture-specific schema activation artifact.",
+      "observation": "activation_decision",
       "source_excerpt": "Classify the task using `references/router-map.md`."
     },
     "consumer_can_route": {
       "interpretation": "A consumer can route the prompt, but not consume a workflow.plan.json artifact.",
+      "observation": "consumer_can_route",
       "source_excerpt": "choose the route that provides the earliest verifiable evidence"
     },
     "handoff_guidance": {
       "interpretation": "Provides lightweight handoff summary guidance, not artifact schemas.",
+      "observation": "handoff_guidance",
       "source_excerpt": "then summarize changed files and verification."
     },
     "resume_guidance": {
       "interpretation": "Preserves evidence, but does not define restartable phase outputs.",
+      "observation": "resume_guidance",
       "source_excerpt": "Preserve the strongest evidence gathered before reporting a blocker."
     },
     "safety_gates": {
       "interpretation": "Defines approval gates for risky work.",
+      "observation": "safety_gates",
       "source_excerpt": "Pause for explicit confirmation before destructive or externally visible work:"
     },
     "verification_guidance": {
       "interpretation": "Provides concrete verification guidance.",
+      "observation": "verification_guidance",
       "source_excerpt": "Verify with the smallest meaningful command, UI check, artifact metric, or"
     }
   },

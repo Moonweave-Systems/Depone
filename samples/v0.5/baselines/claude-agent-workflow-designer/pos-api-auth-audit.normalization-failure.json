@@ -7,26 +7,32 @@
   "observation_evidence": {
     "activation_decision": {
       "interpretation": "Describes when workflow design may apply, but does not decide fixture activation in schema form.",
+      "observation": "activation_decision",
       "source_excerpt": "A single prompt is insufficient for task complexity"
     },
     "consumer_can_route": {
       "interpretation": "A consumer can use the guidance, but not as schema-valid JSON.",
+      "observation": "consumer_can_route",
       "source_excerpt": "Design production-grade multi-agent workflows with clear pattern choice, handoff contracts, failure handling, and cost/context controls."
     },
     "handoff_guidance": {
       "interpretation": "Provides handoff guidance.",
+      "observation": "handoff_guidance",
       "source_excerpt": "Define handoff contract fields for every edge."
     },
     "resume_guidance": {
       "interpretation": "Provides recovery guidance.",
+      "observation": "resume_guidance",
       "source_excerpt": "Error recovery and retry strategy scaffolding"
     },
     "safety_gates": {
       "interpretation": "Mentions safety gates, but lacks V0.5 safe-default approval gates.",
+      "observation": "safety_gates",
       "source_excerpt": "You need validation loops for quality or safety gates"
     },
     "verification_guidance": {
       "interpretation": "Provides validation guidance.",
+      "observation": "verification_guidance",
       "source_excerpt": "Validate intermediate outputs before fan-in synthesis."
     }
   },

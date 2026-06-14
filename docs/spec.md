@@ -49,9 +49,10 @@ Key conclusions:
 - Claude Dynamic Workflows move orchestration out of chat and into a script.
 - Community repos already explore JavaScript harnesses, MCP runtimes, viewers,
   journals, and workflow command distribution.
-- This repo should not copy a runtime yet. It should first make Codex reliably
-  produce high-quality workflow designs that can later be executed by existing
-  subagent tools, a plugin, or a dedicated runtime.
+- This repo should not copy a runtime yet. It should first define a checkable
+  workflow-design contract and deterministic samples that can later be tested
+  against live Codex output, existing subagent tools, a plugin, or a dedicated
+  runtime.
 
 ## Scope
 
@@ -285,6 +286,10 @@ python scripts/check_contract.py --self-test
 python scripts/evaluate_plan.py --self-test
 python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out out/v0.5
 ```
+
+The V0.5 manifest depends on the local sibling baseline sources named in
+`fixtures/v0.5/manifest.json`. The manifest evaluator regenerates `out/v0.5/`
+and verifies that `docs/v0.5-decision.md` matches the freshly generated summary.
 
 ## Open Questions
 

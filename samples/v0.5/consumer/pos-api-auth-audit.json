@@ -23,6 +23,15 @@
     "repository path"
   ],
   "provenance": {
+    "field_support": {
+      "completion_check": "completion_check: inventory validates and every gap is either resolved or recorded",
+      "expected_output": "expected_output: validated inventory.json plus gaps list",
+      "first_slice": "first_slice: Inventory route entry points, auth middleware, and package boundaries without editing files.",
+      "forbidden_actions": "forbidden_actions: source edits; dependency installs; secret access; external messages",
+      "inputs_needed": "inputs_needed: workflow.plan.json; blueprint.md; original prompt; repository path",
+      "risk_gates": "risk_gates: write action; shell action; network action; external message action; secret access",
+      "safe_defaults": "safe_defaults: write action -> stop before writing and ask for approval; shell action -> stop before shell use and ask for approval; network action -> stop before network use and ask for approval; external message action -> stop before sending external messages and ask for approval; secret access -> stop before secret access and ask for approval"
+    },
     "reviewer_note": "Blinded sample reviewer identified the first slice, required inputs, forbidden actions, gates, and safe defaults from the supplied packet only.",
     "run_kind": "blinded-sample-review",
     "supplied_inputs": [

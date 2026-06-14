@@ -18,10 +18,11 @@ itself needs dynamic orchestration.
 Claude Code Dynamic Workflows changed the useful abstraction: for large work,
 the plan can live outside the chat as an inspectable workflow. Codex does not
 currently have the same native workflow runtime in this environment, so this
-repo starts with the part we can make reliable now: workflow design.
+repo starts with the part we can make checkable now: a workflow design contract.
 
-The first slice is a skill that produces high-quality workflow blueprints and
-specs. A plugin or runtime can follow once the design layer proves useful.
+The first slice defines the skill contract and deterministic V0.5 sample
+evidence for workflow blueprints and specs. A plugin or runtime can follow once
+live generation or execution slices prove useful.
 
 ## Use
 
@@ -91,12 +92,18 @@ rg -n "T[O]DO|T[B]D|PLACE[H]OLDER|FIX[M]E" --glob '*.md' .; test $? -eq 1
 The contract check requires passing fixture records under
 [`docs/fixture-smoke/`](docs/fixture-smoke/).
 
+The V0.5 manifest expects the local sibling baseline sources referenced in
+[`fixtures/v0.5/manifest.json`](fixtures/v0.5/manifest.json):
+`../workflow-router-skill/SKILL.md` and
+`../../claude-skills/engineering/agent-workflow-designer/SKILL.md`.
+
 The V0.5 evaluator regenerates repo-local `out/v0.5/` from tracked fixtures and
 samples. That directory is verification evidence, not source of truth. Raw
 records are bound to the current `SKILL.md` hash, baseline observations require
 source-backed excerpts, and consumer reports require blinded sample-review
-provenance. The manifest run exits nonzero if the keep/kill decision is not
-`keep`.
+provenance with field-level support. The manifest run exits nonzero if the
+keep/kill decision is not `keep` or if `docs/v0.5-decision.md` does not match the
+freshly regenerated summary.
 
 The V0.5 keep/kill decision is
 [`docs/v0.5-decision.md`](docs/v0.5-decision.md).

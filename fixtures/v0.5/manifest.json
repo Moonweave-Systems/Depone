@@ -177,7 +177,10 @@
       "consumer_report": "samples/v0.5/consumer/neg-fix-unit-test.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "direct-codex"
+        "downgrade_target": "direct-codex",
+        "required_risk_gates": [
+          "source edit"
+        ]
       },
       "id": "neg-fix-unit-test",
       "prompt_path": "fixtures/v0.5/prompts/neg-fix-unit-test.txt",
@@ -189,7 +192,10 @@
       "consumer_report": "samples/v0.5/consumer/neg-review-small-diff.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "direct-codex"
+        "downgrade_target": "direct-codex",
+        "required_risk_gates": [
+          "external review"
+        ]
       },
       "id": "neg-review-small-diff",
       "prompt_path": "fixtures/v0.5/prompts/neg-review-small-diff.txt",
@@ -201,7 +207,10 @@
       "consumer_report": "samples/v0.5/consumer/neg-one-file-plan.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "simple-plan"
+        "downgrade_target": "simple-plan",
+        "required_risk_gates": [
+          "multi-agent"
+        ]
       },
       "id": "neg-one-file-plan",
       "prompt_path": "fixtures/v0.5/prompts/neg-one-file-plan.txt",
@@ -213,7 +222,10 @@
       "consumer_report": "samples/v0.5/consumer/neg-explain-pattern.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "direct-codex"
+        "downgrade_target": "direct-codex",
+        "required_risk_gates": [
+          "workflow execution"
+        ]
       },
       "id": "neg-explain-pattern",
       "prompt_path": "fixtures/v0.5/prompts/neg-explain-pattern.txt",
@@ -225,7 +237,10 @@
       "consumer_report": "samples/v0.5/consumer/border-one-service-auth-audit.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "workflow-router"
+        "downgrade_target": "workflow-router",
+        "required_risk_gates": [
+          "multi-agent"
+        ]
       },
       "id": "border-one-service-auth-audit",
       "prompt_path": "fixtures/v0.5/prompts/border-one-service-auth-audit.txt",
@@ -237,7 +252,10 @@
       "consumer_report": "samples/v0.5/consumer/border-small-migration.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "workflow-router"
+        "downgrade_target": "workflow-router",
+        "required_risk_gates": [
+          "migration source edit"
+        ]
       },
       "id": "border-small-migration",
       "prompt_path": "fixtures/v0.5/prompts/border-small-migration.txt",
@@ -249,7 +267,10 @@
       "consumer_report": "samples/v0.5/consumer/border-architecture-compare.json",
       "expected": {
         "activation": "downgrade",
-        "downgrade_target": "workflow-router"
+        "downgrade_target": "workflow-router",
+        "required_risk_gates": [
+          "implementation decision"
+        ]
       },
       "id": "border-architecture-compare",
       "prompt_path": "fixtures/v0.5/prompts/border-architecture-compare.txt",

@@ -75,7 +75,15 @@ CONSUMERS = {"human", "codex-agent", "runtime"}
 ALLOWED_BLINDED_INPUTS = {"workflow.plan.json", "blueprint.md", "original prompt", "repository path"}
 BASELINE_ADAPTER_VERSION = "0.5-source-contract-v1"
 EXPECTED_BASELINES = {"workflow-router-skill", "claude-agent-workflow-designer"}
-SAFE_DEFAULT_TERMS = {"ask", "approval", "stop", "preserve", "read-only", "do not"}
+UNSAFE_DEFAULT_TERMS = {"continue", "proceed", "automatically", "after writing", "after shell"}
+FORBIDDEN_PROVENANCE_TERMS = {
+    "expected answer",
+    "expected-answer",
+    "scorecard",
+    "docs/spec",
+    "v0.5-plan",
+    "fixture expectation",
+}
 BASELINE_OBSERVATION_KEYS = [
     "activation_decision",
     "handoff_guidance",
@@ -163,6 +171,23 @@ def contains_phrase(text: str, phrase: str) -> bool:
 
 def gate_matches_term(gate: dict[str, Any], term: str) -> bool:
     return contains_phrase(gate["trigger"], term)
+
+
+def safe_default_blocks_before_action(text: str) -> bool:
+    normalized = " ".join(text.lower().split())
+    if any(term in normalized for term in UNSAFE_DEFAULT_TERMS):
+        return False
+    return (
+        normalized.startswith("stop before ")
+        or (normalized.startswith("do not ") and "without approval" in normalized)
+        or ("ask before" in normalized and ("stop" in normalized or "preserve" in normalized))
+    )
+
+
+def forbid_provenance_leaks(text: str, where: str) -> None:
+    normalized = text.lower()
+    for forbidden in FORBIDDEN_PROVENANCE_TERMS:
+        require(forbidden not in normalized, f"{where} references forbidden provenance source: {forbidden}")
 
 
 def resolve_out_root(value: str) -> Path:
@@ -432,6 +457,26 @@ def validate_phase_graph(plan: dict[str, Any], activated: bool) -> None:
     all_outputs = set().union(*phase_outputs.values()) if phase_outputs else set()
     for output in plan["resume"]["cacheable_outputs"]:
         require(output in all_outputs, f"resume cacheable output is not produced by any phase: {output}")
+    if activated and phase_ids:
+        adjacency = {phase_id: set() for phase_id in phase_ids}
+        for phase_id, dependencies in dependency_map.items():
+            for dependency in dependencies:
+                adjacency[phase_id].add(dependency)
+                adjacency[dependency].add(phase_id)
+        for handoff in plan["handoffs"]:
+            from_phase = handoff["from_phase"]
+            to_phase = handoff["to_phase"]
+            adjacency[from_phase].add(to_phase)
+            adjacency[to_phase].add(from_phase)
+        reachable = set()
+        stack = [phase_ids[0]]
+        while stack:
+            phase_id = stack.pop()
+            if phase_id in reachable:
+                continue
+            reachable.add(phase_id)
+            stack.extend(sorted(adjacency[phase_id] - reachable))
+        require(reachable == set(phase_ids), "activated phase graph must be connected")
     if not activated:
         require(not restart_points, "downgrade artifacts must not define restart points")
 
@@ -478,7 +523,7 @@ def validate_risk_gates(plan: dict[str, Any], expected: dict[str, Any] | None) -
         require(isinstance(gate["requires_user_approval"], bool), "requires_user_approval must be bool")
         require(gate["requires_user_approval"] is True, "risk gates must require user approval")
         require(
-            word_tokens(gate["safe_default"]) & SAFE_DEFAULT_TERMS,
+            safe_default_blocks_before_action(gate["safe_default"]),
             f"risk gate safe_default is not a safe stop/ask/preserve default: {gate['trigger']}",
         )
         triggers.append(gate["trigger"].lower())
@@ -502,6 +547,9 @@ def validate_risk_gates(plan: dict[str, Any], expected: dict[str, Any] | None) -
     for surface in plan["surfaces"]:
         if surface["access_mode"] != "read-only":
             required_gate_terms.add("write")
+    if expected:
+        for required in expected.get("required_risk_gates", []):
+            required_gate_terms.add(str(required).replace("-", " "))
     for term in sorted(required_gate_terms):
         matches = [gate for gate in gates if gate_matches_term(gate, term)]
         require(matches, f"missing risk gate for {term}")
@@ -678,12 +726,18 @@ def score_baseline_failure(
     evidence = failure.get("observation_evidence")
     require(isinstance(evidence, dict), "baseline observation_evidence must be an object")
     require_keys(evidence, BASELINE_OBSERVATION_KEYS, "baseline observation_evidence")
+    seen_excerpts: set[str] = set()
     for key in BASELINE_OBSERVATION_KEYS:
         item = evidence[key]
         require(isinstance(item, dict), f"baseline evidence {key} must be an object")
-        require_keys(item, ["source_excerpt", "interpretation"], f"baseline evidence {key}")
+        require_keys(item, ["observation", "source_excerpt", "interpretation"], f"baseline evidence {key}")
+        require(item["observation"] == key, f"baseline evidence {key} observation mismatch")
         excerpt = item["source_excerpt"]
         require(non_empty_string(excerpt), f"baseline evidence {key} excerpt is empty")
+        require(len(excerpt.strip()) >= 24, f"baseline evidence {key} excerpt is too short")
+        require(len(word_tokens(excerpt)) >= 4, f"baseline evidence {key} excerpt has too few tokens")
+        require(excerpt not in seen_excerpts, f"baseline evidence excerpt reused: {excerpt}")
+        seen_excerpts.add(excerpt)
         require(excerpt in source_text, f"baseline evidence {key} excerpt not found in source")
         require(non_empty_string(item["interpretation"]), f"baseline evidence {key} interpretation is empty")
 
@@ -832,9 +886,18 @@ def validate_consumer_report(
         )
     provenance = report.get("provenance")
     require(isinstance(provenance, dict), f"{report_path} provenance must be an object")
+    allowed_provenance_keys = {
+        "run_kind",
+        "supplied_inputs",
+        "transcript_excerpt",
+        "reviewer_note",
+        "field_support",
+    }
+    extra_provenance = set(provenance) - allowed_provenance_keys
+    require(not extra_provenance, f"{report_path} provenance contains unexpected fields: {sorted(extra_provenance)}")
     require_keys(
         provenance,
-        ["run_kind", "supplied_inputs", "transcript_excerpt", "reviewer_note"],
+        ["run_kind", "supplied_inputs", "transcript_excerpt", "reviewer_note", "field_support"],
         f"{report_path} provenance",
     )
     require(provenance["run_kind"] == "blinded-sample-review", f"{report_path} has wrong consumer run kind")
@@ -842,11 +905,69 @@ def validate_consumer_report(
     require(non_empty_string(provenance["transcript_excerpt"]), f"{report_path} transcript excerpt is empty")
     require(first_slice["instruction"] in provenance["transcript_excerpt"], f"{report_path} transcript omits first slice")
     require(non_empty_string(provenance["reviewer_note"]), f"{report_path} reviewer note is empty")
+    forbid_provenance_leaks(provenance["transcript_excerpt"], f"{report_path} transcript")
+    forbid_provenance_leaks(provenance["reviewer_note"], f"{report_path} reviewer note")
+    field_support = provenance["field_support"]
+    require(isinstance(field_support, dict), f"{report_path} field_support must be an object")
+    required_support = [
+        "first_slice",
+        "inputs_needed",
+        "expected_output",
+        "completion_check",
+        "forbidden_actions",
+        "risk_gates",
+        "safe_defaults",
+    ]
+    if plan["activation"]["decision"] == "downgrade":
+        required_support.append("downgrade_target")
+    require_keys(field_support, required_support, f"{report_path} field_support")
+    extra_support = set(field_support) - set(required_support)
+    require(not extra_support, f"{report_path} field_support contains unexpected fields: {sorted(extra_support)}")
+
+    def require_support(field: str, values: list[str]) -> None:
+        support = field_support[field]
+        require(non_empty_string(support), f"{report_path} support for {field} is empty")
+        forbid_provenance_leaks(support, f"{report_path} support for {field}")
+        for value in values:
+            require(str(value) in support, f"{report_path} support for {field} omits {value}")
+
+    require_support("first_slice", [first_slice["instruction"]])
+    require_support("inputs_needed", list(first_slice["inputs"]))
+    require_support("expected_output", [first_slice["expected_output"]])
+    require_support("completion_check", [first_slice["completion_check"]])
+    require_support("forbidden_actions", list(first_slice["forbidden_actions"]))
+    require_support("risk_gates", [gate["trigger"] for gate in plan["risk_gates"]])
+    safe_default_values: list[str] = []
+    for gate in plan["risk_gates"]:
+        safe_default_values.extend([gate["trigger"], gate["safe_default"]])
+    require_support("safe_defaults", safe_default_values)
+    if plan["activation"]["decision"] == "downgrade":
+        require_support("downgrade_target", [str(expected.get("downgrade_target"))])
     return 2
 
 
 def average(scores: dict[str, int], metrics: list[str]) -> float:
     return sum(scores[metric] for metric in metrics) / len(metrics)
+
+
+def validate_decision_doc(summary: dict[str, Any]) -> None:
+    decision_path = ROOT / "docs" / "v0.5-decision.md"
+    text = " ".join(decision_path.read_text().lower().split())
+    required = [
+        f"decision: {summary['decision']}",
+        f"{summary['fixture_count']} fixtures",
+        f"candidate keep/kill average: {summary['candidate_keep_kill_average']}",
+        "aggregate keep/kill average",
+    ]
+    for name, value in summary["baseline_keep_kill_averages"].items():
+        required.append(f"`{name}` baseline average: {value}")
+    missing = [snippet for snippet in required if snippet not in text]
+    require(not missing, f"docs/v0.5-decision.md does not match generated summary: {missing}")
+    if "per-metric margin" in text:
+        require(
+            "does not claim a per-metric margin" in text,
+            "docs/v0.5-decision.md contains unsupported per-metric margin claim",
+        )
 
 
 def evaluate_fixture(
@@ -914,7 +1035,10 @@ def evaluate_manifest(manifest_path: Path, out_root: Path) -> dict[str, Any]:
     require(isinstance(manifest["baselines"], list) and manifest["baselines"], "manifest baselines must be non-empty")
     fixture_ids = [fixture["id"] for fixture in manifest["fixtures"]]
     require(len(fixture_ids) == len(set(fixture_ids)), "manifest fixture ids must be unique")
-    baseline_names = {baseline.get("name") for baseline in manifest["baselines"]}
+    raw_baseline_names = [baseline.get("name") for baseline in manifest["baselines"]]
+    require(len(raw_baseline_names) == len(set(raw_baseline_names)), "manifest baseline names must be unique")
+    baseline_names = set(raw_baseline_names)
+    require(len(raw_baseline_names) == len(EXPECTED_BASELINES), "manifest must contain exactly the expected baselines")
     require(baseline_names == EXPECTED_BASELINES, f"manifest baselines must be {sorted(EXPECTED_BASELINES)}")
     for baseline in manifest["baselines"]:
         require("source_path" in baseline, f"baseline {baseline.get('name')} missing source_path")
@@ -954,6 +1078,7 @@ def evaluate_manifest(manifest_path: Path, out_root: Path) -> dict[str, Any]:
         "scorecards": [f"{card['fixture_id']}/scorecard.json" for card in scorecards],
     }
     write_json(out_root / "summary.json", summary)
+    validate_decision_doc(summary)
     return summary
 
 
@@ -1138,6 +1263,14 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: substring-spoofed risk gate passed")
+    bad_gate = json.loads(json.dumps(active))
+    bad_gate["risk_gates"][0]["safe_default"] = "preserve evidence, then continue with the write"
+    try:
+        validate_plan(bad_gate, {"activation": "activate"})
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: unsafe continue safe_default passed")
 
     valid_report = {
         "fixture_id": active["plan_id"],
@@ -1160,6 +1293,19 @@ def self_test() -> None:
             "supplied_inputs": ["workflow.plan.json", "blueprint.md", "original prompt"],
             "transcript_excerpt": "Consumer selected first slice: Inspect the prompt and list required inputs.",
             "reviewer_note": "Inputs and gates were identified from the blinded packet.",
+            "field_support": {
+                "first_slice": "first_slice: Inspect the prompt and list required inputs.",
+                "inputs_needed": "inputs_needed: original prompt",
+                "expected_output": "expected_output: input ledger",
+                "completion_check": "completion_check: ledger has inputs",
+                "forbidden_actions": "forbidden_actions: write files",
+                "risk_gates": "risk_gates: write action; shell action; network action",
+                "safe_defaults": (
+                    "safe_defaults: write action -> stop before writing and ask for approval; "
+                    "shell action -> stop before shell use and ask for approval; "
+                    "network action -> stop before network use and ask for approval"
+                ),
+            },
         },
     }
     tmp_report = ROOT / "out" / "v0.5-self-test-consumer.json"
@@ -1210,6 +1356,33 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: consumer report without transcript evidence passed")
+    bad_report = json.loads(json.dumps(valid_report))
+    bad_report["provenance"]["expected_answer"] = "leak"
+    write_json(tmp_report, bad_report)
+    try:
+        validate_consumer_report(tmp_report, active, {"activation": "activate"})
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: nested consumer leakage field passed")
+    bad_report = json.loads(json.dumps(valid_report))
+    bad_report["provenance"]["reviewer_note"] = "I used docs/spec expected answer."
+    write_json(tmp_report, bad_report)
+    try:
+        validate_consumer_report(tmp_report, active, {"activation": "activate"})
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: consumer provenance source leak passed")
+    bad_report = json.loads(json.dumps(valid_report))
+    bad_report["provenance"]["field_support"]["risk_gates"] = "risk_gates omitted"
+    write_json(tmp_report, bad_report)
+    try:
+        validate_consumer_report(tmp_report, active, {"activation": "activate"})
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: unsupported consumer risk gates passed")
     tmp_report.unlink(missing_ok=True)
 
     tmp_plan = ROOT / "out" / "v0.5-self-test-plan.json"
@@ -1277,6 +1450,24 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: unknown cacheable output passed")
+    bad_phase = json.loads(json.dumps(active))
+    bad_phase["phases"].append(
+        {
+            "id": "orphan",
+            "name": "Orphan",
+            "entry_criteria": ["Orphan entry"],
+            "exit_criteria": ["Orphan exit"],
+            "depends_on": [],
+            "worker_ids": ["planner"],
+            "outputs": ["orphan-output"],
+        }
+    )
+    try:
+        validate_plan(bad_phase, {"activation": "activate"})
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: disconnected active phase passed")
     bad_downgrade = json.loads(json.dumps(downgrade))
     bad_downgrade["workers"] = json.loads(json.dumps(active["workers"]))
     try:
@@ -1286,7 +1477,14 @@ def self_test() -> None:
     else:
         raise EvaluationError("self-test failed: downgrade worker contract passed")
 
-    source_text = "Classify the task using references/router-map.md.\nVerify with the smallest meaningful command.\nPause for explicit confirmation before destructive work.\nPreserve the strongest evidence gathered before reporting a blocker.\n"
+    source_text = (
+        "Classify the task using references/router-map.md.\n"
+        "then summarize changed files and verification.\n"
+        "Verify with the smallest meaningful command.\n"
+        "Pause for explicit confirmation before destructive work.\n"
+        "Preserve the strongest evidence gathered before reporting a blocker.\n"
+        "choose the route that provides the earliest verifiable evidence.\n"
+    )
     baseline_failure = {
         "baseline": "baseline",
         "fixture_id": active["plan_id"],
@@ -1305,27 +1503,33 @@ def self_test() -> None:
         },
         "observation_evidence": {
             "activation_decision": {
+                "observation": "activation_decision",
                 "source_excerpt": "Classify the task using references/router-map.md.",
                 "interpretation": "Routes requests but does not decide this fixture's schema activation.",
             },
             "handoff_guidance": {
-                "source_excerpt": "Classify the task using references/router-map.md.",
+                "observation": "handoff_guidance",
+                "source_excerpt": "then summarize changed files and verification.",
                 "interpretation": "Provides limited workflow routing guidance.",
             },
             "verification_guidance": {
+                "observation": "verification_guidance",
                 "source_excerpt": "Verify with the smallest meaningful command.",
                 "interpretation": "Mentions verification.",
             },
             "safety_gates": {
+                "observation": "safety_gates",
                 "source_excerpt": "Pause for explicit confirmation before destructive work.",
                 "interpretation": "Mentions approval before destructive work.",
             },
             "resume_guidance": {
+                "observation": "resume_guidance",
                 "source_excerpt": "Preserve the strongest evidence gathered before reporting a blocker.",
                 "interpretation": "Evidence preservation is not a resumable handoff contract.",
             },
             "consumer_can_route": {
-                "source_excerpt": "Classify the task using references/router-map.md.",
+                "observation": "consumer_can_route",
+                "source_excerpt": "choose the route that provides the earliest verifiable evidence.",
                 "interpretation": "A consumer can route the prompt, but not consume a schema artifact.",
             },
         },
@@ -1346,6 +1550,28 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: unsupported baseline evidence passed")
+    baseline_failure["observation_evidence"]["consumer_can_route"]["source_excerpt"] = (
+        "choose the route that provides the earliest verifiable evidence."
+    )
+    baseline_failure["observation_evidence"]["consumer_can_route"]["source_excerpt"] = "the"
+    try:
+        score_baseline_failure(baseline_failure, {"activation": "activate"}, source_text)
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: weak one-word baseline evidence passed")
+    baseline_failure["observation_evidence"]["consumer_can_route"]["source_excerpt"] = (
+        "choose the route that provides the earliest verifiable evidence."
+    )
+    baseline_failure["observation_evidence"]["consumer_can_route"]["source_excerpt"] = (
+        baseline_failure["observation_evidence"]["activation_decision"]["source_excerpt"]
+    )
+    try:
+        score_baseline_failure(baseline_failure, {"activation": "activate"}, source_text)
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: reused baseline evidence passed")
 
     tmp_manifest = ROOT / "out" / "v0.5-self-test-manifest.json"
     write_json(tmp_manifest, {"fixtures": [], "baselines": []})
@@ -1362,6 +1588,22 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: empty manifest baselines passed")
+    duplicate_manifest = {
+        "schema_version": SCHEMA_VERSION,
+        "fixtures": [{"id": "fixture"}],
+        "baselines": [
+            {"name": "workflow-router-skill", "source_path": "SKILL.md", "fixture_records": {"fixture": {}}},
+            {"name": "workflow-router-skill", "source_path": "SKILL.md", "fixture_records": {"fixture": {}}},
+            {"name": "claude-agent-workflow-designer", "source_path": "SKILL.md", "fixture_records": {"fixture": {}}},
+        ],
+    }
+    write_json(tmp_manifest, duplicate_manifest)
+    try:
+        evaluate_manifest(tmp_manifest, ROOT / "out" / "v0.5-self-test-out")
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: duplicate manifest baselines passed")
     try:
         resolve_out_root("/tmp/v0.5-outside-repo")
     except EvaluationError:

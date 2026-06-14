@@ -57,8 +57,8 @@
   "risk_gates": [
     {
       "requires_user_approval": true,
-      "safe_default": "stop and re-evaluate activation before acting",
-      "trigger": "scope expands into destructive, external, or multi-agent execution"
+      "safe_default": "stop before implementation decisions and ask for approval",
+      "trigger": "implementation decision"
     }
   ],
   "schema_version": "0.5",

@@ -19,6 +19,16 @@
     "original prompt"
   ],
   "provenance": {
+    "field_support": {
+      "completion_check": "completion_check: no dynamic workflow artifact is needed",
+      "downgrade_target": "downgrade_target: simple-plan",
+      "expected_output": "expected_output: bounded response or routed workflow decision",
+      "first_slice": "first_slice: Use simple-plan instead of dynamic-workflow-designer for this request.",
+      "forbidden_actions": "forbidden_actions: spawning agents; editing files; external messages",
+      "inputs_needed": "inputs_needed: original prompt",
+      "risk_gates": "risk_gates: multi-agent execution",
+      "safe_defaults": "safe_defaults: multi-agent execution -> stop before multi-agent execution and ask for approval"
+    },
     "reviewer_note": "Blinded sample reviewer identified the first slice, required inputs, forbidden actions, gates, and safe defaults from the supplied packet only.",
     "run_kind": "blinded-sample-review",
     "supplied_inputs": [
@@ -30,9 +40,9 @@
   },
   "received_spec_or_expected_answer": false,
   "risk_gates_identified": [
-    "scope expands into destructive, external, or multi-agent execution"
+    "multi-agent execution"
   ],
   "safe_defaults_identified": {
-    "scope expands into destructive, external, or multi-agent execution": "stop and re-evaluate activation before acting"
+    "multi-agent execution": "stop before multi-agent execution and ask for approval"
   }
 }

@@ -44,6 +44,7 @@ Use $dynamic-workflow-designer to plan a 500-file migration with verification ga
 ├── SKILL.md                         # Runtime skill instructions
 ├── scripts/check_contract.py         # Release contract smoke check
 ├── scripts/evaluate_plan.py          # V0.5 schema and benchmark evaluator
+├── scripts/compile_workflow.py        # V1 first-slice packet compiler
 ├── references/workflow-patterns.md  # Pattern guide for workflow designs
 ├── references/workflow-plan-schema.md
 │                                      # workflow.plan.json contract
@@ -55,6 +56,7 @@ Use $dynamic-workflow-designer to plan a 500-file migration with verification ga
 ├── docs/v0.5-decision.md             # Keep/kill decision
 ├── docs/v1-first-slice-compiler-spec.md
 │                                      # Next first-slice compiler spec
+├── docs/v1-decision.md                # V1 keep/kill decision
 ├── docs/github-research.md          # Prior-art survey and import decisions
 ├── docs/spec.md                     # Product spec and release criteria
 ├── agents/openai.yaml               # UI metadata
@@ -88,6 +90,8 @@ python scripts/check_contract.py
 python scripts/check_contract.py --self-test
 python scripts/evaluate_plan.py --self-test
 python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out out/v0.5
+python scripts/compile_workflow.py --self-test
+python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final
 python scripts/check_whitespace.py .
 python scripts/check_release_text.py .
 python scripts/check_release_text.py --self-test
@@ -117,12 +121,20 @@ V1 should compile an activated `workflow.plan.json` into one inspectable
 first-slice packet, prompt, gate state, and resume/status files without claiming
 a full automatic workflow runtime.
 
-When V1 implementation starts, its release gate adds:
+The V1 first-slice compiler release gate adds:
 
 ```bash
+python scripts/compile_workflow.py --plan workflow.plan.json --out out/v1/<run_id>
+python scripts/compile_workflow.py --resume out/v1/<run_id>
 python scripts/compile_workflow.py --self-test
-python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/<suite_id>
+python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final
 ```
+
+V1 expects `workflow.plan.json` to live under this repository root; resume treats
+absolute or parent-traversal source-plan paths as stale.
+
+The V1 keep/kill decision is
+[`docs/v1-decision.md`](docs/v1-decision.md).
 
 ## License
 

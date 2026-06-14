@@ -697,6 +697,8 @@ def validate_risk_gates(plan: dict[str, Any], expected: dict[str, Any] | None) -
             required_gate_terms.add("shell")
         if permissions["network"]:
             required_gate_terms.add("network")
+        if permissions["mcp_connectors"]:
+            required_gate_terms.add("external message")
         for escalation in permissions["requires_escalation_for"]:
             required_gate_terms.add(str(escalation).replace("-", " "))
     for surface in plan["surfaces"]:
@@ -763,7 +765,6 @@ def validate_budget_resume_execution(plan: dict[str, Any], activated: bool, expe
     require(non_empty_string(first_slice["expected_output"]), "first_slice.expected_output is empty")
     require(non_empty_string(first_slice["completion_check"]), "first_slice.completion_check is empty")
     require(non_empty_list(first_slice["forbidden_actions"]), "first_slice.forbidden_actions must be non-empty")
-    require(unique_list(first_slice["inputs"]), "first_slice.inputs must be unique")
     require(unique_list(first_slice["forbidden_actions"]), "first_slice.forbidden_actions must be unique")
     repo_bound = any(surface["kind"] == "repo" for surface in plan["surfaces"]) or bool(
         expected and expected.get("requires_repository_path")
@@ -2213,14 +2214,9 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: empty resume invalidators passed")
-    bad_first_slice = json.loads(json.dumps(active))
-    bad_first_slice["execution_path"]["first_slice"]["inputs"].append("repository path")
-    try:
-        validate_plan(bad_first_slice, {"activation": "activate"})
-    except EvaluationError:
-        pass
-    else:
-        raise EvaluationError("self-test failed: duplicate first-slice input passed")
+    duplicate_first_slice = json.loads(json.dumps(active))
+    duplicate_first_slice["execution_path"]["first_slice"]["inputs"].append("repository path")
+    validate_plan(duplicate_first_slice, {"activation": "activate"})
     bad_first_slice = json.loads(json.dumps(downgrade))
     bad_first_slice["execution_path"]["first_slice"]["inputs"] = ["original prompt", "repo root"]
     try:

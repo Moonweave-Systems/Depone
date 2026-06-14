@@ -113,6 +113,13 @@ Mode semantics:
 There is no `first-slice` execution mode in V1. The first slice is compiled, not
 run.
 
+The `--plan` path must resolve under the repository root. V1 stores
+`run.json.source_plan_path` as a repository-relative path and rejects tampered
+absolute or parent-traversal source-plan paths during resume.
+The ownership sentinel also records the compile-time `source_plan_path`,
+`source_plan_hash`, `plan_hash`, status sections, and snapshot hashes so
+`status.json` never becomes the resume trust anchor.
+
 ## Output Path Safety
 
 By default, `--out` must resolve under the repository-local `out/v1/` directory.
@@ -301,6 +308,8 @@ Required fields:
 `source_plan_hash` is the canonical hash of the original file at
 `source_plan_path` at compile time. `plan_hash` is the canonical hash of
 `plan.snapshot.json`.
+
+`source_plan_path` must be repository-relative in V1.
 
 `risk_policy` is fixed to `block-all` in V1. Approved execution is outside V1;
 approval files exist only to make manual gates explicit and machine-checkable.
@@ -757,9 +766,22 @@ Minimum fixture set:
 - resume: untouched run remains `resumable` with empty `invalidators`
 - resume: modified plan hash invalidates run
 - resume: modified packet hash invalidates run
+- resume: coherent packet, prompt, and `status.json` snapshot forgery still
+  invalidates against compile-time anchors
+- resume: packet `prompt_hash` or `prompt_path` metadata drift invalidates run
 - resume: modified prompt hash invalidates run
 - resume: modified input snapshot invalidates run
 - resume: modified gate approval-state hash invalidates run
+- resume: coordinated gate and `status.json` snapshot/status forgery still
+  invalidates against compile-time anchors
+- resume: forged `status.json` metadata or snapshot fields invalidate run
+- resume: forged previous-invalidated status sections invalidate run, including
+  full invalidated and impossible hybrid clean/invalidated status section shapes
+- resume: missing, empty, malformed, or invalid UTF-8 sentinel status-section
+  anchors produce structured `ERR_RESUME_MISSING_ARTIFACT`
+- resume: repo-relative `source_plan_path` retargeting invalidates run
+- resume: a previously invalidated `status.json` remains invalidated even after
+  artifact repair; rerun compile to restore trusted clean status sections
 - resume: missing handoff schema invalidates run
 
 Each fixture must validate:
@@ -796,13 +818,22 @@ IDs must be unique. A skipped fixture is a failure. The manifest run writes
 - clean resume returns `resumable`
 - stale plan hash resume failure
 - stale packet hash resume failure
+- packet prompt-metadata drift resume failure
+- coherent packet/prompt/status forgery resume failure
 - stale prompt hash resume failure
 - stale input hash resume failure
 - stale gate hash resume failure
+- coordinated gate/status forgery resume failure
+- status metadata or snapshot drift resume failure
+- forged previous-invalidated status sections do not bypass resume invalidation
+- repo-relative source-plan retargeting resume failure
+- repaired artifact does not trust a previously invalidated `status.json`
 - missing handoff schema resume failure
 
 The self-test must fail for the exact reason under test. It must not count a
 failure caused by an unrelated missing required field as a pass.
+Resume fixtures must declare exact ordered invalidator record shapes (`code`,
+`kind`, `id`, and `message`) in addition to exact ordered invalidator codes.
 
 ## Decision Gate
 
@@ -810,6 +841,8 @@ The compiler must write `out/v1/<suite_id>/summary.json` for manifest runs with:
 
 - `suite_id`
 - `fixture_count`
+- `required_fixture_count`
+- `required_passed`
 - `passed`
 - `failed`
 - `skipped`
@@ -819,7 +852,7 @@ The compiler must write `out/v1/<suite_id>/summary.json` for manifest runs with:
 `docs/v1-decision.md` may record `keep` only when all required V1 fixtures pass,
 all existing V0/V0.5 release checks still pass, and the generated summary has
 `decision: "keep"`. The decision doc must name the exact manifest command used
-to regenerate the summary.
+to regenerate the summary and mirror the generated required-fixture totals.
 
 ## Acceptance Criteria
 
@@ -827,13 +860,18 @@ V1 is releasable when:
 
 - `scripts/compile_workflow.py --self-test` passes.
 - `python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out
-  out/v1/<suite_id>` passes and writes `summary.json`.
+  out/v1/final` passes and writes `summary.json`.
 - Existing V0/V0.5 checks still pass.
 - Required V1 fixtures pass through the compiler.
 - Generated packet prompts structurally agree with packet JSON.
 - Risky first slices are blocked in `approval-state.json` and `status.json`.
 - Resume checks invalidate stale plan, prompt, input, handoff, gate, or compiler
   state.
+- Resume checks compare live artifacts against compile-time anchors from the
+  ownership sentinel, not mutable `status.json` snapshots.
+- A previous invalidated `status.json` is not proof of compiler-authored
+  invalidation. A repaired run with invalidated status sections remains
+  `invalidated`; rerun compile to restore trusted clean status sections.
 - README documents compile and resume-check commands.
 - `docs/v1-decision.md` records keep/kill from `summary.json`.
 

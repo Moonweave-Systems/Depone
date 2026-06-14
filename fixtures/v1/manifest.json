@@ -210,6 +210,34 @@
     },
     {
       "expected_blocked_categories": [
+        "write"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "expected_synthetic_count": 0,
+      "id": "risk-v05-alias-source-edit-action",
+      "mutation": {
+        "gate_trigger": "source edit action",
+        "plan_id": "risk-v05-alias-source-edit-action"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
+        "write"
+      ],
+      "expected_status": "blocked-risk-gate",
+      "expected_synthetic_count": 0,
+      "id": "risk-v05-alias-migration-source-edit",
+      "mutation": {
+        "gate_trigger": "migration source edit",
+        "plan_id": "risk-v05-alias-migration-source-edit"
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "compile"
+    },
+    {
+      "expected_blocked_categories": [
         "paid-api"
       ],
       "expected_status": "blocked-risk-gate",
@@ -1050,6 +1078,12 @@
         },
         {
           "code": "ERR_RESUME_STALE_PLAN",
+          "id": "run.json.created_at",
+          "kind": "plan",
+          "message": "run created_at changed"
+        },
+        {
+          "code": "ERR_RESUME_STALE_PLAN",
           "id": "run.json.risk_policy",
           "kind": "plan",
           "message": "run risk_policy changed"
@@ -1074,6 +1108,7 @@
         }
       ],
       "expected_invalidators": [
+        "ERR_RESUME_STALE_PLAN",
         "ERR_RESUME_STALE_PLAN",
         "ERR_RESUME_STALE_PLAN",
         "ERR_RESUME_STALE_PLAN",
@@ -1418,6 +1453,8 @@
     "risk-synthetic-gate",
     "risk-v05-alias-no-duplicate-synthetic",
     "risk-v05-alias-dependency-change",
+    "risk-v05-alias-source-edit-action",
+    "risk-v05-alias-migration-source-edit",
     "risk-v05-alias-paid-external-api-use",
     "risk-near-miss-no-false-positive",
     "risk-multiple-synthetic-ordering",

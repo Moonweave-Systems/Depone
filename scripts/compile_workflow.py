@@ -59,7 +59,7 @@ RISK_CATEGORIES = [
     "delete",
 ]
 RISK_ALIASES = {
-    "write": ["write", "write-action", "source-edits"],
+    "write": ["write", "write-action", "source-edits", "source-edit-action", "migration-source-edit"],
     "shell-process": ["shell-process", "shell", "shell-action", "process-execution"],
     "network": ["network", "network-action", "external-network-calls"],
     "dependency-install": [
@@ -924,6 +924,7 @@ def sentinel_payload(run_id: str, mode: str, run: dict[str, Any] | None = None, 
                 "source_plan_path": run["source_plan_path"],
                 "source_plan_hash": run["source_plan_hash"],
                 "plan_hash": run["plan_hash"],
+                "run_created_at": run["created_at"],
                 "snapshots": status["snapshots"],
                 "packet_statuses": status["packet_statuses"],
                 "handoff_statuses": status["handoff_statuses"],
@@ -1182,6 +1183,7 @@ def require_resume_metadata(sentinel: dict[str, Any], run: dict[str, Any], statu
         "schema_version",
         "run_id",
         "mode",
+        "created_at",
         "source_plan_path",
         "source_plan_hash",
         "plan_hash",
@@ -1209,6 +1211,8 @@ def require_resume_metadata(sentinel: dict[str, Any], run: dict[str, Any], statu
     for key in ["source_plan_path", "source_plan_hash", "plan_hash"]:
         if not isinstance(sentinel.get(key), str):
             raise CompileError("ERR_RESUME_MISSING_ARTIFACT", f"sentinel missing string key: {key}", path=run_dir)
+    if not isinstance(sentinel.get("run_created_at"), str):
+        raise CompileError("ERR_RESUME_MISSING_ARTIFACT", "sentinel missing string key: run_created_at", path=run_dir)
     sentinel_snapshots = sentinel.get("snapshots")
     if not isinstance(sentinel_snapshots, dict):
         raise CompileError("ERR_RESUME_MISSING_ARTIFACT", "sentinel missing snapshots object", path=run_dir)
@@ -1355,6 +1359,7 @@ def resume_run(run_dir: Path) -> dict[str, Any]:
     expected_run_fields = {
         "schema_version": SCHEMA_VERSION,
         "mode": "compile",
+        "created_at": sentinel["run_created_at"],
         "risk_policy": "block-all",
         "status_path": "status.json",
         "approval_state_path": "gates/approval-state.json",
@@ -2292,6 +2297,7 @@ def mutate_run_artifact(run_dir: Path, plan_path: Path, mutation: str) -> None:
         data = json.loads(path.read_text())
         data["schema_version"] = "0.0"
         data["mode"] = "forged"
+        data["created_at"] = "1970-01-01T00:00:00Z"
         data["risk_policy"] = "allow-all"
         data["status_path"] = "forged-status.json"
         data["packet_paths"] = ["packets/forged.packet.json"]

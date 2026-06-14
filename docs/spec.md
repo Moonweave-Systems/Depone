@@ -248,9 +248,9 @@ V0.5 is releasable when:
   matches the parsed plan.
 - each fixture has a structured consumer report under `samples/v0.5/consumer/`.
 - both confirmed baseline snapshots, `workflow-router-skill` and
-  `claude-agent-workflow-designer`, are scored per fixture through normalized
-  artifacts or source-hashed normalization-failure records whose scores are
-  derived by the evaluator from structured observations.
+  `claude-agent-workflow-designer`, are scored per fixture through
+  source-hashed normalization-failure records whose scores are derived by the
+  evaluator from structured observations.
 - `python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out
   out/v0.5` regenerates scorecards, parsed plans, raw outputs, skill hashes, and
   rendered blueprints, then validates and copies tracked consumer reports; the
@@ -271,11 +271,11 @@ python scripts/check_whitespace.py .
 ```
 
 ```bash
-rg -n --pcre2 "(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][^'\"]{8,}|-----BEGIN (RSA|OPENSSH) PRIVATE KEY-----" --glob '!LICENSE' .; test $? -eq 1
+python scripts/check_release_text.py .
 ```
 
 ```bash
-rg -n "T[O]DO|T[B]D|PLACE[H]OLDER|FIX[M]E" --glob '*.md' .; test $? -eq 1
+python scripts/check_release_text.py --self-test
 ```
 
 ```bash

@@ -23,6 +23,7 @@ REQUIRED_FILES = [
     "docs/spec.md",
     "references/workflow-patterns.md",
     "references/workflow-plan-schema.md",
+    "scripts/check_release_text.py",
 ]
 MAX_SKILL_NAME_LENGTH = 64
 

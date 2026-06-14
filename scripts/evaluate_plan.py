@@ -88,9 +88,12 @@ UNSAFE_DEFAULT_TERMS = {
     "then",
 }
 FORBIDDEN_PROVENANCE_TERMS = {
+    "answer key",
     "expected answer",
     "expected-answer",
+    "gold answer",
     "scorecard",
+    "separate note",
     "docs/spec",
     "docs slash spec",
     "reviewed against docs",
@@ -113,6 +116,7 @@ POSITIVE_SUPPORT_TERMS = {
     "mentions",
     "preserves",
     "provides",
+    "present",
     "routes",
     "supports",
 }
@@ -143,6 +147,25 @@ BASELINE_OBSERVATION_KEYS = [
     "resume_guidance",
     "consumer_can_route",
 ]
+BASELINE_OBSERVATION_TERMS = {
+    "handoff_guidance": {"handoff", "summary", "downstream", "continuation"},
+    "verification_guidance": {"verification", "verify", "evidence", "check", "falsifier"},
+    "safety_gates": {"safety", "gate", "safe-default", "approval", "destructive"},
+    "resume_guidance": {"resume", "restartable", "cache", "phase output", "recovery"},
+    "consumer_can_route": {"consumer", "route", "downstream", "start"},
+}
+EXPECTED_CATEGORY_RULES = {
+    "positive": ("activate", None),
+    "negative": ("downgrade", None),
+    "borderline": ("downgrade", "workflow-router"),
+    "meta": ("activate", None),
+}
+FIXTURE_ID_CATEGORY_PREFIXES = {
+    "pos": "positive",
+    "neg": "negative",
+    "border": "borderline",
+    "meta": "meta",
+}
 ARTIFACT_FORMATS = {
     "json",
     "markdown",
@@ -232,6 +255,11 @@ def word_tokens(text: str) -> set[str]:
 def contains_phrase(text: str, phrase: str) -> bool:
     tokens = word_tokens(text)
     return all(token in tokens for token in word_tokens(phrase))
+
+
+def interpretation_mentions_observation(key: str, interpretation: str) -> bool:
+    normalized = interpretation.lower()
+    return any(term in normalized for term in BASELINE_OBSERVATION_TERMS[key])
 
 
 def gate_matches_term(gate: dict[str, Any], term: str) -> bool:
@@ -770,6 +798,11 @@ def validate_plan(
     if not activated:
         require(plan["workers"] == [], "downgrade artifacts must not emit worker prompt contracts")
     validate_surfaces(plan)
+    if expected and expected.get("requires_repository_path"):
+        require(
+            any(surface["kind"] == "repo" for surface in plan["surfaces"]),
+            "repo-bound fixtures must declare at least one repo surface",
+        )
     validate_assumptions(plan, activated)
     validate_patterns(plan, expected)
     validate_workers(plan, activated)
@@ -814,8 +847,21 @@ def packet_hashes(plan: dict[str, Any]) -> dict[str, str]:
         "blueprint.md": sha256_text(render_blueprint(plan)),
         "original prompt": sha256_text(plan["source_prompt"]),
     }
-    if any(surface["kind"] == "repo" for surface in plan["surfaces"]):
-        hashes["repository path"] = sha256_text("repository path")
+    repo_surfaces = [surface for surface in plan["surfaces"] if surface["kind"] == "repo"]
+    if repo_surfaces:
+        repo_input = canonical_json_text(
+            {
+                "repository_surfaces": [
+                    {
+                        "id": surface["id"],
+                        "locator": surface["locator"],
+                        "access_mode": surface["access_mode"],
+                    }
+                    for surface in repo_surfaces
+                ]
+            }
+        )
+        hashes["repository path"] = sha256_text(repo_input)
     return hashes
 
 
@@ -899,10 +945,18 @@ def score_baseline_failure(
                     any(term in interpretation for term in POSITIVE_SUPPORT_TERMS),
                     f"baseline evidence {key} interpretation does not explain positive support",
                 )
+                require(
+                    interpretation_mentions_observation(key, item["interpretation"]),
+                    f"baseline evidence {key} interpretation omits the observation topic",
+                )
             else:
                 require(
                     interpretation.strip().startswith("does not support"),
                     f"baseline evidence {key} interpretation contradicts negative support",
+                )
+                require(
+                    interpretation_mentions_observation(key, item["interpretation"]),
+                    f"baseline evidence {key} interpretation omits the observation topic",
                 )
         else:
             require(
@@ -1155,6 +1209,9 @@ def validate_decision_doc(summary: dict[str, Any], decision_path: Path | None = 
     raw_text = decision_path.read_text()
     text = " ".join(raw_text.lower().split())
     forbidden_boundary_claims = [
+        r"\bbaseline skills?\b.{0,120}\brerun live\b",
+        r"\blive\b.{0,120}\bfor this gate\b",
+        r"\brerun live\b",
         r"\bdoes claim fresh baseline execution\b",
         r"\bdoes claim\b.{0,120}\blive sibling-baseline comparison\b",
         r"\bclaims fresh baseline execution\b",
@@ -1238,6 +1295,7 @@ def evaluate_fixture(
     consumer_path = ROOT / fixture["consumer_report"]
     prompt_text = prompt_path.read_text().strip()
     plan = read_json(plan_path)
+    require(plan.get("plan_id") == fixture_id, f"{fixture_id} candidate plan_id must match manifest id")
     validate_plan(plan, expected)
     raw_text = validate_raw_output(raw_path, plan_path, plan, fixture_id, prompt_text, skill_hash)
     require(
@@ -1370,12 +1428,27 @@ def validate_fixture_manifest_entry(fixture: dict[str, Any]) -> None:
     ]
     require_keys(fixture, fixture_keys, "manifest fixture")
     require(fixture["category"] in {"positive", "negative", "borderline", "meta"}, f"fixture {fixture['id']} category is invalid")
+    id_prefix = fixture["id"].split("-", 1)[0]
+    require(
+        FIXTURE_ID_CATEGORY_PREFIXES.get(id_prefix) == fixture["category"],
+        f"fixture {fixture['id']} category does not match id prefix",
+    )
     require(isinstance(fixture["expected"], dict), f"fixture {fixture['id']} expected must be an object")
     require_keys(fixture["expected"], expected_keys, f"fixture {fixture['id']} expected")
     require(fixture["expected"]["activation"] in {"activate", "downgrade"}, f"fixture {fixture['id']} expected.activation is invalid")
     require(isinstance(fixture["expected"]["requires_repository_path"], bool), f"fixture {fixture['id']} expected.requires_repository_path must be bool")
     for key in ["required_thresholds", "required_patterns", "forbidden_patterns", "required_risk_gates"]:
         require(isinstance(fixture["expected"][key], list), f"fixture {fixture['id']} expected.{key} must be a list")
+    category_activation, category_downgrade = EXPECTED_CATEGORY_RULES[fixture["category"]]
+    require(
+        fixture["expected"]["activation"] == category_activation,
+        f"fixture {fixture['id']} category contradicts expected.activation",
+    )
+    if category_downgrade:
+        require(
+            fixture["expected"]["downgrade_target"] == category_downgrade,
+            f"fixture {fixture['id']} category contradicts expected.downgrade_target",
+        )
     if fixture["expected"]["activation"] == "activate":
         require(fixture["expected"]["downgrade_target"] is None, f"fixture {fixture['id']} activate expected needs null downgrade_target")
         require(fixture["expected"]["required_thresholds"], f"fixture {fixture['id']} activate expected needs thresholds")
@@ -1790,6 +1863,15 @@ def self_test() -> None:
     else:
         raise EvaluationError("self-test failed: consumer provenance source leak passed")
     bad_report = json.loads(json.dumps(valid_report))
+    bad_report["provenance"]["reviewer_note"] = "I had the gold answer in a separate note while reviewing."
+    write_json(tmp_report, bad_report)
+    try:
+        validate_consumer_report(tmp_report, active, {"activation": "activate"})
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: gold-answer consumer provenance leak passed")
+    bad_report = json.loads(json.dumps(valid_report))
     bad_report["provenance"]["field_support"]["safe_defaults"] += "; docs / spec"
     write_json(tmp_report, bad_report)
     try:
@@ -1920,6 +2002,11 @@ def self_test() -> None:
         },
     )
     validate_raw_output(tmp_raw, tmp_plan, active, active["plan_id"], active["source_prompt"], "self-test-hash")
+    repo_hash_plan = json.loads(json.dumps(active))
+    changed_repo_hash_plan = json.loads(json.dumps(active))
+    changed_repo_hash_plan["surfaces"][0]["locator"] = "different/repo/path"
+    if packet_hashes(repo_hash_plan)["repository path"] == packet_hashes(changed_repo_hash_plan)["repository path"]:
+        raise EvaluationError("self-test failed: repository packet hash ignored repo locator")
     raw_with_extra = json.loads(tmp_raw.read_text())
     raw_with_extra["unexpected_raw_field"] = True
     write_json(tmp_raw, raw_with_extra)
@@ -2033,7 +2120,7 @@ def self_test() -> None:
         "choose the route that provides the earliest verifiable evidence.\n"
     )
     fixture_entry = {
-        "id": "fixture",
+        "id": "pos-fixture",
         "category": "positive",
         "prompt_path": "prompt.txt",
         "candidate_plan": "plan.json",
@@ -2074,6 +2161,26 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: invalid expected activation passed")
+    bad_fixture_entry = json.loads(json.dumps(fixture_entry))
+    bad_fixture_entry["category"] = "negative"
+    bad_fixture_entry["expected"]["activation"] = "downgrade"
+    bad_fixture_entry["expected"]["downgrade_target"] = "direct-codex"
+    try:
+        validate_fixture_manifest_entry(bad_fixture_entry)
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: fixture category/id mismatch passed")
+    bad_fixture_entry = json.loads(json.dumps(fixture_entry))
+    bad_fixture_entry["category"] = "borderline"
+    bad_fixture_entry["expected"]["activation"] = "downgrade"
+    bad_fixture_entry["expected"]["downgrade_target"] = "direct-codex"
+    try:
+        validate_fixture_manifest_entry(bad_fixture_entry)
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: borderline downgrade target mismatch passed")
 
     baseline_failure = {
         "baseline": "baseline",
@@ -2161,6 +2268,16 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: false baseline observation with positive interpretation passed")
+    bad_baseline_failure = json.loads(json.dumps(baseline_failure))
+    bad_baseline_failure["observations"]["resume_guidance"] = False
+    bad_baseline_failure["observation_evidence"]["resume_guidance"]["supports_observation"] = False
+    bad_baseline_failure["observation_evidence"]["resume_guidance"]["interpretation"] = "Does not support banana."
+    try:
+        score_baseline_failure(bad_baseline_failure, {"activation": "activate"}, source_text)
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: vacuous negative baseline interpretation passed")
     baseline_failure["scores"] = {"activation_discipline": 2}
     try:
         score_baseline_failure(baseline_failure, {"activation": "activate"}, source_text)
@@ -2359,6 +2476,23 @@ def self_test() -> None:
         pass
     else:
         raise EvaluationError("self-test failed: contradictory boundary claim passed")
+    tmp_decision.write_text(
+        "# Decision\n\n"
+        "Decision: keep\n\n"
+        "- 12 fixtures evaluated.\n"
+        "- Candidate keep/kill average: 1.8.\n"
+        "- `workflow-router-skill` baseline average: 1.5.\n"
+        "- `claude-agent-workflow-designer` baseline average: 1.0.\n"
+        "The candidate aggregate keep/kill average beats each baseline aggregate by at least "
+        "20 percent across the evaluator's keep/kill metric set. "
+        "Both baseline skills were rerun live for this gate before comparison.\n"
+    )
+    try:
+        validate_decision_doc(exact_margin_summary, tmp_decision)
+    except EvaluationError:
+        pass
+    else:
+        raise EvaluationError("self-test failed: live baseline rerun claim passed")
     tmp_decision.unlink(missing_ok=True)
     try:
         resolve_out_root("/tmp/v0.5-outside-repo")

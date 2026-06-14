@@ -3,8 +3,10 @@
 
 from pathlib import Path
 import argparse
-import json
 import re
+import shutil
+
+import evaluate_plan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,12 +54,8 @@ def require_terms(path: str, terms: list[str]) -> None:
         raise SystemExit(f"{path} missing required terms: {missing}")
 
 
-def require_decision_summary_consistency() -> None:
-    summary_path = ROOT / "out" / "v0.5" / "summary.json"
-    if not summary_path.exists():
-        return
-    summary = json.loads(summary_path.read_text())
-    decision_text = (ROOT / "docs" / "v0.5-decision.md").read_text().lower()
+def require_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    decision_text = decision_text.lower()
     normalized_decision_text = " ".join(decision_text.split())
     required_snippets = [
         f"decision: {summary['decision']}",
@@ -77,6 +75,19 @@ def require_decision_summary_consistency() -> None:
     for claim in forbidden_claims:
         if claim in normalized_decision_text and "does not claim a per-metric margin" not in normalized_decision_text:
             raise SystemExit(f"docs/v0.5-decision.md contains unsupported claim: {claim}")
+
+
+def require_decision_summary_consistency() -> None:
+    out_root = ROOT / "out" / "v0.5-contract-check"
+    if out_root.exists():
+        shutil.rmtree(out_root)
+    try:
+        summary = evaluate_plan.evaluate_manifest(ROOT / "fixtures" / "v0.5" / "manifest.json", out_root)
+        require_decision_summary_text(summary, (ROOT / "docs" / "v0.5-decision.md").read_text())
+    except evaluate_plan.EvaluationError as exc:
+        raise SystemExit(f"V0.5 decision consistency failed: {exc}") from exc
+    finally:
+        shutil.rmtree(out_root, ignore_errors=True)
 
 
 def canonical_patterns() -> set[str]:
@@ -299,6 +310,29 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: empty local context passed")
 
+    summary = {
+        "decision": "keep",
+        "fixture_count": 12,
+        "candidate_keep_kill_average": 1.8,
+        "baseline_keep_kill_averages": {"baseline-a": 1.0},
+    }
+    good_decision = (
+        "Decision: keep\n"
+        "- 12 fixtures evaluated.\n"
+        "- Candidate keep/kill average: 1.8.\n"
+        "- `baseline-a` baseline average: 1.0.\n"
+        "The candidate aggregate keep/kill average beats each baseline aggregate. "
+        "V0.5 does not claim a per-metric margin.\n"
+    )
+    require_decision_summary_text(summary, good_decision)
+    bad_decision = good_decision.replace("1.8", "1.7")
+    try:
+        require_decision_summary_text(summary, bad_decision)
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -344,6 +378,8 @@ def main() -> None:
             "docs/fixture-smoke/",
             "python scripts/check_contract.py --self-test",
             "python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out out/v0.5",
+            "python scripts/check_release_text.py .",
+            "python scripts/check_release_text.py --self-test",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)

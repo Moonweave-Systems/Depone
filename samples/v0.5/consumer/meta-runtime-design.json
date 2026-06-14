@@ -35,7 +35,7 @@
     "packet_sha256": {
       "blueprint.md": "82a1babc7fc091db630296f8379df2f8cadca272564c82af61fa8c2f8bd9acde",
       "original prompt": "ea362f62ebddcde7e23f370f1bb91de6e527f91e388f334517e96c7a3a65e168",
-      "repository path": "332188c0631c92c0256f6852523b981b4d543a29132fd475e00d61aecabe6788",
+      "repository path": "9c067fd452d50f954cfcd133f5f1991fbe676bf1a5da35ec21b1d1f536b26fee",
       "workflow.plan.json": "d207bbddf57d30419dd4a47f0a92102e355e77538a945b1cf9191e82a412e4f1"
     },
     "reviewer_note": "Blinded sample reviewer identified the first slice, required inputs, forbidden actions, gates, and safe defaults from the supplied packet only.",

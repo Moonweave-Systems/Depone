@@ -26,6 +26,7 @@ workflows.
 | Execution adapter | run one compiled packet through a controlled backend | V2 release candidate |
 | Runtime loop | advance packet by packet with verification and resume | V3 entry implemented |
 | Parallel orchestration | schedule ready phase packets under a concurrency cap | first scheduler slice implemented |
+| Worker dispatch | prepare reviewed dispatch bundles for scheduled packets | first dispatch slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | last |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
@@ -239,6 +240,31 @@ Full worker orchestration done means:
 - fan-in runs only after required branches finish or are marked non-blocking.
 - conflicting diffs are detected before merge.
 - independent reviewers can refute worker outputs before synthesis.
+
+### V4.5: Worker Dispatch Preparation
+
+Status: first dispatch slice implemented.
+
+Purpose: bridge scheduled V4 packets to future worker execution without opening
+execution yet.
+
+First dispatch slice done means:
+
+- `scripts/dispatch_worker.py` consumes one trusted V4 packet.
+- V4.5 writes `dispatch.json`, `packet.json`, `prompt.md`, `hashes.json`,
+  `status.json`, and `resume.md`.
+- V4.5 requires the packet and prompt hashes to match V4 status snapshots.
+- V4.5 requires the packet phase to be selected by V4 `schedule.json`.
+- V4.5 resume detects tampered dispatch, packet copy, prompt copy, and hashes.
+- V4.5 dogfood over the `evidence_review` packet produces `status: prepared`.
+
+Full dispatch done means:
+
+- prepared dispatches can be handed to a bounded worker backend,
+- worker outputs return through V2/V2.5-style reviewed evidence,
+- V3/V4 advancement consumes only reviewed worker results,
+- execution remains blocked for destructive, external, costly, production,
+  secret, dependency, database, public API, delete, and history-rewrite actions.
 
 ### V5: Product Packaging
 

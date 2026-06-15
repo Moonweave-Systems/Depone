@@ -28,7 +28,7 @@ workflows.
 | Parallel orchestration | schedule ready phase packets under a concurrency cap | first scheduler slice implemented |
 | Worker dispatch | prepare reviewed dispatch bundles for scheduled packets | first dispatch slice implemented |
 | Worker result adapter | execute fixture-only worker result bundles under owned output | first controlled slice implemented |
-| Worker result review | approve or reject worker results before runtime advancement | planned |
+| Worker result review | approve or reject worker results before runtime advancement | first review slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | last |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
@@ -295,12 +295,12 @@ Full worker result adapter done means:
 
 ### V5.5: Worker Result Review
 
-Status: planned.
+Status: first review slice implemented.
 
 Purpose: review V5 worker-result evidence before any runtime treats a later
 phase as complete.
 
-Planned first slice means:
+First review slice done means:
 
 - `scripts/review_worker_result.py` consumes one trusted V5 result directory.
 - V5.5 validates V5 ownership, status, hashes, stdout/stderr, and produced
@@ -311,6 +311,8 @@ Planned first slice means:
   `resume.md`.
 - V5.5 resume detects stale source evidence and tampered review artifacts.
 - V5.5 does not advance runtime or execute workers.
+- V5.5 dogfood over `out/v5/v32-semantic-dogfood` produces
+  `status: review-approved`.
 
 Full worker result review done means:
 

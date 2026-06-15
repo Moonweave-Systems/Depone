@@ -1,0 +1,64 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "review-approved",
+      "id": "review-approved-executed",
+      "required": true,
+      "type": "review-approved"
+    },
+    {
+      "expected_status": "changes-requested",
+      "id": "review-request-changes-failed",
+      "required": true,
+      "type": "review-request-changes"
+    },
+    {
+      "expected_status": "review-approved",
+      "id": "review-resume-clean",
+      "required": true,
+      "type": "review-resume"
+    },
+    {
+      "expected_error": "ERR_REVIEW_ARTIFACT_MALFORMED",
+      "expected_status": "invalid",
+      "id": "review-tamper-invalid",
+      "required": true,
+      "type": "review-tamper-invalid"
+    },
+    {
+      "expected_error": "ERR_REVIEW_ARTIFACT_MALFORMED",
+      "expected_status": "invalid",
+      "id": "review-stale-after-new-attempt",
+      "required": true,
+      "type": "review-stale-after-new-attempt"
+    },
+    {
+      "expected_status": "changes-requested",
+      "id": "review-replacement-after-new-attempt",
+      "required": true,
+      "type": "review-replacement-after-new-attempt"
+    },
+    {
+      "expected_status": "repair-prepared",
+      "id": "repair-prepared",
+      "required": true,
+      "type": "repair-prepared"
+    },
+    {
+      "expected_error": "ERR_REPAIR_NOT_ALLOWED",
+      "expected_status": "needs-human",
+      "id": "repair-no-actionable-needs-human",
+      "required": true,
+      "type": "repair-no-actionable"
+    },
+    {
+      "expected_error": "ERR_REPAIR_ARTIFACT_MALFORMED",
+      "expected_status": "invalid",
+      "id": "repair-stale-after-new-review",
+      "required": true,
+      "type": "repair-stale-after-new-review"
+    }
+  ],
+  "schema_version": "1.0",
+  "suite": "v2.5-release"
+}

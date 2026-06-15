@@ -1,0 +1,349 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "prepared",
+      "id": "dry-run-ready-readonly",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_error": "ERR_EXEC_BLOCKED_RISK",
+      "expected_status": "blocked",
+      "id": "dry-run-blocked-risk",
+      "mutation": {
+        "gate_trigger": "write action",
+        "plan_id": "dry-run-blocked-risk",
+        "surface_write": true
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_error": "ERR_EXEC_STALE_PACKET",
+      "expected_status": "blocked",
+      "id": "dry-run-stale-v1-prompt",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "stale_prompt": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_error": "ERR_EXEC_STALE_PACKET",
+      "expected_status": "blocked",
+      "id": "dry-run-stale-v1-source",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "stale_source_plan": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_attempt_count": 1,
+      "expected_status": "prepared",
+      "id": "resume-clean",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "resume_after_prepare": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_error": "ERR_EXEC_ATTEMPT_MALFORMED",
+      "expected_status": "invalid",
+      "id": "resume-malformed-attempt",
+      "malformed_attempt": true,
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_status": "executed",
+      "id": "local-shell-success",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "from pathlib import Path; print(Path.cwd().name)"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "worktree": "v2h-local-shell-success"
+    },
+    {
+      "expected_error": "ERR_EXEC_BACKEND_FAILED",
+      "expected_status": "failed",
+      "id": "local-shell-failure",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "import sys; print('before failure'); print('boom', file=sys.stderr); sys.exit(3)"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "worktree": "v2h-local-shell-failure"
+    },
+    {
+      "expected_error": "ERR_EXEC_WORKTREE_REQUIRED",
+      "expected_status": "blocked",
+      "id": "worktree-required-for-write",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "print('should not run')"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell"
+    },
+    {
+      "dirty_worktree": true,
+      "expected_error": "ERR_EXEC_WORKTREE_DIRTY",
+      "expected_status": "blocked",
+      "id": "dirty-worktree-blocked",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "print('should not run')"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "worktree": "v2h-dirty-worktree-blocked"
+    },
+    {
+      "expected_error": "ERR_EXEC_BACKEND_UNAVAILABLE",
+      "expected_status": "blocked",
+      "id": "dangerous-fixture-command-blocked",
+      "local_shell": {
+        "argv": [
+          "git",
+          "push"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell"
+    },
+    {
+      "codex_cli": {
+        "argv": [
+          "python",
+          "-c",
+          "import sys; prompt=sys.stdin.read(); print('codex fixture ok'); print(len(prompt))"
+        ],
+        "expected_exit_code": 0,
+        "mode": "fixture-command"
+      },
+      "expected_status": "executed",
+      "id": "codex-cli-fixture-success",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "codex-cli",
+      "worktree": "v2h-codex-cli-fixture-success"
+    },
+    {
+      "codex_cli": {
+        "argv": [
+          "python",
+          "-c",
+          "import sys; print('401 Invalid authentication credentials', file=sys.stderr); sys.exit(1)"
+        ],
+        "expected_exit_code": 0,
+        "mode": "fixture-command"
+      },
+      "expected_error": "ERR_EXEC_BACKEND_AUTH",
+      "expected_attempt_count": 1,
+      "expected_status": "blocked",
+      "id": "codex-cli-auth-blocked",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "codex-cli",
+      "worktree": "v2h-codex-cli-auth-blocked"
+    },
+    {
+      "codex_cli": {
+        "argv": [
+          "python",
+          "-c",
+          "print('should not run')"
+        ],
+        "expected_exit_code": 0,
+        "mode": "fixture-command"
+      },
+      "expected_error": "ERR_EXEC_WORKTREE_REQUIRED",
+      "expected_status": "blocked",
+      "id": "codex-cli-worktree-required",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "codex-cli"
+    },
+    {
+      "codex_cli": {
+        "mode": "fixture-command"
+      },
+      "expected_error": "ERR_EXEC_BACKEND_UNAVAILABLE",
+      "expected_status": "blocked",
+      "id": "missing-backend-blocked",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "codex-cli",
+      "worktree": "v2h-missing-backend-blocked"
+    },
+    {
+      "cleanup_worktree_paths": [
+        "inventory.json"
+      ],
+      "expected_status": "verified",
+      "id": "dogfood-v31-inventory-verified",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "from pathlib import Path; Path('inventory.json').write_text('{}')"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v3.1/dogfood-release-readiness.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "verification_commands": [
+        {
+          "argv": [
+            "python",
+            "-c",
+            "from pathlib import Path; raise SystemExit(0 if Path('inventory.json').is_file() else 1)"
+          ],
+          "expected_exit_code": 0,
+          "id": "verify-inventory-json"
+        }
+      ],
+      "worktree": "v31-dogfood-inventory"
+    },
+    {
+      "expected_status": "verified",
+      "id": "local-shell-verification-pass",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "print('backend ready')"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "verification_commands": [
+        {
+          "argv": [
+            "python",
+            "-c",
+            "print('verification pass')"
+          ],
+          "expected_exit_code": 0,
+          "id": "verify-target"
+        }
+      ],
+      "worktree": "v2h-local-shell-verification-pass"
+    },
+    {
+      "expected_error": "ERR_EXEC_VERIFY_FAILED",
+      "expected_status": "failed",
+      "id": "local-shell-verification-fail",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "print('backend ready')"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "verification_commands": [
+        {
+          "argv": [
+            "python",
+            "-c",
+            "import sys; print('verification failed', file=sys.stderr); sys.exit(4)"
+          ],
+          "expected_exit_code": 0,
+          "id": "verify-target"
+        }
+      ],
+      "worktree": "v2h-local-shell-verification-fail"
+    },
+    {
+      "expected_error": "ERR_EXEC_BACKEND_UNAVAILABLE",
+      "expected_status": "blocked",
+      "id": "dangerous-verification-command-blocked",
+      "local_shell": {
+        "argv": [
+          "python",
+          "-c",
+          "print('backend should not run')"
+        ],
+        "expected_exit_code": 0
+      },
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": true,
+      "type": "local-shell",
+      "verification_commands": [
+        {
+          "argv": [
+            "git",
+            "push"
+          ],
+          "expected_exit_code": 0,
+          "id": "verify-danger"
+        }
+      ],
+      "worktree": "v2h-dangerous-verification-command-blocked"
+    },
+    {
+      "expected_attempt_count": 2,
+      "expected_status": "prepared",
+      "id": "attempts-append-only",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "repeat": 2,
+      "required": true,
+      "type": "dry-run"
+    },
+    {
+      "expected_status": "pass",
+      "id": "manifest-required-failure",
+      "required": true,
+      "type": "manifest-required-failure"
+    },
+    {
+      "expected_status": "prepared",
+      "id": "required-default-omitted",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "type": "dry-run"
+    },
+    {
+      "expected_status": "blocked",
+      "id": "optional-failing-fixture",
+      "plan": "fixtures/v1/plans/ready-readonly.workflow.plan.json",
+      "required": false,
+      "type": "dry-run"
+    }
+  ],
+  "schema_version": "1.0",
+  "suite": "v2-release"
+}

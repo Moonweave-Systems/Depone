@@ -45,6 +45,8 @@ Use $dynamic-workflow-designer to plan a 500-file migration with verification ga
 ├── scripts/check_contract.py         # Release contract smoke check
 ├── scripts/evaluate_plan.py          # V0.5 schema and benchmark evaluator
 ├── scripts/compile_workflow.py        # V1 first-slice packet compiler
+├── scripts/execute_packet.py          # V2 first-slice execution adapter
+├── scripts/run_workflow.py             # V3 runtime entry loop
 ├── references/workflow-patterns.md  # Pattern guide for workflow designs
 ├── references/workflow-plan-schema.md
 │                                      # workflow.plan.json contract
@@ -55,8 +57,15 @@ Use $dynamic-workflow-designer to plan a 500-file migration with verification ga
 │                                      # V0.5 evaluator spec
 ├── docs/v0.5-decision.md             # Keep/kill decision
 ├── docs/v1-first-slice-compiler-spec.md
-│                                      # Next first-slice compiler spec
+│                                      # First-slice compiler spec
 ├── docs/v1-decision.md                # V1 keep/kill decision
+├── docs/automation-roadmap.md         # Large-task automation roadmap
+├── docs/v2-execution-adapter-spec.md  # V2 execution-adapter spec
+├── docs/v2-decision.md                # V2 keep/kill decision
+├── docs/v2.5-review-repair-spec.md    # V2.5 review/repair spec
+├── docs/v2.5-decision.md              # V2.5 keep/kill decision
+├── docs/v3-runtime-entry-spec.md      # V3 runtime-entry spec
+├── docs/v3-decision.md                # V3 keep/kill decision
 ├── docs/github-research.md          # Prior-art survey and import decisions
 ├── docs/spec.md                     # Product spec and release criteria
 ├── agents/openai.yaml               # UI metadata
@@ -92,10 +101,24 @@ python scripts/evaluate_plan.py --self-test
 python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out out/v0.5
 python scripts/compile_workflow.py --self-test
 python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final
+python scripts/execute_packet.py --self-test
+python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out out/v2/final
+python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final
+python scripts/run_workflow.py --self-test
+python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final
 python scripts/check_whitespace.py .
 python scripts/check_release_text.py .
 python scripts/check_release_text.py --self-test
 ```
+
+For V2 release-candidate verification, also run two manual smokes after the V2
+manifest command: perform a V2 dry run on
+`out/v1/v2-final-dry-run-ready-readonly` and require
+`repo_tracked_diff_unchanged: true`, then run the blocked smoke against
+`out/v1/v2-final-dry-run-blocked-risk` and prove V2 refuses execution with
+`ERR_EXEC_BLOCKED_RISK`. Refresh
+[`docs/v2-decision.md`](docs/v2-decision.md) from the generated
+`out/v2/final/summary.json` values after the V2 manifest command.
 
 The contract check requires passing fixture records under
 [`docs/fixture-smoke/`](docs/fixture-smoke/).
@@ -115,9 +138,9 @@ freshly regenerated summary.
 The V0.5 keep/kill decision is
 [`docs/v0.5-decision.md`](docs/v0.5-decision.md).
 
-The next implementation target is the V1 first-slice compiler described in
+V1 is the first-slice compiler described in
 [`docs/v1-first-slice-compiler-spec.md`](docs/v1-first-slice-compiler-spec.md).
-V1 should compile an activated `workflow.plan.json` into one inspectable
+V1 compiles an activated `workflow.plan.json` into one inspectable
 first-slice packet, prompt, gate state, and resume/status files without claiming
 a full automatic workflow runtime.
 
@@ -135,6 +158,59 @@ absolute or parent-traversal source-plan paths as stale.
 
 The V1 keep/kill decision is
 [`docs/v1-decision.md`](docs/v1-decision.md).
+
+The large-task automation roadmap is
+[`docs/automation-roadmap.md`](docs/automation-roadmap.md). The current
+implementation target is the V2 first-slice execution adapter described in
+[`docs/v2-execution-adapter-spec.md`](docs/v2-execution-adapter-spec.md).
+V2 Slice 1 adds `scripts/execute_packet.py` dry-run evidence generation and V1
+trust precondition checks. V2 Slice 2 adds manifest-scoped `local-shell`
+execution fixtures, deterministic worktree creation, stdout/stderr capture, and
+dirty-worktree blocking. V2 Slice 3 adds manifest-scoped verification commands
+that can promote a successful attempt to `verified` or fail it with
+`ERR_EXEC_VERIFY_FAILED`. V2 Slice 4 adds the Codex CLI backend with worktree
+isolation, transcript capture, backend auth detection, configurable timeout,
+fixture-command mode, and optional installed-Codex live smoke command support.
+Public `--manifest` is limited to `fixtures/v2/manifest.json`; command-bearing
+fixtures are release-test inputs, not a general command runner.
+The V2 release candidate adds stale source-plan
+invalidation, malformed attempt invalidation, required-fixture failure policy,
+and the `fixtures/v2/manifest.json` keep gate recorded in
+[`docs/v2-decision.md`](docs/v2-decision.md). V2 still does not execute OMX,
+merge worktrees, or advance multi-slice workflows.
+
+V2.5 execute-review-repair is the next completed control-plane loop:
+[`docs/v2.5-review-repair-spec.md`](docs/v2.5-review-repair-spec.md) defines
+the review, repair, evidence, and status model, while
+[`docs/v2.5-to-v3.workflow.plan.json`](docs/v2.5-to-v3.workflow.plan.json)
+is the machine-readable workflow plan that hands trusted V2.5 terminal states
+to the future V3 multi-slice runtime. `scripts/execute_packet.py` now supports
+`--review`, `--review-resume`, and `--repair` for one trusted V2 packet
+attempt, and the keep gate is:
+
+```bash
+python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final
+```
+
+The V2.5 keep/kill decision is
+[`docs/v2.5-decision.md`](docs/v2.5-decision.md). V2.5 still does not advance
+later packets or run backend repair execution; it prepares bounded repair
+prompts and records review/repair contract ledgers.
+
+V3 runtime entry is the current multi-slice bridge:
+[`docs/v3-runtime-entry-spec.md`](docs/v3-runtime-entry-spec.md) defines how
+trusted V2.5 terminal states become a deterministic runtime journal and next
+packet candidate. `scripts/run_workflow.py` supports `--start`, `--resume`,
+`--self-test`, and the keep gate:
+
+```bash
+python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final
+```
+
+The V3 keep/kill decision is
+[`docs/v3-decision.md`](docs/v3-decision.md). V3 still does not execute later
+packets, orchestrate parallel workers, merge worktrees, or claim fully
+autonomous large-task completion.
 
 ## License
 

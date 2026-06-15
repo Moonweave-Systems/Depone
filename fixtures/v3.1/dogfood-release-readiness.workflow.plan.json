@@ -1,0 +1,427 @@
+{
+  "activation": {
+    "decision": "activate",
+    "downgrade_target": null,
+    "matched_thresholds": [
+      "downstream-consumer",
+      "resumable-handoffs",
+      "adversarial-verification"
+    ],
+    "reason": "Release readiness for the current control-plane work needs a downstream verifier, resumable evidence, and an explicit decision gate."
+  },
+  "assumptions": [
+    {
+      "claim": "The repository contains uncommitted V2, V2.5, and V3 release-candidate work.",
+      "verification": "Inspect git status and tracked decision documents before making the release decision."
+    },
+    {
+      "claim": "Generated out/ evidence can be regenerated and is not the source of truth.",
+      "verification": "Run the public verification commands and compare summary values in docs."
+    }
+  ],
+  "budget": {
+    "file_touch_limit": "docs and fixture/report artifacts only",
+    "max_agents": 3,
+    "max_retries": 1,
+    "max_rounds": 2,
+    "time_box": "one dogfood session"
+  },
+  "created_by": "dynamic-workflow-designer",
+  "execution_path": {
+    "consumer": "runtime",
+    "first_slice": {
+      "completion_check": "inventory.json exists and records release surfaces, generated evidence, and open risks",
+      "expected_output": "inventory.json with release surfaces, evidence commands, dirty files, and open risks",
+      "forbidden_actions": [
+        "unsupported claims"
+      ],
+      "inputs": [
+        "workflow.plan.json",
+        "original prompt",
+        "repository path",
+        "docs/automation-roadmap.md",
+        "docs/v3-runtime-entry-spec.md",
+        "git status"
+      ],
+      "instruction": "Inventory the current release-readiness surface for this repository without changing source files."
+    },
+    "mode": "runtime"
+  },
+  "handoffs": [
+    {
+      "artifact": "inventory.json",
+      "artifact_schema": {
+        "format": "json",
+        "required_fields": [
+          "release_surfaces",
+          "evidence_commands",
+          "dirty_files",
+          "open_risks"
+        ],
+        "validation_command": "python -m json.tool inventory.json"
+      },
+      "from_phase": "release_inventory",
+      "to_phase": "evidence_review"
+    },
+    {
+      "artifact": "verification.md",
+      "artifact_schema": {
+        "format": "markdown",
+        "required_fields": [
+          "commands_run",
+          "pass_fail_summary",
+          "falsifiers"
+        ],
+        "validation_command": "test -s verification.md"
+      },
+      "from_phase": "evidence_review",
+      "to_phase": "release_decision"
+    },
+    {
+      "artifact": "release-decision.md",
+      "artifact_schema": {
+        "format": "markdown",
+        "required_fields": [
+          "decision",
+          "evidence",
+          "next_workflow"
+        ],
+        "validation_command": "test -s release-decision.md"
+      },
+      "from_phase": "release_decision",
+      "to_phase": "human_gate"
+    }
+  ],
+  "objective": "Dogfood the current dynamic-workflow control plane on this repository and decide whether the V2/V2.5/V3 release candidate is useful enough to continue toward V4.",
+  "parallelism": {
+    "barriers": [
+      "inventory before evidence review",
+      "evidence review before release decision"
+    ],
+    "concurrency_cap": 2,
+    "fan_in_rule": "Fan in after inventory and verification evidence are both available.",
+    "shape": "pipeline"
+  },
+  "patterns": [
+    "Pipeline",
+    "Adversarial Verify",
+    "Human Gate"
+  ],
+  "phases": [
+    {
+      "depends_on": [],
+      "entry_criteria": [
+        "Repository path is available",
+        "Current V2/V2.5/V3 changes are present"
+      ],
+      "exit_criteria": [
+        "inventory.json exists",
+        "inventory names release surfaces and open risks"
+      ],
+      "id": "release_inventory",
+      "name": "Release Inventory",
+      "outputs": [
+        "inventory.json"
+      ],
+      "worker_ids": [
+        "inventory-worker"
+      ]
+    },
+    {
+      "depends_on": [
+        "release_inventory"
+      ],
+      "entry_criteria": [
+        "inventory.json validates",
+        "generated evidence commands are listed"
+      ],
+      "exit_criteria": [
+        "verification.md records command outcomes",
+        "falsifiers are checked"
+      ],
+      "id": "evidence_review",
+      "name": "Evidence Review",
+      "outputs": [
+        "verification.md"
+      ],
+      "worker_ids": [
+        "review-worker"
+      ]
+    },
+    {
+      "depends_on": [
+        "evidence_review"
+      ],
+      "entry_criteria": [
+        "verification.md exists",
+        "review findings are resolved or marked as risks"
+      ],
+      "exit_criteria": [
+        "release-decision.md states keep, adjust, or defer",
+        "next workflow is named"
+      ],
+      "id": "release_decision",
+      "name": "Release Decision",
+      "outputs": [
+        "release-decision.md"
+      ],
+      "worker_ids": [
+        "decision-worker"
+      ]
+    },
+    {
+      "depends_on": [
+        "release_decision"
+      ],
+      "entry_criteria": [
+        "release-decision.md exists"
+      ],
+      "exit_criteria": [
+        "human approval or deferral is recorded"
+      ],
+      "id": "human_gate",
+      "name": "Human Gate",
+      "outputs": [
+        "human-approval.md"
+      ],
+      "worker_ids": [
+        "human-gate-worker"
+      ]
+    }
+  ],
+  "plan_id": "v31-dogfood-release-readiness",
+  "resume": {
+    "cacheable_outputs": [
+      "inventory.json",
+      "verification.md",
+      "release-decision.md",
+      "human-approval.md"
+    ],
+    "invalidators": [
+      "source plan changes",
+      "release command output changes",
+      "V2/V2.5/V3 docs change",
+      "git status changes"
+    ],
+    "restart_points": [
+      "release_inventory",
+      "evidence_review",
+      "release_decision",
+      "human_gate"
+    ]
+  },
+  "risk_gates": [
+    {
+      "requires_user_approval": true,
+      "safe_default": "stop before writing and ask for approval",
+      "trigger": "manual approval boundary"
+    }
+  ],
+  "schema_version": "0.5",
+  "source_prompt": "Dogfood the dynamic-workflow-designer control plane on this repository before proceeding to V4 orchestration.",
+  "surfaces": [
+    {
+      "access_mode": "read-only",
+      "id": "repo",
+      "kind": "repo",
+      "locator": "."
+    },
+    {
+      "access_mode": "read-only",
+      "id": "generated-evidence",
+      "kind": "artifact",
+      "locator": "out/"
+    },
+    {
+      "access_mode": "read-only",
+      "id": "dogfood-docs",
+      "kind": "document",
+      "locator": "docs/v3.1-dogfood-*.md"
+    }
+  ],
+  "verification": [
+    {
+      "claim_or_output": "The current control plane can produce a useful next packet from real repo evidence.",
+      "evidence_required": [
+        "out/v3/v31-dogfood-release-readiness/next/0001.packet.json",
+        "docs/v3.1-dogfood-report.md"
+      ],
+      "falsifier": "The next packet is vague, selects the wrong phase, or lacks enough context for another agent."
+    },
+    {
+      "claim_or_output": "The dogfood run is evidence-backed rather than model-claim-backed.",
+      "evidence_required": [
+        "out/v2/v31-dogfood-release-readiness/status.json",
+        "out/v3/v31-dogfood-release-readiness/status.json"
+      ],
+      "falsifier": "V3 advances without reviewed automatic verification evidence."
+    }
+  ],
+  "workers": [
+    {
+      "context_budget": {
+        "max_files": 25,
+        "max_tokens": 16000,
+        "must_exclude": [
+          "out/"
+        ],
+        "must_include": [
+          "workflow.plan.json",
+          "docs/automation-roadmap.md",
+          "docs/v3-runtime-entry-spec.md",
+          "git status"
+        ]
+      },
+      "forbidden_actions": [
+        "unsupported claims"
+      ],
+      "id": "inventory-worker",
+      "ownership": [
+        "release_inventory"
+      ],
+      "prompt_contract": {
+        "inputs": [
+          "workflow.plan.json",
+          "repository path",
+          "git status"
+        ],
+        "required_output_schema": "inventory.json",
+        "stop_conditions": [
+          "repository missing",
+          "requested destructive action"
+        ]
+      },
+      "role": "Release inventory worker",
+      "tool_permissions": {
+        "mcp_connectors": [],
+        "network": false,
+        "read": true,
+        "requires_escalation_for": [],
+        "shell": false,
+        "write": false
+      }
+    },
+    {
+      "context_budget": {
+        "max_files": 30,
+        "max_tokens": 18000,
+        "must_exclude": [
+          "out/"
+        ],
+        "must_include": [
+          "inventory.json",
+          "docs/v3-decision.md",
+          "scripts/check_contract.py"
+        ]
+      },
+      "forbidden_actions": [
+        "unsupported claims"
+      ],
+      "id": "review-worker",
+      "ownership": [
+        "evidence_review"
+      ],
+      "prompt_contract": {
+        "inputs": [
+          "inventory.json",
+          "release command output",
+          "generated summaries"
+        ],
+        "required_output_schema": "verification.md",
+        "stop_conditions": [
+          "missing inventory",
+          "verification command failure"
+        ]
+      },
+      "role": "Evidence reviewer",
+      "tool_permissions": {
+        "mcp_connectors": [],
+        "network": false,
+        "read": true,
+        "requires_escalation_for": [],
+        "shell": false,
+        "write": false
+      }
+    },
+    {
+      "context_budget": {
+        "max_files": 20,
+        "max_tokens": 12000,
+        "must_exclude": [
+          "out/"
+        ],
+        "must_include": [
+          "verification.md",
+          "docs/automation-roadmap.md"
+        ]
+      },
+      "forbidden_actions": [
+        "unsupported claims"
+      ],
+      "id": "decision-worker",
+      "ownership": [
+        "release_decision"
+      ],
+      "prompt_contract": {
+        "inputs": [
+          "verification.md",
+          "roadmap",
+          "user goal"
+        ],
+        "required_output_schema": "release-decision.md",
+        "stop_conditions": [
+          "missing verification",
+          "unresolved critical risk"
+        ]
+      },
+      "role": "Release decision worker",
+      "tool_permissions": {
+        "mcp_connectors": [],
+        "network": false,
+        "read": true,
+        "requires_escalation_for": [],
+        "shell": false,
+        "write": false
+      }
+    },
+    {
+      "context_budget": {
+        "max_files": 10,
+        "max_tokens": 6000,
+        "must_exclude": [
+          "out/"
+        ],
+        "must_include": [
+          "release-decision.md"
+        ]
+      },
+      "forbidden_actions": [
+        "unsupported claims"
+      ],
+      "id": "human-gate-worker",
+      "ownership": [
+        "human_gate"
+      ],
+      "prompt_contract": {
+        "inputs": [
+          "release-decision.md",
+          "user approval"
+        ],
+        "required_output_schema": "human-approval.md",
+        "stop_conditions": [
+          "missing release decision",
+          "missing human approval"
+        ]
+      },
+      "role": "Human gate recorder",
+      "tool_permissions": {
+        "mcp_connectors": [],
+        "network": false,
+        "read": true,
+        "requires_escalation_for": [],
+        "shell": false,
+        "write": false
+      }
+    }
+  ]
+}

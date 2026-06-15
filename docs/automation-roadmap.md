@@ -1,0 +1,278 @@
+# Large-Task Automation Roadmap
+
+Status: draft; V3 entry runtime implemented
+Date: 2026-06-15
+
+## Purpose
+
+The final product goal is large-task automation: a system that can take a broad
+objective, decompose it into inspectable work, execute bounded slices, verify
+results, resume after interruption, and stop at human gates for risky actions.
+
+This repo should not become a loose prompt pack or an unchecked agent launcher.
+Its differentiator is a compiler-first control plane: plans and execution
+packets are explicit, hashed, reviewable, resumable, and falsifiable.
+
+## Product Position
+
+`dynamic-workflow-designer` should become the control plane for large Codex
+workflows.
+
+| Layer | Responsibility | Repo stance |
+| --- | --- | --- |
+| Skill | design large workflows with phases, workers, gates, and handoffs | implemented |
+| Plan evaluator | prove the workflow plan contract on fixtures | implemented in V0.5 |
+| First-slice compiler | materialize one safe packet and resume contract | implemented in V1 |
+| Execution adapter | run one compiled packet through a controlled backend | V2 release candidate |
+| Runtime loop | advance packet by packet with verification and resume | V3 entry implemented |
+| Parallel orchestration | coordinate multiple workers across worktrees | later |
+| Product surface | plugin, CLI, dashboard, and release packaging | last |
+
+Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
+launch UX, worktree/tmux operation, durable state, and team execution. This repo
+should not copy that whole surface first. The useful position is above or beside
+those runtimes: compile a safe packet, gate it, then hand it to Codex CLI, OMX,
+or another backend through a narrow adapter.
+
+## Roadmap
+
+### V0: Skill Contract
+
+Status: done.
+
+Purpose: define the human-facing workflow design skill.
+
+Done means:
+
+- `SKILL.md` explains when to design a large workflow.
+- `references/workflow-patterns.md` defines reusable workflow patterns.
+- `docs/spec.md` records product scope, safety, fixtures, and release criteria.
+- release checks validate skill packaging.
+
+### V0.5: Plan Schema And Evaluator
+
+Status: done.
+
+Purpose: convert workflow designs into a machine-checkable
+`workflow.plan.json` contract and fixture corpus.
+
+Done means:
+
+- `references/workflow-plan-schema.md` documents the plan contract.
+- `scripts/evaluate_plan.py` validates plans and downgrade artifacts.
+- `fixtures/v0.5/manifest.json` proves positive, negative, borderline, and
+  meta cases.
+- `docs/v0.5-decision.md` records a `keep` decision from regenerated evidence.
+
+### V1: First-Slice Compiler
+
+Status: done.
+
+Purpose: compile one activated plan into one inspectable first-slice packet
+without executing it.
+
+Done means:
+
+- `scripts/compile_workflow.py` compiles activated V0.5 plans.
+- output is deterministic, repo-local, sentinel-owned, and symlink-safe.
+- `--resume` detects stale source, snapshot, packet, prompt, input, handoff,
+  gate, approval, compiler, and run metadata.
+- risk gates block unsafe first slices by default.
+- `fixtures/v1/manifest.json` passes with `decision: "keep"`.
+- `docs/v1-decision.md` records the generated summary.
+
+### V2: First-Slice Execution Adapter
+
+Status: release candidate; fixture gate keep.
+
+Purpose: execute exactly one V1 compiled packet through a controlled backend and
+record evidence, without pretending to be a full workflow runtime.
+
+Spec: `docs/v2-execution-adapter-spec.md`.
+
+Done means:
+
+- a new adapter accepts only trustworthy V1 run directories.
+- blocked or stale packets cannot execute.
+- execution happens in an isolated worktree or explicit read-only mode.
+- every attempt writes evidence: prompt, backend command, stdout/stderr or
+  transcript, exit status, git diff summary, verification command outputs, and
+  hashes.
+- execution status is derived from evidence, not from agent claims.
+- failed attempts are resumable without rewriting prior evidence.
+- fixture and smoke tests cover ready, blocked, stale, failed, and successful
+  execution paths.
+
+V2 release candidate currently means:
+
+- `scripts/execute_packet.py --self-test` covers ready dry-run, blocked-risk
+  refusal, stale-prompt refusal, stale-source refusal, malformed attempt
+  invalidation, symlinked or renamed attempt refusal, missing hash-key
+  invalidation, sidecar tamper rejection, tampered V1 hash rejection, tampered
+  status rejection, resume, local-shell success, local-shell public CLI refusal,
+  untrusted public manifest refusal, and local-shell failure,
+  verification pass, verification failure, dangerous verification-command
+  refusal, Codex CLI success fixture, Codex auth-block fixture, and Codex
+  worktree-required refusal.
+- `fixtures/v2/manifest.json` covers dry-run/trust, local-shell success/failure,
+  worktree-required refusal, dirty-worktree refusal, automatic verification
+  pass/fail, append-only attempts, stale source detection, malformed attempt
+  detection, dangerous fixture-command refusal, dangerous verification-command refusal,
+  omitted-required default handling, optional-fixture failure handling, and
+  required-fixture failure policy.
+- V2 writes append-only dry-run attempt evidence for trusted ready packets.
+- V2 can execute deterministic manifest-scoped local-shell commands in isolated
+  git worktrees and record stdout/stderr/exit status.
+- V2 can execute deterministic manifest-scoped verification commands and derive
+  `verified` or `failed` from their exit status.
+- Public `--manifest` is limited to `fixtures/v2/manifest.json`; command-bearing
+  fixtures use approved release-fixture snippets, not arbitrary shell commands.
+- V2 can execute Codex fixture-command mode in an isolated worktree, capture
+  transcript/stdout/stderr, detect authentication failures, and preserve timeout
+  or backend failures as evidence; installed codex path remains optional live smoke evidence
+  until local auth can be assumed by a release gate.
+- `docs/v2-decision.md` records the generated `decision: "keep"` summary.
+- OMX execution, verification commands from plan handoff schemas, and
+  multi-slice advancement remain future slices.
+
+### V2.5: Execute-Review-Repair Loop
+
+Status: first loop implemented; backend repair execution deferred.
+
+Purpose: add one supervised correction cycle after a packet execution.
+
+Spec: `docs/v2.5-review-repair-spec.md`.
+
+Workflow plan: `docs/v2.5-to-v3.workflow.plan.json`.
+
+First-loop done means:
+
+- a deterministic reviewer consumes trusted V2 execution evidence.
+- findings are stored as structured review artifacts.
+- a repair prompt can be prepared only when the packet remains trusted and the
+  latest review has actionable findings.
+- the loop has strict retry caps and stops on repeated failure.
+- final status separates `review-approved`, `changes-requested`,
+  `repair-prepared`, `needs-human`, and `invalid`.
+- review and repair artifacts have parent-level contract ledgers so coherent
+  evidence rewrites invalidate resume.
+- `fixtures/v2.5/manifest.json` passes with `decision: "keep"`.
+- `docs/v2.5-decision.md` records the generated summary.
+
+Implemented first slice:
+
+1. add `fixtures/v2.5/manifest.json` with deterministic review fixtures,
+2. add review and repair contracts with `review-contracts.json` and
+   `repair-contracts.json`,
+3. implement `--review`, `--review-resume`, and `--repair`,
+4. prepare repair prompts without launching a backend,
+5. prove coherent review tamper invalidates resume.
+
+Next V2.5 slice:
+
+1. add one manifest-scoped repair backend only after review trust is proven,
+2. derive `repair-executed` and `repair-verified`,
+3. add retry-cap fixtures for repeated failures.
+
+### V3: Runtime Entry
+
+Status: entry runtime implemented; full multi-slice execution deferred.
+
+Purpose: advance beyond the first slice while preserving the V1/V2 trust model.
+
+Spec: `docs/v3-runtime-entry-spec.md`.
+
+V3 consumes only trusted V2.5 terminal states. It rejects `failed`, `invalid`,
+`review-pending`, `changes-requested`, `repair-prepared`, and `needs-human`
+packet states. `--human-approved` is recorded and type-checked, but it is not
+sufficient to advance without a later explicit human-override contract.
+
+Entry-runtime done means:
+
+- `scripts/run_workflow.py` accepts only trusted V2.5 evidence.
+- accepted states write `run.json`, `next/0001.packet.json`,
+  `next/0001.prompt.md`, `journal/0000.json`, `status.json`, and `resume.md`.
+- accepted states select the next phase after the reviewed first slice.
+- accepted states require reviewed V2 evidence with automatic verification pass.
+- unmatched first-slice output is rejected instead of guessed.
+- `--resume` detects stale V2.5 status and tampered next-packet artifacts.
+- `--resume` refuses non-owned runtime directories and malformed
+  `human_approved` values.
+- `needs-human` remains rejected even with explicit `--human-approved`.
+- `fixtures/v3/manifest.json` passes with `decision: "keep"`.
+- `docs/v3-decision.md` records the generated summary.
+- the entry runtime does not execute the next packet.
+
+Full runtime done means:
+
+- later packets are compiled from the original plan plus verified prior
+  outputs.
+- packet advancement is deterministic and hash-bound.
+- each phase has entry criteria, exit criteria, handoff artifacts, and
+  invalidation rules.
+- resume skips valid completed packets and reruns only invalidated packets.
+- human gates can pause the workflow without losing completed evidence.
+
+### V4: Parallel Worker Orchestration
+
+Status: planned.
+
+Purpose: run independent packets in parallel with fan-in verification.
+
+Done means:
+
+- workers have isolated worktrees and bounded context.
+- concurrency caps are explicit.
+- handoffs use shared schemas.
+- fan-in runs only after required branches finish or are marked non-blocking.
+- conflicting diffs are detected before merge.
+- independent reviewers can refute worker outputs before synthesis.
+
+### V5: Product Packaging
+
+Status: planned.
+
+Purpose: make the system usable as a durable tool, not only as scripts.
+
+Done means:
+
+- package as a Codex skill/plugin or CLI surface.
+- expose run status, gates, evidence, and resume actions.
+- include migration guides from V1/V2 artifacts.
+- publish stable command contracts and compatibility notes.
+- keep external runtime integrations optional and adapter-based.
+
+## Strategic Decisions
+
+- Build the compiler/control-plane path before a full runtime.
+- Treat execution backends as adapters, not as the source of truth.
+- Prefer OMX/Codex integration over copying an existing runtime surface.
+- Never mark work complete from a model message alone; require evidence and
+  verification.
+- Keep destructive, external, costly, production, secret, dependency, database,
+  public API, and history-rewrite actions behind human gates.
+- Preserve old attempt evidence instead of rewriting it.
+
+## Success Criteria For The Final System
+
+The system is final enough for real large-task automation when it can:
+
+1. accept a broad objective and produce a valid workflow plan,
+2. compile the next executable packet deterministically,
+3. refuse stale or risky packets,
+4. execute approved packets in isolation,
+5. collect evidence automatically,
+6. run verification that can falsify the result,
+7. review and repair bounded failures,
+8. advance to the next packet without losing traceability,
+9. resume after interruption from stored artifacts, and
+10. stop at human gates with completed work preserved.
+
+## Non-Goals
+
+- Do not build an unchecked autonomous agent that can mutate arbitrary repos.
+- Do not make `--dangerously-bypass-approvals-and-sandbox` the default path.
+- Do not require OMX, tmux, or any specific external runtime for the core
+  compiler contract.
+- Do not hide backend-specific state inside opaque logs.
+- Do not treat a clean exit code as sufficient proof of correctness.

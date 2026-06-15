@@ -147,12 +147,242 @@ def require_v1_decision_summary_consistency() -> None:
         raise SystemExit(f"V1 decision consistency failed: {exc}") from exc
 
 
+def require_v2_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out out/v2/final",
+        "does not claim multi-slice workflow runtime behavior",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v2-decision.md does not match V2 summary: {missing}")
+
+
+def require_v2_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/execute_packet.py",
+                "--manifest",
+                "fixtures/v2/manifest.json",
+                "--out",
+                "out/v2/final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        full_summary = json.loads((ROOT / "out" / "v2" / "final" / "summary.json").read_text())
+        records = {
+            item.get("id"): item
+            for item in full_summary.get("fixtures", [])
+            if isinstance(item, dict)
+        }
+        default_required = records.get("required-default-omitted")
+        if not default_required or default_required.get("required") is not True or default_required.get("status") != "pass":
+            raise SystemExit("V2 manifest did not prove omitted required defaults to true")
+        optional_failure = records.get("optional-failing-fixture")
+        if not optional_failure or optional_failure.get("required") is not False or optional_failure.get("status") != "fail":
+            raise SystemExit("V2 manifest did not prove optional fixture failure policy")
+        if "expected status blocked, got prepared" not in str(optional_failure.get("error", "")):
+            raise SystemExit("V2 optional fixture failed for an unexpected reason")
+        if full_summary.get("decision") != "keep" or full_summary.get("failed", 0) < 1:
+            raise SystemExit("V2 manifest optional failure did not preserve keep decision with a recorded failure")
+        require_v2_decision_summary_text(summary, (ROOT / "docs" / "v2-decision.md").read_text())
+        shutil.rmtree(ROOT / "out" / "v2" / "contract-v2-ready-smoke", ignore_errors=True)
+        shutil.rmtree(ROOT / "out" / "v2" / "contract-v2-blocked-smoke", ignore_errors=True)
+        ready_completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/execute_packet.py",
+                "--run",
+                "out/v1/v2-final-dry-run-ready-readonly",
+                "--out",
+                "out/v2/contract-v2-ready-smoke",
+            ],
+        )
+        ready_status = json.loads(ready_completed.stdout)
+        if ready_status.get("status") != "prepared":
+            raise SystemExit(f"V2 ready smoke did not prepare evidence: {ready_completed.stdout}")
+        attempts = ready_status.get("attempts")
+        latest = attempts[-1] if isinstance(attempts, list) and attempts else {}
+        if latest.get("repo_tracked_diff_unchanged") is not True:
+            raise SystemExit("V2 ready smoke did not prove tracked diff was unchanged")
+        blocked_completed = subprocess.run(
+            [
+                sys.executable,
+                "scripts/execute_packet.py",
+                "--run",
+                "out/v1/v2-final-dry-run-blocked-risk",
+                "--out",
+                "out/v2/contract-v2-blocked-smoke",
+            ],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if blocked_completed.returncode == 0:
+            raise SystemExit("V2 blocked smoke unexpectedly exited zero")
+        blocked_status = json.loads(blocked_completed.stdout)
+        blocked_codes = [item.get("code") for item in blocked_status.get("invalidators", [])]
+        if blocked_status.get("status") != "blocked" or "ERR_EXEC_BLOCKED_RISK" not in blocked_codes or blocked_status.get("attempt_count") != 0:
+            raise SystemExit(f"V2 blocked smoke did not prove blocked-risk refusal: {blocked_completed.stdout}")
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V2 decision consistency failed: {exc}") from exc
+
+
+def require_v25_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final",
+        "does not claim backend repair execution",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v2.5-decision.md does not match V2.5 summary: {missing}")
+
+
+def require_v25_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/execute_packet.py",
+                "--manifest",
+                "fixtures/v2.5/manifest.json",
+                "--out",
+                "out/v2.5/final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        full_summary = json.loads((ROOT / "out" / "v2.5" / "final" / "summary.json").read_text())
+        records = {
+            item.get("id"): item
+            for item in full_summary.get("fixtures", [])
+            if isinstance(item, dict)
+        }
+        stale_review = records.get("review-stale-after-new-attempt")
+        if not stale_review or stale_review.get("status") != "pass":
+            raise SystemExit("V2.5 manifest did not prove stale review invalidation")
+        replacement_review = records.get("review-replacement-after-new-attempt")
+        if not replacement_review or replacement_review.get("status") != "pass":
+            raise SystemExit("V2.5 manifest did not prove replacement review append")
+        stale_repair = records.get("repair-stale-after-new-review")
+        if not stale_repair or stale_repair.get("status") != "pass":
+            raise SystemExit("V2.5 manifest did not prove stale repair invalidation")
+        if full_summary.get("decision") != "keep" or full_summary.get("failed") != 0:
+            raise SystemExit("V2.5 manifest did not preserve a clean keep decision")
+        require_v25_decision_summary_text(summary, (ROOT / "docs" / "v2.5-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V2.5 decision consistency failed: {exc}") from exc
+
+
+def require_v3_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
+        "does not claim execution of later packets",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v3-decision.md does not match V3 summary: {missing}")
+
+
+def require_v3_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/run_workflow.py",
+                "--manifest",
+                "fixtures/v3/manifest.json",
+                "--out",
+                "out/v3/final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        full_summary = json.loads((ROOT / "out" / "v3" / "final" / "summary.json").read_text())
+        records = {
+            item.get("id"): item
+            for item in full_summary.get("fixtures", [])
+            if isinstance(item, dict)
+        }
+        expected = {
+            "approved-advance": ("advanced", None),
+            "reject-review-approved-manual": ("entry-rejected", "ERR_RUNTIME_ENTRY_REJECTED"),
+            "reject-changes-requested": ("entry-rejected", "ERR_RUNTIME_ENTRY_REJECTED"),
+            "reject-repair-prepared": ("entry-rejected", "ERR_RUNTIME_ENTRY_REJECTED"),
+            "needs-human-requires-approval": ("entry-rejected", "ERR_RUNTIME_ENTRY_REJECTED"),
+            "needs-human-approved": ("entry-rejected", "ERR_RUNTIME_ENTRY_REJECTED"),
+            "resume-clean": ("advanced", None),
+            "resume-stale-v25-status": ("invalid", "ERR_RUNTIME_STALE_V25"),
+            "resume-tampered-next-packet": ("invalid", "ERR_RUNTIME_ARTIFACT_MALFORMED"),
+            "resume-tampered-journal": ("invalid", "ERR_RUNTIME_ARTIFACT_MALFORMED"),
+            "resume-non-owned-dir": ("invalid", "ERR_RUNTIME_ARTIFACT_MALFORMED"),
+            "resume-human-approved-string": ("invalid", "ERR_RUNTIME_ARTIFACT_MALFORMED"),
+            "reject-unmatched-first-slice": ("entry-rejected", "ERR_RUNTIME_ENTRY_REJECTED"),
+        }
+        for fixture_id, (expected_status, expected_code) in expected.items():
+            record = records.get(fixture_id)
+            if not record or record.get("status") != "pass" or record.get("actual_status") != expected_status:
+                raise SystemExit(f"V3 manifest did not prove {fixture_id}")
+            codes = record.get("invalidator_codes", [])
+            if expected_code and expected_code not in codes:
+                raise SystemExit(f"V3 manifest did not prove {fixture_id} with {expected_code}")
+        for fixture_id in ["approved-advance", "resume-clean"]:
+            record = records.get(fixture_id)
+            if not record or record.get("actual_phase_id") != "verify":
+                raise SystemExit(f"V3 manifest did not prove post-first-slice phase advancement for {fixture_id}")
+        approved_status = json.loads((ROOT / "out" / "v3" / "final" / "needs-human-approved" / "status.json").read_text())
+        if approved_status.get("human_approved") is not True or approved_status.get("accepted_v25_state") != "needs-human":
+            raise SystemExit("V3 manifest did not exercise needs-human-approved with human_approved=true over needs-human state")
+        manual_status = json.loads((ROOT / "out" / "v3" / "final" / "reject-review-approved-manual" / "status.json").read_text())
+        if manual_status.get("accepted_v25_state") != "review-approved":
+            raise SystemExit("V3 manifest did not exercise manual-only review-approved rejection")
+        if full_summary.get("decision") != "keep" or full_summary.get("failed") != 0:
+            raise SystemExit("V3 manifest did not preserve a clean keep decision")
+        require_v3_decision_summary_text(summary, (ROOT / "docs" / "v3-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V3 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
         [sys.executable, "scripts/quick_validate_skill.py", "--self-test"],
         [sys.executable, "scripts/evaluate_plan.py", "--self-test"],
         [sys.executable, "scripts/compile_workflow.py", "--self-test"],
+        [sys.executable, "scripts/execute_packet.py", "--self-test"],
+        [sys.executable, "scripts/execute_packet.py", "--manifest", "fixtures/v2.5/manifest.json", "--out", "out/v2.5/final"],
+        [sys.executable, "scripts/run_workflow.py", "--self-test"],
+        [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/check_whitespace.py", "."],
         [sys.executable, "scripts/check_release_text.py", "."],
         [sys.executable, "scripts/check_release_text.py", "--self-test"],
@@ -461,6 +691,99 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V1 decision summary passed")
 
+    v2_summary = {
+        "suite_id": "final",
+        "fixture_count": 22,
+        "required_fixture_count": 21,
+        "required_passed": 21,
+        "passed": 21,
+        "failed": 1,
+        "skipped": 0,
+        "decision": "keep",
+    }
+    good_v2_decision = (
+        "Decision: keep\n"
+        "python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out out/v2/final\n"
+        "- `suite_id`: `final`\n"
+        "- `fixture_count`: 22\n"
+        "- `required_fixture_count`: 21\n"
+        "- `required_passed`: 21\n"
+        "- `passed`: 21\n"
+        "- `failed`: 1\n"
+        "- `skipped`: 0\n"
+        "- `decision`: `keep`\n"
+        "This decision does not claim multi-slice workflow runtime behavior.\n"
+    )
+    require_v2_decision_summary_text(v2_summary, good_v2_decision)
+    try:
+        require_v2_decision_summary_text(v2_summary, good_v2_decision.replace("22", "19", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V2 decision summary passed")
+
+    v25_summary = {
+        "suite_id": "final",
+        "fixture_count": 9,
+        "required_fixture_count": 9,
+        "required_passed": 9,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "decision": "keep",
+    }
+    good_v25_decision = (
+        "Decision: keep\n"
+        "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final\n"
+        "- `suite_id`: `final`\n"
+        "- `fixture_count`: 9\n"
+        "- `required_fixture_count`: 9\n"
+        "- `required_passed`: 9\n"
+        "- `passed`: 9\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 0\n"
+        "- `decision`: `keep`\n"
+        "This decision does not claim backend repair execution.\n"
+    )
+    require_v25_decision_summary_text(v25_summary, good_v25_decision)
+    try:
+        require_v25_decision_summary_text(v25_summary, good_v25_decision.replace("9", "5", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V2.5 decision summary passed")
+
+    v3_summary = {
+        "suite_id": "final",
+        "fixture_count": 13,
+        "required_fixture_count": 13,
+        "required_passed": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "decision": "keep",
+    }
+    good_v3_decision = (
+        "Decision: keep\n"
+        "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final\n"
+        "- `suite_id`: `final`\n"
+        "- `fixture_count`: 13\n"
+        "- `required_fixture_count`: 13\n"
+        "- `required_passed`: 13\n"
+        "- `passed`: 13\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 0\n"
+        "- `decision`: `keep`\n"
+        "This decision does not claim execution of later packets.\n"
+    )
+    require_v3_decision_summary_text(v3_summary, good_v3_decision)
+    try:
+        require_v3_decision_summary_text(v3_summary, good_v3_decision.replace("13", "7", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V3 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -512,7 +835,25 @@ def main() -> None:
             "python scripts/compile_workflow.py --resume out/v1/<run_id>",
             "python scripts/compile_workflow.py --self-test",
             "python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final",
+            "python scripts/execute_packet.py --self-test",
+            "python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out out/v2/final",
+            "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final",
+            "python scripts/run_workflow.py --self-test",
+            "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
+            "docs/v2.5-review-repair-spec.md",
+            "docs/v2.5-to-v3.workflow.plan.json",
+            "docs/v2.5-decision.md",
+            "docs/v3-runtime-entry-spec.md",
+            "docs/v3-decision.md",
             "workflow.plan.json` to live under this repository root",
+            "out/v1/v2-final-dry-run-ready-readonly",
+            "out/v1/v2-final-dry-run-blocked-risk",
+            "repo_tracked_diff_unchanged: true",
+            "err_exec_blocked_risk",
+            "out/v2/final/summary.json",
+            "v2 still does not execute omx",
+            "advance multi-slice workflows",
+            "does not execute later",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)
@@ -544,7 +885,119 @@ def main() -> None:
             "python scripts/compile_workflow.py --resume out/v1/<run_id>",
             "python scripts/compile_workflow.py --self-test",
             "python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final",
+            "python scripts/execute_packet.py --self-test",
+            "python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out out/v2/final",
+            "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final",
+            "python scripts/run_workflow.py --self-test",
+            "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
+            "docs/v2.5-review-repair-spec.md",
+            "docs/v2.5-to-v3.workflow.plan.json",
+            "docs/v3-runtime-entry-spec.md",
+            "docs/v3-decision.md",
+            "needs-human",
+            "repair-prepared",
+            "tampered next-packet invalidation",
             "`source_plan_path` must be repository-relative in v1",
+            "out/v1/v2-final-dry-run-ready-readonly",
+            "out/v1/v2-final-dry-run-blocked-risk",
+            "repo_tracked_diff_unchanged: true",
+            "err_exec_blocked_risk",
+            "out/v2/final/summary.json",
+            "does not advance beyond the first slice",
+        ],
+    )
+    require_terms(
+        "docs/v2-execution-adapter-spec.md",
+        [
+            "required defaults to true",
+            "optional fixture failures",
+            "does not exercise the installed-codex path",
+            "blocked smoke reuses the v1 run generated by the v2 manifest command",
+            "repo_tracked_diff_unchanged",
+        ],
+    )
+    require_terms(
+        "docs/automation-roadmap.md",
+        [
+            "v2 release candidate currently means",
+            "docs/v2.5-review-repair-spec.md",
+            "docs/v2.5-to-v3.workflow.plan.json",
+            "review-contracts.json",
+            "trusted v2.5 terminal states",
+            "v3 entry runtime implemented",
+            "repair-prepared",
+            "fixtures/v3/manifest.json",
+            "does not execute the next packet",
+            "public cli refusal",
+            "dangerous verification-command refusal",
+            "fixture-command mode",
+            "installed codex path remains optional live smoke evidence",
+        ],
+    )
+    require_terms(
+        "docs/v2.5-review-repair-spec.md",
+        [
+            "review-contracts.json",
+            "repair-contracts.json",
+            "review-approved",
+            "changes-requested",
+            "repair-prepared",
+            "repair-verified",
+            "needs-human",
+            "does not advance to later workflow phases",
+            "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final",
+            "v3 may consume only packets with trusted v2.5 terminal states",
+        ],
+    )
+    require_terms(
+        "docs/v2.5-decision.md",
+        [
+            "decision: keep",
+            "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final",
+            "`fixture_count`: 9",
+            "`required_passed`: 9",
+            "`failed`: 0",
+            "replacement review",
+            "stale review",
+            "stale repair",
+            "review-contracts.json",
+            "repair-contracts.json",
+            "does not claim backend repair execution",
+        ],
+    )
+    require_terms(
+        "docs/v3-runtime-entry-spec.md",
+        [
+            "trusted v2.5 terminal states",
+            "review-approved",
+            "repair-verified",
+            "needs-human",
+            "--human-approved",
+            "repair-prepared",
+            "err_runtime_stale_v25",
+            "err_runtime_artifact_malformed",
+            "ownership sentinel",
+            "next phase",
+            "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
+            "does not execute",
+        ],
+    )
+    require_terms(
+        "docs/v3-decision.md",
+        [
+            "decision: keep",
+            "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
+            "`fixture_count`: 13",
+            "`required_passed`: 13",
+            "`failed`: 0",
+            "needs-human approval is not sufficient",
+            "manual-only `review-approved`",
+            "stale v2.5",
+            "tampered v3 artifacts",
+            "next phase candidate",
+            "unmatched first-slice",
+            "non-owned runtime directories",
+            "does not claim execution of later packets",
         ],
     )
     require_terms(
@@ -568,6 +1021,9 @@ def main() -> None:
     require_release_commands_pass()
     require_decision_summary_consistency()
     require_v1_decision_summary_consistency()
+    require_v2_decision_summary_consistency()
+    require_v25_decision_summary_consistency()
+    require_v3_decision_summary_consistency()
     print("contract smoke: pass")
 
 

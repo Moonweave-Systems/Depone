@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "suite": "v3-release",
+  "fixtures": [
+    {
+      "id": "approved-advance",
+      "type": "approved-advance",
+      "expected_status": "advanced",
+      "expected_phase_id": "verify",
+      "required": true
+    },
+    {
+      "id": "reject-review-approved-manual",
+      "type": "reject-review-approved-manual",
+      "expected_status": "entry-rejected",
+      "expected_error": "ERR_RUNTIME_ENTRY_REJECTED",
+      "required": true
+    },
+    {
+      "id": "reject-changes-requested",
+      "type": "reject-changes-requested",
+      "expected_status": "entry-rejected",
+      "expected_error": "ERR_RUNTIME_ENTRY_REJECTED",
+      "required": true
+    },
+    {
+      "id": "reject-repair-prepared",
+      "type": "reject-repair-prepared",
+      "expected_status": "entry-rejected",
+      "expected_error": "ERR_RUNTIME_ENTRY_REJECTED",
+      "required": true
+    },
+    {
+      "id": "needs-human-requires-approval",
+      "type": "needs-human-requires-approval",
+      "expected_status": "entry-rejected",
+      "expected_error": "ERR_RUNTIME_ENTRY_REJECTED",
+      "required": true
+    },
+    {
+      "id": "needs-human-approved",
+      "type": "needs-human-approved",
+      "expected_status": "entry-rejected",
+      "expected_error": "ERR_RUNTIME_ENTRY_REJECTED",
+      "required": true
+    },
+    {
+      "id": "resume-clean",
+      "type": "resume-clean",
+      "expected_status": "advanced",
+      "expected_phase_id": "verify",
+      "required": true
+    },
+    {
+      "id": "resume-stale-v25-status",
+      "type": "resume-stale-v25-status",
+      "expected_status": "invalid",
+      "expected_error": "ERR_RUNTIME_STALE_V25",
+      "required": true
+    },
+    {
+      "id": "resume-tampered-next-packet",
+      "type": "resume-tampered-next-packet",
+      "expected_status": "invalid",
+      "expected_error": "ERR_RUNTIME_ARTIFACT_MALFORMED",
+      "required": true
+    },
+    {
+      "id": "resume-tampered-journal",
+      "type": "resume-tampered-journal",
+      "expected_status": "invalid",
+      "expected_error": "ERR_RUNTIME_ARTIFACT_MALFORMED",
+      "required": true
+    },
+    {
+      "id": "resume-non-owned-dir",
+      "type": "resume-non-owned-dir",
+      "expected_status": "invalid",
+      "expected_error": "ERR_RUNTIME_ARTIFACT_MALFORMED",
+      "required": true
+    },
+    {
+      "id": "resume-human-approved-string",
+      "type": "resume-human-approved-string",
+      "expected_status": "invalid",
+      "expected_error": "ERR_RUNTIME_ARTIFACT_MALFORMED",
+      "required": true
+    },
+    {
+      "id": "reject-unmatched-first-slice",
+      "type": "reject-unmatched-first-slice",
+      "expected_status": "entry-rejected",
+      "expected_error": "ERR_RUNTIME_ENTRY_REJECTED",
+      "required": true
+    }
+  ]
+}

@@ -27,6 +27,7 @@ workflows.
 | Runtime loop | advance packet by packet with verification and resume | V3 entry implemented |
 | Parallel orchestration | schedule ready phase packets under a concurrency cap | first scheduler slice implemented |
 | Worker dispatch | prepare reviewed dispatch bundles for scheduled packets | first dispatch slice implemented |
+| Worker result adapter | execute fixture-only worker result bundles under owned output | first controlled slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | last |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
@@ -265,6 +266,31 @@ Full dispatch done means:
 - V3/V4 advancement consumes only reviewed worker results,
 - execution remains blocked for destructive, external, costly, production,
   secret, dependency, database, public API, delete, and history-rewrite actions.
+
+### V5: Controlled Worker Result Adapter
+
+Status: first controlled worker-result slice implemented.
+
+Purpose: execute one trusted V4.5 dispatch through an allowlisted fixture worker
+and record evidence under owned `out/v5/`.
+
+First controlled slice done means:
+
+- `scripts/run_worker_result.py` consumes one trusted V4.5 dispatch directory.
+- V5 supports only `--fixture semantic-review`.
+- V5 runs the fixture in `out/v5/<run_id>/work/`, not in the repository root.
+- V5 writes `result.json`, `stdout.txt`, `stderr.txt`, `hashes.json`,
+  `status.json`, and `resume.md`.
+- V5 produces `verification.md` for the `evidence_review` dogfood packet.
+- V5 resume detects tampered produced outputs through hash mismatch.
+- V5 dogfood over `out/v4.5/v32-semantic-dogfood` produces `status: executed`.
+
+Full worker result adapter done means:
+
+- worker outputs can be routed into a V2.5-style review contract,
+- reviewed worker results can satisfy phase exit criteria,
+- V3/V4 can advance from reviewed worker results,
+- non-fixture backends remain behind explicit trust and human gate contracts.
 
 ### V5: Product Packaging
 

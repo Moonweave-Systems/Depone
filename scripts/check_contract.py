@@ -444,6 +444,41 @@ def require_v8_decision_summary_consistency() -> None:
         raise SystemExit(f"V8 decision consistency failed: {exc}") from exc
 
 
+def require_v9_decision_summary_text(status: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    snapshots = status.get("snapshots")
+    if not isinstance(snapshots, dict):
+        raise SystemExit("V9 status is missing snapshots")
+    required_snippets = [
+        "decision: keep",
+        "python scripts/resolve_human_gate.py --self-test",
+        "python scripts/resolve_human_gate.py --frontier out/v8/v32-semantic-dogfood --approval fixtures/v9/approvals/dogfood-human-approval.json --out out/v9/v32-semantic-dogfood",
+        "python scripts/resolve_human_gate.py --resume out/v9/v32-semantic-dogfood",
+        f"`run_id`: `{status['run_id']}`",
+        f"`status`: `{status['status']}`",
+        f"`resume_state`: `{status['resume_state']}`",
+        f"`completed_phase_ids`: `{', '.join(str(phase) for phase in status['completed_phase_ids'])}`",
+        f"`reviewed_phase_ids`: `{', '.join(str(phase) for phase in status['reviewed_phase_ids'])}`",
+        f"`human_approved_phase_ids`: `{', '.join(str(phase) for phase in status['human_approved_phase_ids'])}`",
+        f"`ready_phase_ids`: `{', '.join(str(phase) for phase in status['ready_phase_ids'])}`",
+        f"`selected_phase_ids`: `{', '.join(str(phase) for phase in status['selected_phase_ids'])}`",
+        f"`state_hash`: `{snapshots['state_hash']}`",
+        "does not claim worker execution",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v9-decision.md does not match V9 status: {missing}")
+
+
+def require_v9_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command([sys.executable, "scripts/resolve_human_gate.py", "--resume", "out/v9/v32-semantic-dogfood"])
+        status = json.loads(completed.stdout)
+        require_v9_decision_summary_text(status, (ROOT / "docs" / "v9-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V9 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
@@ -456,6 +491,7 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/review_frontier_result.py", "--self-test"],
         [sys.executable, "scripts/ingest_frontier_review.py", "--self-test"],
+        [sys.executable, "scripts/resolve_human_gate.py", "--self-test"],
         [sys.executable, "scripts/check_whitespace.py", "."],
         [sys.executable, "scripts/check_release_text.py", "."],
         [sys.executable, "scripts/check_release_text.py", "--self-test"],
@@ -508,6 +544,31 @@ def require_release_commands_pass() -> None:
         raise SystemExit(f"V8 dogfood resume CLI output was not JSON: {completed.stdout}") from exc
     if v8_resumed.get("status") != "frontier-ready" or v8_resumed.get("resume_state") != "resumable":
         raise SystemExit(f"V8 dogfood resume did not produce clean resumable state: {completed.stdout}")
+    completed = run_contract_command(
+        [
+            sys.executable,
+            "scripts/resolve_human_gate.py",
+            "--frontier",
+            "out/v8/v32-semantic-dogfood",
+            "--approval",
+            "fixtures/v9/approvals/dogfood-human-approval.json",
+            "--out",
+            "out/v9/v32-semantic-dogfood",
+        ]
+    )
+    try:
+        v9_resolved = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V9 dogfood resolution CLI output was not JSON: {completed.stdout}") from exc
+    if v9_resolved.get("status") != "workflow-complete" or v9_resolved.get("human_approved_phase_ids") != ["human_gate"]:
+        raise SystemExit(f"V9 dogfood resolution did not complete human_gate: {completed.stdout}")
+    completed = run_contract_command([sys.executable, "scripts/resolve_human_gate.py", "--resume", "out/v9/v32-semantic-dogfood"])
+    try:
+        v9_resumed = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V9 dogfood resume CLI output was not JSON: {completed.stdout}") from exc
+    if v9_resumed.get("status") != "workflow-complete" or v9_resumed.get("resume_state") != "resumable":
+        raise SystemExit(f"V9 dogfood resume did not produce clean resumable state: {completed.stdout}")
     cli_out = ROOT / "out" / "v1" / "contract-cli"
     completed = run_contract_command(
         [
@@ -971,6 +1032,41 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V8 decision summary passed")
 
+    v9_status = {
+        "run_id": "v32-semantic-dogfood",
+        "status": "workflow-complete",
+        "resume_state": "resumable",
+        "completed_phase_ids": ["release_inventory", "evidence_review", "release_decision", "human_gate"],
+        "reviewed_phase_ids": ["evidence_review", "release_decision"],
+        "human_approved_phase_ids": ["human_gate"],
+        "ready_phase_ids": [],
+        "selected_phase_ids": [],
+        "snapshots": {"state_hash": "abc123"},
+    }
+    good_v9_decision = (
+        "Decision: keep\n"
+        "python scripts/resolve_human_gate.py --self-test\n"
+        "python scripts/resolve_human_gate.py --frontier out/v8/v32-semantic-dogfood --approval fixtures/v9/approvals/dogfood-human-approval.json --out out/v9/v32-semantic-dogfood\n"
+        "python scripts/resolve_human_gate.py --resume out/v9/v32-semantic-dogfood\n"
+        "- `run_id`: `v32-semantic-dogfood`\n"
+        "- `status`: `workflow-complete`\n"
+        "- `resume_state`: `resumable`\n"
+        "- `completed_phase_ids`: `release_inventory, evidence_review, release_decision, human_gate`\n"
+        "- `reviewed_phase_ids`: `evidence_review, release_decision`\n"
+        "- `human_approved_phase_ids`: `human_gate`\n"
+        "- `ready_phase_ids`: ``\n"
+        "- `selected_phase_ids`: ``\n"
+        "- `state_hash`: `abc123`\n"
+        "This decision does not claim worker execution.\n"
+    )
+    require_v9_decision_summary_text(v9_status, good_v9_decision)
+    try:
+        require_v9_decision_summary_text(v9_status, good_v9_decision.replace("abc123", "stale999", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V9 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -1029,6 +1125,7 @@ def main() -> None:
             "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
             "python scripts/review_frontier_result.py --self-test",
             "python scripts/ingest_frontier_review.py --self-test",
+            "python scripts/resolve_human_gate.py --self-test",
             "docs/v2.5-review-repair-spec.md",
             "docs/v2.5-to-v3.workflow.plan.json",
             "docs/v2.5-decision.md",
@@ -1047,6 +1144,8 @@ def main() -> None:
             "does not execute later",
             "docs/v8-frontier-review-ingestion-spec.md",
             "docs/v8-decision.md",
+            "docs/v9-human-gate-resolution-spec.md",
+            "docs/v9-decision.md",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)
@@ -1131,6 +1230,9 @@ def main() -> None:
             "v8 frontier review ingestion implemented",
             "docs/v8-frontier-review-ingestion-spec.md",
             "first ingestion slice implemented",
+            "v9 human gate resolution implemented",
+            "docs/v9-human-gate-resolution-spec.md",
+            "first resolution slice implemented",
         ],
     )
     require_terms(
@@ -1157,6 +1259,19 @@ def main() -> None:
             "`resume_state`: `resumable`",
             "`selected_phase_ids`: `human_gate`",
             "does not claim workflow completion",
+        ],
+    )
+    require_terms(
+        "docs/v9-decision.md",
+        [
+            "decision: keep",
+            "python scripts/resolve_human_gate.py --self-test",
+            "python scripts/resolve_human_gate.py --frontier out/v8/v32-semantic-dogfood --approval fixtures/v9/approvals/dogfood-human-approval.json --out out/v9/v32-semantic-dogfood",
+            "python scripts/resolve_human_gate.py --resume out/v9/v32-semantic-dogfood",
+            "`status`: `workflow-complete`",
+            "`resume_state`: `resumable`",
+            "`human_approved_phase_ids`: `human_gate`",
+            "does not claim worker execution",
         ],
     )
     require_terms(
@@ -1251,6 +1366,7 @@ def main() -> None:
     require_v3_decision_summary_consistency()
     require_v75_decision_summary_consistency()
     require_v8_decision_summary_consistency()
+    require_v9_decision_summary_consistency()
     print("contract smoke: pass")
 
 

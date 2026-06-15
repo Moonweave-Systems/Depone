@@ -1,0 +1,339 @@
+{
+  "activation": {
+    "decision": "activate",
+    "downgrade_target": null,
+    "matched_thresholds": [
+      "human-gates",
+      "resumable-handoffs",
+      "adversarial-verification"
+    ],
+    "reason": "V8 can select human_gate but cannot safely complete it without an explicit approval artifact and resumable ingestion contract."
+  },
+  "assumptions": [
+    {
+      "claim": "A git-tracked approval artifact is the only trusted first-slice source for satisfying human_gate.",
+      "verification": "Require approval JSON under fixtures/v9/approvals, prove it is tracked by git, and require source V8 path, source packet id, phase id, decision, approved output, and attestations."
+    },
+    {
+      "claim": "Completing human_gate should not execute, merge, deploy, or publish anything.",
+      "verification": "V9 writes only approval, state, hashes, status, resume, and journal artifacts under owned out/v9/."
+    }
+  ],
+  "budget": {
+    "file_touch_limit": "one new script plus V9 approval fixture, docs, release checks, and roadmap updates",
+    "max_agents": 1,
+    "max_retries": 1,
+    "max_rounds": 1,
+    "time_box": "one implementation slice"
+  },
+  "created_by": "dynamic-workflow-designer",
+  "execution_path": {
+    "consumer": "codex-agent",
+    "first_slice": {
+      "completion_check": "out/v9/v32-semantic-dogfood/status.json reports workflow-complete and human_approved_phase_ids human_gate",
+      "expected_output": "V9 state, hashes, status, resume, approval markdown, and journal artifacts",
+      "forbidden_actions": [
+        "worker execution",
+        "backend execution",
+        "external service calls",
+        "worktree merge",
+        "production deploy"
+      ],
+      "inputs": [
+        "repository path",
+        "out/v8/v32-semantic-dogfood",
+        "fixtures/v9/approvals/dogfood-human-approval.json"
+      ],
+      "instruction": "Consume one trusted V8 human_gate frontier and one git-tracked human approval artifact, then mark the terminal human gate complete without executing anything."
+    },
+    "mode": "direct-codex"
+  },
+  "handoffs": [
+    {
+      "artifact": "approval.json",
+      "artifact_schema": {
+        "format": "json",
+        "required_fields": [
+          "decision",
+          "source_v8_run_path",
+          "source_packet_id",
+          "phase_id",
+          "approved_outputs",
+          "attestations"
+        ],
+        "validation_command": "python -m json.tool approval.json"
+      },
+      "from_phase": "approval_validation",
+      "to_phase": "frontier_validation"
+    },
+    {
+      "artifact": "state.json",
+      "artifact_schema": {
+        "format": "json",
+        "required_fields": [
+          "completed_phase_ids",
+          "human_approved_phase_ids",
+          "ready_phase_ids",
+          "selected_phase_ids",
+          "source_hashes"
+        ],
+        "validation_command": "python -m json.tool state.json"
+      },
+      "from_phase": "human_gate_resolution",
+      "to_phase": "resume_verification"
+    }
+  ],
+  "objective": "Design the first V9 human-gate resolution slice that consumes V8 human_gate frontier state and an explicit approval artifact, then emits final trusted runtime state.",
+  "parallelism": {
+    "barriers": [
+      "approval validation before frontier validation",
+      "frontier validation before human gate resolution",
+      "human gate resolution before resume verification"
+    ],
+    "concurrency_cap": 1,
+    "fan_in_rule": "No fan-in in the first slice; one human_gate approval is resolved at a time.",
+    "shape": "pipeline"
+  },
+  "patterns": [
+    "Sequential",
+    "Resume And Cache",
+    "Adversarial Verify"
+  ],
+  "phases": [
+    {
+      "depends_on": [],
+      "entry_criteria": [
+        "approval artifact is tracked by git under fixtures/v9/approvals",
+        "approval decision is approve"
+      ],
+      "exit_criteria": [
+        "approval matches source V8 run",
+        "approval matches source packet and human_gate phase"
+      ],
+      "id": "approval_validation",
+      "name": "Approval Validation",
+      "outputs": [
+        "approval.json"
+      ],
+      "worker_ids": [
+        "human-gate-worker"
+      ]
+    },
+    {
+      "depends_on": [
+        "approval_validation"
+      ],
+      "entry_criteria": [
+        "approval artifact is valid"
+      ],
+      "exit_criteria": [
+        "V8 frontier resumes cleanly",
+        "V8 selected_phase_ids is human_gate"
+      ],
+      "id": "frontier_validation",
+      "name": "Frontier Validation",
+      "outputs": [
+        "frontier.json"
+      ],
+      "worker_ids": [
+        "human-gate-worker"
+      ]
+    },
+    {
+      "depends_on": [
+        "frontier_validation"
+      ],
+      "entry_criteria": [
+        "trusted V8 human_gate frontier exists"
+      ],
+      "exit_criteria": [
+        "human_gate is appended to completed_phase_ids",
+        "human_approved_phase_ids records human_gate",
+        "recomputed frontier has no ready or blocked phases"
+      ],
+      "id": "human_gate_resolution",
+      "name": "Human Gate Resolution",
+      "outputs": [
+        "run.json",
+        "state.json",
+        "human-approval.md",
+        "hashes.json",
+        "journal/0000.json"
+      ],
+      "worker_ids": [
+        "human-gate-worker"
+      ]
+    },
+    {
+      "depends_on": [
+        "human_gate_resolution"
+      ],
+      "entry_criteria": [
+        "V9 artifacts exist"
+      ],
+      "exit_criteria": [
+        "resume recomputes state, approval markdown, journal, and hashes",
+        "tampered state invalidates resume"
+      ],
+      "id": "resume_verification",
+      "name": "Resume Verification",
+      "outputs": [
+        "status.json",
+        "resume.md",
+        "hashes.json"
+      ],
+      "worker_ids": [
+        "human-gate-worker"
+      ]
+    }
+  ],
+  "plan_id": "v9-human-gate-resolution-first-slice",
+  "resume": {
+    "cacheable_outputs": [
+      "run.json",
+      "state.json",
+      "human-approval.md",
+      "hashes.json",
+      "status.json",
+      "resume.md"
+    ],
+    "invalidators": [
+      "approval artifact changes",
+      "V8 frontier changes",
+      "V4/V3/V1 lineage changes",
+      "generated state, approval markdown, journal, or hashes tampering"
+    ],
+    "restart_points": [
+      "approval_validation",
+      "frontier_validation",
+      "human_gate_resolution",
+      "resume_verification"
+    ]
+  },
+  "risk_gates": [
+    {
+      "requires_user_approval": true,
+      "safe_default": "stop before writing and ask for approval",
+      "trigger": "write"
+    },
+    {
+      "requires_user_approval": true,
+      "safe_default": "stop before shell use and ask for approval",
+      "trigger": "shell process"
+    },
+    {
+      "requires_user_approval": true,
+      "safe_default": "stop before network use and ask for approval",
+      "trigger": "network"
+    }
+  ],
+  "schema_version": "0.5",
+  "source_prompt": "Design the next workflow after V8 selected human_gate.",
+  "surfaces": [
+    {
+      "access_mode": "write-approved",
+      "id": "repo",
+      "kind": "repo",
+      "locator": "."
+    },
+    {
+      "access_mode": "read-only",
+      "id": "v8-frontier",
+      "kind": "artifact",
+      "locator": "out/v8/v32-semantic-dogfood"
+    },
+    {
+      "access_mode": "read-only",
+      "id": "human-approval",
+      "kind": "artifact",
+      "locator": "fixtures/v9/approvals/dogfood-human-approval.json"
+    },
+    {
+      "access_mode": "write-approved",
+      "id": "v9-output",
+      "kind": "artifact",
+      "locator": "out/v9/"
+    }
+  ],
+  "verification": [
+    {
+      "claim_or_output": "V9 consumes only a trusted V8 human_gate frontier and matching approval artifact.",
+      "evidence_required": [
+        "python scripts/resolve_human_gate.py --self-test",
+        "out/v9/v32-semantic-dogfood/status.json"
+      ],
+      "falsifier": "A mismatched or rejected approval can produce workflow-complete status."
+    },
+    {
+      "claim_or_output": "V9 completes the dogfood workflow only after human_gate is approved.",
+      "evidence_required": [
+        "python scripts/resolve_human_gate.py --frontier out/v8/v32-semantic-dogfood --approval fixtures/v9/approvals/dogfood-human-approval.json --out out/v9/v32-semantic-dogfood",
+        "out/v9/v32-semantic-dogfood/state.json"
+      ],
+      "falsifier": "V9 reports workflow-complete without human_approved_phase_ids containing human_gate, or reports frontier-ready without emitting packets."
+    },
+    {
+      "claim_or_output": "V9 generated artifacts are resumable and tamper-evident.",
+      "evidence_required": [
+        "python scripts/resolve_human_gate.py --resume out/v9/v32-semantic-dogfood",
+        "tampered state self-test"
+      ],
+      "falsifier": "Generated state, approval markdown, journal, or hashes can drift without invalidating resume."
+    }
+  ],
+  "workers": [
+    {
+      "context_budget": {
+        "max_files": 20,
+        "max_tokens": 12000,
+        "must_exclude": [
+          "out/**/work/"
+        ],
+        "must_include": [
+          "scripts/resolve_human_gate.py",
+          "scripts/ingest_frontier_review.py",
+          "fixtures/v9/approvals/dogfood-human-approval.json",
+          "docs/v9-human-gate-resolution-spec.md"
+        ]
+      },
+      "forbidden_actions": [
+        "worker execution",
+        "backend execution",
+        "external service calls",
+        "worktree merge",
+        "production deploy",
+        "secret access"
+      ],
+      "id": "human-gate-worker",
+      "ownership": [
+        "approval_validation",
+        "frontier_validation",
+        "human_gate_resolution",
+        "resume_verification"
+      ],
+      "prompt_contract": {
+        "inputs": [
+          "V8 frontier directory",
+          "human approval artifact",
+          "V8 packet metadata"
+        ],
+        "required_output_schema": "state.json plus status.json",
+        "stop_conditions": [
+          "approval artifact is missing or mismatched",
+          "V8 frontier is not clean",
+          "selected phase is not human_gate",
+          "execution, merge, deploy, external action, or nonterminal frontier emission would be required"
+        ]
+      },
+      "role": "Deterministic human gate resolver",
+      "tool_permissions": {
+        "mcp_connectors": [],
+        "network": false,
+        "read": true,
+        "requires_escalation_for": [],
+        "shell": true,
+        "write": true
+      }
+    }
+  ]
+}

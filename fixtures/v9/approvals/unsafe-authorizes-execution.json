@@ -1,0 +1,18 @@
+{
+  "approval_id": "v9-unsafe-authorizes-execution",
+  "approval_version": "0.1.0",
+  "approved_outputs": [
+    "human-approval.md"
+  ],
+  "attestations": [
+    "V8 selected human_gate as the next frontier",
+    "release_decision has reviewed evidence",
+    "no worker execution, merge, deployment, external message, secret access, or dependency installation is approved by this artifact",
+    "this artifact authorizes worker execution and deployment"
+  ],
+  "decision": "approve",
+  "phase_id": "human_gate",
+  "schema_version": "1.0",
+  "source_packet_id": "v8-frontier-0001-human_gate",
+  "source_v8_run_path": "out/v8/v32-semantic-dogfood"
+}

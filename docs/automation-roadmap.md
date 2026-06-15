@@ -1,6 +1,6 @@
 # DWM Automation Roadmap
 
-Status: draft; V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented
+Status: draft; V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented
 Date: 2026-06-15
 
 ## Purpose
@@ -35,6 +35,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | Frontier result adapter | produce controlled next-phase worker evidence | first controlled slice implemented |
 | Frontier result review | approve or reject next-phase worker evidence before ingestion | first review slice implemented |
 | Frontier review ingestion | consume reviewed frontier results and emit the next frontier | first ingestion slice implemented |
+| Human gate resolution | consume explicit human approval and complete human-gated frontier | first resolution slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | last |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
@@ -473,7 +474,43 @@ Full frontier review ingestion done means:
 - human gates are explicit packets, not silent completions,
 - workflow completion is declared only when no ready or blocked phase remains.
 
-### V9: Product Packaging
+### V9: Human Gate Resolution
+
+Status: first resolution slice implemented.
+
+Purpose: resolve the V8 `human_gate` frontier through a tracked approval
+artifact without treating chat text as runtime evidence.
+
+Spec: `docs/v9-human-gate-resolution-spec.md`.
+
+Workflow plan: `docs/v9-human-gate-resolution.workflow.plan.json`.
+
+First resolution slice done means:
+
+- `scripts/resolve_human_gate.py` consumes one trusted V8 frontier and one
+  tracked approval artifact,
+- V9 requires V8 `status: frontier-ready`, clean resume, and selected
+  `human_gate`,
+- V9 requires the approval to match the V8 run, packet, and phase,
+- V9 appends `human_gate` to `completed_phase_ids`,
+- V9 records `human_approved_phase_ids`,
+- V9 recomputes the frontier from the original plan and rejects nonterminal
+  cases in the first slice,
+- V9 dogfood reports `workflow-complete`,
+- V9 writes run, state, approval markdown, journal, hashes, status, and resume
+  artifacts under owned `out/v9/`,
+- V9 resume detects stale source evidence and tampered generated artifacts,
+- V9 does not execute workers, merge worktrees, deploy, or call external
+  services.
+
+Full human gate resolution done means:
+
+- multiple human gates can be resolved with deterministic ordering,
+- rejected and deferred gates route to bounded follow-up states,
+- approval artifacts can be produced by a real UI or CLI prompt,
+- workflow completion remains hash-bound and replayable.
+
+### V10: Product Packaging
 
 Status: planned.
 

@@ -30,6 +30,7 @@ workflows.
 | Worker result adapter | execute fixture-only worker result bundles under owned output | first controlled slice implemented |
 | Worker result review | approve or reject worker results before runtime advancement | first review slice implemented |
 | Runtime ingestion | consume reviewed worker results and emit the next frontier | first ingestion slice implemented |
+| Frontier dispatch | turn trusted runtime frontier packets into dispatch bundles | first loop-back slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | last |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
@@ -350,6 +351,32 @@ Full runtime ingestion done means:
 - rejected worker results route to repair instead of blocking manually,
 - human-gated phases preserve completed evidence while waiting,
 - the scheduler can loop from V6 frontier back to V4/V4.5/V5/V5.5.
+
+### V6.5: Frontier Dispatch
+
+Status: first loop-back slice implemented.
+
+Purpose: consume trusted V6 frontier packets and emit owned dispatch bundles
+without executing them.
+
+First loop-back slice done means:
+
+- `scripts/dispatch_frontier.py` consumes one trusted V6 frontier directory.
+- V6.5 requires V6 `status: frontier-ready` and clean resume.
+- V6.5 verifies the selected packet and prompt hashes against V6 state.
+- V6.5 emits `dispatch.json`, `packet.json`, `prompt.md`, `hashes.json`,
+  `status.json`, and `resume.md` under owned `out/v6.5/`.
+- V6.5 resume detects tampered dispatch, packet copy, prompt copy, and hashes.
+- V6.5 dogfood over `out/v6/v32-semantic-dogfood` prepares
+  `release_decision`.
+- V6.5 does not execute the frontier packet.
+
+Full loop-back done means:
+
+- prepared frontier dispatches can enter a controlled worker-result adapter,
+- reviewed next-phase results can be ingested by V6 again,
+- the runtime can repeat until no selected phases remain or a human gate stops
+  the workflow.
 
 ### V7: Product Packaging
 

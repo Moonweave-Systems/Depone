@@ -443,7 +443,7 @@ def build_frontier_packet(index: int, phase: dict[str, Any], context: dict[str, 
         "reviewed_phase_ids": [context["review"]["source_phase_id"]],
         "stop_conditions": [
             "do not execute this packet in V6 ingestion",
-            "route any worker result through V5.5 review before further runtime ingestion",
+            "route any frontier worker result through V7.5 frontier result review before runtime ingestion",
             "stop before destructive, external, costly, production, secret, dependency, database, public API, delete, or history-rewrite actions",
         ],
         "source_hashes": source,

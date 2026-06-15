@@ -1,6 +1,6 @@
 # DWM Automation Roadmap
 
-Status: draft; V3 entry runtime implemented; V7 controlled frontier result implemented
+Status: draft; V3 entry runtime implemented; V7.5 frontier result review implemented
 Date: 2026-06-15
 
 ## Purpose
@@ -33,7 +33,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | Runtime ingestion | consume reviewed worker results and emit the next frontier | first ingestion slice implemented |
 | Frontier dispatch | turn trusted runtime frontier packets into dispatch bundles | first loop-back slice implemented |
 | Frontier result adapter | produce controlled next-phase worker evidence | first controlled slice implemented |
-| Frontier result review | approve or reject next-phase worker evidence before ingestion | next workflow designed |
+| Frontier result review | approve or reject next-phase worker evidence before ingestion | first review slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | last |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
@@ -410,7 +410,7 @@ Full frontier result adapter done means:
 
 ### V7.5: Frontier Result Review
 
-Status: workflow designed; implementation pending.
+Status: first review slice implemented.
 
 Purpose: review V7 frontier-result evidence before any runtime ingestion treats
 the `release_decision` phase as complete.
@@ -421,11 +421,11 @@ Workflow plan: `docs/v7.5-frontier-result-review.workflow.plan.json`.
 
 First review slice done means:
 
-- a new review adapter consumes one trusted V7 result directory,
+- `scripts/review_frontier_result.py` consumes one trusted V7 result directory,
 - V7.5 requires V7 `status: executed` and clean resume,
 - V7.5 validates the V7 -> V6.5 -> V6 lineage before review,
-- V7.5 approves only the first `release_decision` fixture result with
-  `release-decision.md`,
+- V7.5 approves only the first `v6-frontier-0001-release_decision` fixture
+  result with `release-decision.md`,
 - V7.5 writes review, markdown, hashes, status, and resume artifacts under
   owned `out/v7.5/`,
 - V7.5 resume detects stale V7 source evidence and tampered review artifacts,

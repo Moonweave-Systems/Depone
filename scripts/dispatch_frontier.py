@@ -292,7 +292,7 @@ def build_dispatch(context: dict[str, Any], *, created_at: str | None = None) ->
         "expected_outputs": packet.get("expected_outputs", []),
         "stop_conditions": [
             "do not execute this dispatch bundle directly",
-            "route any worker result through reviewed evidence before runtime ingestion",
+            "route any frontier worker result through V7.5 frontier result review before runtime ingestion",
             "stop before destructive, external, costly, production, secret, dependency, database, public API, delete, or history-rewrite actions",
         ],
         "artifacts": {

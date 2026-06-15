@@ -373,6 +373,43 @@ def require_v3_decision_summary_consistency() -> None:
         raise SystemExit(f"V3 decision consistency failed: {exc}") from exc
 
 
+def require_v75_decision_summary_text(status: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    snapshots = status.get("snapshots")
+    if not isinstance(snapshots, dict):
+        raise SystemExit("V7.5 status is missing snapshots")
+    approved_outputs = status.get("approved_outputs")
+    if not isinstance(approved_outputs, list):
+        raise SystemExit("V7.5 status is missing approved_outputs")
+    required_snippets = [
+        "decision: keep",
+        "python scripts/review_frontier_result.py --self-test",
+        "python scripts/review_frontier_result.py --result out/v7/v32-semantic-dogfood --out out/v7.5/v32-semantic-dogfood",
+        "python scripts/review_frontier_result.py --resume out/v7.5/v32-semantic-dogfood",
+        f"`run_id`: `{status['run_id']}`",
+        f"`status`: `{status['status']}`",
+        f"`resume_state`: `{status['resume_state']}`",
+        f"`packet_id`: `{status['packet_id']}`",
+        f"`phase_id`: `{status['phase_id']}`",
+        f"`approved_outputs`: `{', '.join(str(output) for output in approved_outputs)}`",
+        f"`source_result_hash`: `{snapshots['source_result_hash']}`",
+        f"`source_packet_hash`: `{snapshots['source_packet_hash']}`",
+        "does not claim runtime ingestion",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v7.5-decision.md does not match V7.5 status: {missing}")
+
+
+def require_v75_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command([sys.executable, "scripts/review_frontier_result.py", "--resume", "out/v7.5/v32-semantic-dogfood"])
+        status = json.loads(completed.stdout)
+        require_v75_decision_summary_text(status, (ROOT / "docs" / "v7.5-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V7.5 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
@@ -383,12 +420,36 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/execute_packet.py", "--manifest", "fixtures/v2.5/manifest.json", "--out", "out/v2.5/final"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
+        [sys.executable, "scripts/review_frontier_result.py", "--self-test"],
         [sys.executable, "scripts/check_whitespace.py", "."],
         [sys.executable, "scripts/check_release_text.py", "."],
         [sys.executable, "scripts/check_release_text.py", "--self-test"],
     ]
     for command in commands:
         run_contract_command(command)
+    completed = run_contract_command(
+        [
+            sys.executable,
+            "scripts/review_frontier_result.py",
+            "--result",
+            "out/v7/v32-semantic-dogfood",
+            "--out",
+            "out/v7.5/v32-semantic-dogfood",
+        ]
+    )
+    try:
+        v75_review = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V7.5 dogfood review CLI output was not JSON: {completed.stdout}") from exc
+    if v75_review.get("status") != "review-approved":
+        raise SystemExit(f"V7.5 dogfood review did not approve: {completed.stdout}")
+    completed = run_contract_command([sys.executable, "scripts/review_frontier_result.py", "--resume", "out/v7.5/v32-semantic-dogfood"])
+    try:
+        v75_resumed = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V7.5 dogfood resume CLI output was not JSON: {completed.stdout}") from exc
+    if v75_resumed.get("status") != "review-approved" or v75_resumed.get("resume_state") != "resumable":
+        raise SystemExit(f"V7.5 dogfood resume did not produce clean resumable state: {completed.stdout}")
     cli_out = ROOT / "out" / "v1" / "contract-cli"
     completed = run_contract_command(
         [
@@ -784,6 +845,41 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V3 decision summary passed")
 
+    v75_status = {
+        "run_id": "v32-semantic-dogfood",
+        "status": "review-approved",
+        "resume_state": "resumable",
+        "packet_id": "v6-frontier-0001-release_decision",
+        "phase_id": "release_decision",
+        "approved_outputs": ["release-decision.md"],
+        "snapshots": {
+            "source_result_hash": "abc123",
+            "source_packet_hash": "def456",
+        },
+    }
+    good_v75_decision = (
+        "Decision: keep\n"
+        "python scripts/review_frontier_result.py --self-test\n"
+        "python scripts/review_frontier_result.py --result out/v7/v32-semantic-dogfood --out out/v7.5/v32-semantic-dogfood\n"
+        "python scripts/review_frontier_result.py --resume out/v7.5/v32-semantic-dogfood\n"
+        "- `run_id`: `v32-semantic-dogfood`\n"
+        "- `status`: `review-approved`\n"
+        "- `resume_state`: `resumable`\n"
+        "- `packet_id`: `v6-frontier-0001-release_decision`\n"
+        "- `phase_id`: `release_decision`\n"
+        "- `approved_outputs`: `release-decision.md`\n"
+        "- `source_result_hash`: `abc123`\n"
+        "- `source_packet_hash`: `def456`\n"
+        "This decision does not claim runtime ingestion.\n"
+    )
+    require_v75_decision_summary_text(v75_status, good_v75_decision)
+    try:
+        require_v75_decision_summary_text(v75_status, good_v75_decision.replace("abc123", "stale999", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V7.5 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -840,6 +936,7 @@ def main() -> None:
             "python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final",
             "python scripts/run_workflow.py --self-test",
             "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
+            "python scripts/review_frontier_result.py --self-test",
             "docs/v2.5-review-repair-spec.md",
             "docs/v2.5-to-v3.workflow.plan.json",
             "docs/v2.5-decision.md",
@@ -853,6 +950,8 @@ def main() -> None:
             "out/v2/final/summary.json",
             "v2 still does not execute omx",
             "advance multi-slice workflows",
+            "docs/v7.5-frontier-result-review-spec.md",
+            "docs/v7.5-decision.md",
             "does not execute later",
         ],
     )
@@ -932,6 +1031,22 @@ def main() -> None:
             "dangerous verification-command refusal",
             "fixture-command mode",
             "installed codex path remains optional live smoke evidence",
+            "v7.5 frontier result review implemented",
+            "docs/v7.5-frontier-result-review-spec.md",
+            "first review slice implemented",
+        ],
+    )
+    require_terms(
+        "docs/v7.5-decision.md",
+        [
+            "decision: keep",
+            "python scripts/review_frontier_result.py --self-test",
+            "python scripts/review_frontier_result.py --result out/v7/v32-semantic-dogfood --out out/v7.5/v32-semantic-dogfood",
+            "python scripts/review_frontier_result.py --resume out/v7.5/v32-semantic-dogfood",
+            "`status`: `review-approved`",
+            "`resume_state`: `resumable`",
+            "`approved_outputs`: `release-decision.md`",
+            "does not claim runtime ingestion",
         ],
     )
     require_terms(
@@ -1024,6 +1139,7 @@ def main() -> None:
     require_v2_decision_summary_consistency()
     require_v25_decision_summary_consistency()
     require_v3_decision_summary_consistency()
+    require_v75_decision_summary_consistency()
     print("contract smoke: pass")
 
 

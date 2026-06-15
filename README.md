@@ -84,6 +84,8 @@ Use $dynamic-workflow-designer to plan a 500-file migration with verification ga
 │                                      # V6.5 frontier-dispatch spec
 ├── docs/v7-controlled-frontier-result-spec.md
 │                                      # V7 controlled-frontier-result spec
+├── docs/v7.5-frontier-result-review-spec.md
+│                                      # V7.5 frontier-result review spec
 ├── docs/github-research.md          # Prior-art survey and import decisions
 ├── docs/dwm-branding.md             # Product naming and compatibility rules
 ├── assets/dwm-hero.svg              # README hero image
@@ -244,7 +246,8 @@ V4 schedules ready phase packets, V4.5 prepares dispatch bundles, V5 records
 fixture-only worker result evidence, V5.5 reviews that result, and V6 ingests
 approved reviewed results into the next frontier. V6.5 turns that trusted
 frontier back into an emit-only dispatch bundle. V7 records controlled fixture
-evidence for that next phase. The current dogfood chain ends with
+evidence for that next phase. V7.5 is designed as the next review gate before
+that frontier evidence can be ingested. The current implemented dogfood chain ends with
 `out/v7/v32-semantic-dogfood/status.json` reporting `status: executed` for
 `release_decision`.
 
@@ -254,6 +257,10 @@ The V6 runtime-ingestion spec and decision are
 [`docs/v6.5-frontier-dispatch-spec.md`](docs/v6.5-frontier-dispatch-spec.md).
 V7 is described in
 [`docs/v7-controlled-frontier-result-spec.md`](docs/v7-controlled-frontier-result-spec.md).
+V7.5 is designed in
+[`docs/v7.5-frontier-result-review-spec.md`](docs/v7.5-frontier-result-review-spec.md)
+and
+[`docs/v7.5-frontier-result-review.workflow.plan.json`](docs/v7.5-frontier-result-review.workflow.plan.json).
 V7 still does not run arbitrary worker backends, merge worktrees, or claim fully
 autonomous large-task completion.
 

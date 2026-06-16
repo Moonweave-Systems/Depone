@@ -183,6 +183,10 @@ task itself needs dynamic orchestration.
 ├── docs/v30-decision.md
 ├── docs/v31-live-receipt-judgment-spec.md
 ├── docs/v31-decision.md
+├── docs/v32-live-score-verifier-spec.md
+├── docs/v32-decision.md
+├── docs/v32-to-v35-live-scoring-workflow.md
+├── docs/v32-to-v35-live-scoring-workflow.plan.json
 ├── docs/github-research.md          # Prior-art survey and import decisions
 ├── docs/dwm-branding.md             # Product naming and compatibility rules
 ├── assets/dwm-hero.svg              # README hero image
@@ -266,6 +270,8 @@ python scripts/dwm_live_receipt.py --self-test
 python scripts/dwm_live_receipt.py --manifest fixtures/v30/manifest.json --out out/live-receipts/v30-final
 python scripts/dwm_live_receipt_judge.py --self-test
 python scripts/dwm_live_receipt_judge.py --manifest fixtures/v31/manifest.json --out out/live-receipt-judgments/v31-final
+python scripts/dwm_live_score.py --self-test
+python scripts/dwm_live_score.py --manifest fixtures/v32/manifest.json --out out/live-scores/v32-final
 python scripts/run_workflow.py --self-test
 python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final
 python scripts/orchestrate_workflow.py --self-test
@@ -361,6 +367,12 @@ For V31 live receipt judgment, use:
 
 ```bash
 python scripts/dwm_live_receipt_judge.py judge --receipt-dir out/live-receipts/<receipt_id> --out out/live-receipt-judgments/<judgment_id>
+```
+
+For V32 live score verification, use:
+
+```bash
+python scripts/dwm_live_score.py score --judgment-dir out/live-receipt-judgments/<judgment_id> --receipt-dir out/live-receipts/<receipt_id> --verification verification.json --out out/live-scores/<score_id>
 ```
 
 For hash-bound HUD evidence approval, use:

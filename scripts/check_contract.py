@@ -1408,6 +1408,50 @@ def require_v31_receipt_judge_decision_summary_consistency() -> None:
         raise SystemExit(f"V31 decision consistency failed: {exc}") from exc
 
 
+def require_v32_live_score_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/dwm_live_score.py --manifest fixtures/v32/manifest.json --out out/live-scores/v32-final",
+        "score.json",
+        "err_live_score_artifact_missing",
+        "err_live_score_stale_judgment",
+        "err_live_score_task_mismatch",
+        "err_live_score_hash_mismatch",
+        "err_live_score_verification_invalid",
+        "does not claim live model execution",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v32-decision.md does not match V32 summary: {missing}")
+
+
+def require_v32_live_score_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/dwm_live_score.py",
+                "--manifest",
+                "fixtures/v32/manifest.json",
+                "--out",
+                "out/live-scores/v32-final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        require_v32_live_score_decision_summary_text(summary, (ROOT / "docs" / "v32-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V32 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
@@ -1449,6 +1493,8 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_live_receipt.py", "--manifest", "fixtures/v30/manifest.json", "--out", "out/live-receipts/v30-final"],
         [sys.executable, "scripts/dwm_live_receipt_judge.py", "--self-test"],
         [sys.executable, "scripts/dwm_live_receipt_judge.py", "--manifest", "fixtures/v31/manifest.json", "--out", "out/live-receipt-judgments/v31-final"],
+        [sys.executable, "scripts/dwm_live_score.py", "--self-test"],
+        [sys.executable, "scripts/dwm_live_score.py", "--manifest", "fixtures/v32/manifest.json", "--out", "out/live-scores/v32-final"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -2748,6 +2794,38 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V31 decision summary passed")
 
+    v32_summary = {
+        "suite_id": "v32-final",
+        "fixture_count": 7,
+        "required_fixture_count": 7,
+        "required_passed": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "decision": "keep",
+    }
+    good_v32_decision = (
+        "Decision: keep\n"
+        "python scripts/dwm_live_score.py --manifest fixtures/v32/manifest.json --out out/live-scores/v32-final\n"
+        "- `suite_id`: `v32-final`\n"
+        "- `fixture_count`: 7\n"
+        "- `required_fixture_count`: 7\n"
+        "- `required_passed`: 7\n"
+        "- `passed`: 7\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 0\n"
+        "- `decision`: `keep`\n"
+        "The accepted suite covers score.json, ERR_LIVE_SCORE_ARTIFACT_MISSING, ERR_LIVE_SCORE_STALE_JUDGMENT, ERR_LIVE_SCORE_TASK_MISMATCH, ERR_LIVE_SCORE_HASH_MISMATCH, and ERR_LIVE_SCORE_VERIFICATION_INVALID.\n"
+        "This decision does not claim live model execution.\n"
+    )
+    require_v32_live_score_decision_summary_text(v32_summary, good_v32_decision)
+    try:
+        require_v32_live_score_decision_summary_text(v32_summary, good_v32_decision.replace("`passed`: 7", "`passed`: 6", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V32 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -3330,6 +3408,29 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v32-live-score-verifier-spec.md",
+        [
+            "status: implemented first live score verifier bridge in",
+            "score.json",
+            "err_live_score_artifact_missing",
+            "err_live_score_stale_judgment",
+            "err_live_score_task_mismatch",
+            "err_live_score_hash_mismatch",
+            "err_live_score_verification_invalid",
+        ],
+    )
+    require_terms(
+        "docs/v32-to-v35-live-scoring-workflow.md",
+        [
+            "turn v31 live receipt judgments into benchmark-scoring evidence",
+            "pipeline with adversarial verification",
+            "v32 task verifier",
+            "v33 aggregate scorer",
+            "v34 adversarial review",
+            "v35 report",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -3378,7 +3479,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `70`",
+            "`release_command_count`: `72`",
             "does not claim workflow execution",
         ],
     )
@@ -3511,6 +3612,7 @@ def main() -> None:
     require_v29_runner_preflight_decision_summary_consistency()
     require_v30_receipt_decision_summary_consistency()
     require_v31_receipt_judge_decision_summary_consistency()
+    require_v32_live_score_decision_summary_consistency()
     print("contract smoke: pass")
 
 

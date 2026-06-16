@@ -1,0 +1,64 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "score-recorded",
+      "expected_verification_status": "passed",
+      "id": "live-score-passed",
+      "kind": "score-passed",
+      "required": true
+    },
+    {
+      "expected_status": "score-recorded",
+      "expected_verification_status": "failed",
+      "id": "live-score-failed",
+      "kind": "score-failed",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_LIVE_SCORE_STALE_JUDGMENT",
+      "expected_judgment_hash": "stale-judgment-hash",
+      "expected_status": "blocked",
+      "id": "live-score-stale-judgment-blocked",
+      "kind": "stale-judgment",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_LIVE_SCORE_TASK_MISMATCH",
+      "expected_status": "blocked",
+      "id": "live-score-task-mismatch-blocked",
+      "kind": "task-mismatch",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_LIVE_SCORE_HASH_MISMATCH",
+      "expected_status": "blocked",
+      "id": "live-score-hash-mismatch-blocked",
+      "kind": "hash-mismatch",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_LIVE_SCORE_ARTIFACT_MISSING",
+      "expected_status": "blocked",
+      "id": "live-score-missing-artifact-blocked",
+      "kind": "missing-artifact",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_LIVE_SCORE_VERIFICATION_INVALID",
+      "expected_status": "blocked",
+      "id": "live-score-verification-invalid-blocked",
+      "kind": "verification-invalid",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "live-score-passed",
+    "live-score-failed",
+    "live-score-stale-judgment-blocked",
+    "live-score-task-mismatch-blocked",
+    "live-score-hash-mismatch-blocked",
+    "live-score-missing-artifact-blocked",
+    "live-score-verification-invalid-blocked"
+  ],
+  "suite_id": "v32-live-score-verifier"
+}

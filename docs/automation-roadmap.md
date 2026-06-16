@@ -634,6 +634,10 @@ The planned roadmap splits the remaining product into versioned specs:
   `docs/v30-live-receipt-ingestion-spec.md`.
 - V31 live receipt judgment:
   `docs/v31-live-receipt-judgment-spec.md`.
+- V32 live score verifier:
+  `docs/v32-live-score-verifier-spec.md`.
+- V32-V35 live scoring workflow:
+  `docs/v32-to-v35-live-scoring-workflow.md`.
 
 These specs define the intended path to an independent DWM product that can use
 Codex CLI directly through DWM Runner while keeping OMX optional rather than a

@@ -1,0 +1,55 @@
+{
+  "fixtures": [
+    {
+      "adapter_command": "python",
+      "expected_status": "planned",
+      "id": "live-attempt-plan-local-ready",
+      "kind": "plan",
+      "required": true,
+      "task_id": "failing-test-fix"
+    },
+    {
+      "adapter_command": "__dwm_missing_adapter__",
+      "expected_error": "ERR_LIVE_ATTEMPT_ADAPTER_UNAVAILABLE",
+      "expected_status": "skipped",
+      "id": "live-attempt-plan-missing-adapter-skipped",
+      "kind": "plan",
+      "required": true,
+      "task_id": "failing-test-fix"
+    },
+    {
+      "expected_error": "ERR_LIVE_ATTEMPT_STALE_SMOKE",
+      "expected_status": "blocked",
+      "expected_template_hash": "stale-template-hash",
+      "id": "live-attempt-plan-stale-smoke-blocked",
+      "kind": "stale-smoke",
+      "required": true,
+      "task_id": "failing-test-fix"
+    },
+    {
+      "expected_error": "ERR_LIVE_ATTEMPT_UNKNOWN_TASK",
+      "expected_status": "blocked",
+      "id": "live-attempt-plan-unknown-task-blocked",
+      "kind": "unknown-task",
+      "required": true,
+      "task_id": "missing-task"
+    },
+    {
+      "adapter_command": "../codex",
+      "expected_error": "ERR_LIVE_ATTEMPT_UNSAFE_COMMAND",
+      "expected_status": "blocked",
+      "id": "live-attempt-plan-unsafe-command-blocked",
+      "kind": "unsafe-command",
+      "required": true,
+      "task_id": "failing-test-fix"
+    }
+  ],
+  "required_fixture_ids": [
+    "live-attempt-plan-local-ready",
+    "live-attempt-plan-missing-adapter-skipped",
+    "live-attempt-plan-stale-smoke-blocked",
+    "live-attempt-plan-unknown-task-blocked",
+    "live-attempt-plan-unsafe-command-blocked"
+  ],
+  "suite_id": "v28-live-attempt-planner"
+}

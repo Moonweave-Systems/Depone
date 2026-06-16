@@ -175,6 +175,8 @@ task itself needs dynamic orchestration.
 ├── docs/v26-decision.md
 ├── docs/v27-adapter-smoke-spec.md
 ├── docs/v27-decision.md
+├── docs/v28-live-attempt-planner-spec.md
+├── docs/v28-decision.md
 ├── docs/github-research.md          # Prior-art survey and import decisions
 ├── docs/dwm-branding.md             # Product naming and compatibility rules
 ├── assets/dwm-hero.svg              # README hero image
@@ -250,6 +252,8 @@ python scripts/dwm_benchmark_attempts.py --self-test
 python scripts/dwm_benchmark_attempts.py --manifest fixtures/v26/manifest.json --out out/benchmark-attempts/v26-final
 python scripts/dwm_adapter_smoke.py --self-test
 python scripts/dwm_adapter_smoke.py --manifest fixtures/v27/manifest.json --out out/adapter-smoke/v27-final
+python scripts/dwm_live_attempt_plan.py --self-test
+python scripts/dwm_live_attempt_plan.py --manifest fixtures/v28/manifest.json --out out/live-attempt-plans/v28-final
 python scripts/run_workflow.py --self-test
 python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final
 python scripts/orchestrate_workflow.py --self-test
@@ -321,6 +325,12 @@ For V27 adapter smoke evidence, use:
 
 ```bash
 python scripts/dwm_adapter_smoke.py smoke --adapter-command codex --task-id failing-test-fix --out out/adapter-smoke/<smoke_id>
+```
+
+For V28 live attempt command planning, use:
+
+```bash
+python scripts/dwm_live_attempt_plan.py plan --adapter-command codex --task-id failing-test-fix --out out/live-attempt-plans/<plan_id>
 ```
 
 For hash-bound HUD evidence approval, use:

@@ -1233,6 +1233,50 @@ def require_v27_smoke_decision_summary_consistency() -> None:
         raise SystemExit(f"V27 decision consistency failed: {exc}") from exc
 
 
+def require_v28_live_plan_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/dwm_live_attempt_plan.py --manifest fixtures/v28/manifest.json --out out/live-attempt-plans/v28-final",
+        "command-plan.json",
+        "prompt.md",
+        "err_live_attempt_adapter_unavailable",
+        "err_live_attempt_stale_smoke",
+        "err_live_attempt_unknown_task",
+        "err_live_attempt_unsafe_command",
+        "does not claim live model execution",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v28-decision.md does not match V28 summary: {missing}")
+
+
+def require_v28_live_plan_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/dwm_live_attempt_plan.py",
+                "--manifest",
+                "fixtures/v28/manifest.json",
+                "--out",
+                "out/live-attempt-plans/v28-final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        require_v28_live_plan_decision_summary_text(summary, (ROOT / "docs" / "v28-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V28 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
@@ -1266,6 +1310,8 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_benchmark_attempts.py", "--manifest", "fixtures/v26/manifest.json", "--out", "out/benchmark-attempts/v26-final"],
         [sys.executable, "scripts/dwm_adapter_smoke.py", "--self-test"],
         [sys.executable, "scripts/dwm_adapter_smoke.py", "--manifest", "fixtures/v27/manifest.json", "--out", "out/adapter-smoke/v27-final"],
+        [sys.executable, "scripts/dwm_live_attempt_plan.py", "--self-test"],
+        [sys.executable, "scripts/dwm_live_attempt_plan.py", "--manifest", "fixtures/v28/manifest.json", "--out", "out/live-attempt-plans/v28-final"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -2437,6 +2483,38 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V27 decision summary passed")
 
+    v28_summary = {
+        "suite_id": "v28-final",
+        "fixture_count": 5,
+        "required_fixture_count": 5,
+        "required_passed": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 1,
+        "decision": "keep",
+    }
+    good_v28_decision = (
+        "Decision: keep\n"
+        "python scripts/dwm_live_attempt_plan.py --manifest fixtures/v28/manifest.json --out out/live-attempt-plans/v28-final\n"
+        "- `suite_id`: `v28-final`\n"
+        "- `fixture_count`: 5\n"
+        "- `required_fixture_count`: 5\n"
+        "- `required_passed`: 5\n"
+        "- `passed`: 5\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 1\n"
+        "- `decision`: `keep`\n"
+        "The accepted suite covers command-plan.json, prompt.md, ERR_LIVE_ATTEMPT_ADAPTER_UNAVAILABLE, ERR_LIVE_ATTEMPT_STALE_SMOKE, ERR_LIVE_ATTEMPT_UNKNOWN_TASK, and ERR_LIVE_ATTEMPT_UNSAFE_COMMAND.\n"
+        "This decision does not claim live model execution.\n"
+    )
+    require_v28_live_plan_decision_summary_text(v28_summary, good_v28_decision)
+    try:
+        require_v28_live_plan_decision_summary_text(v28_summary, good_v28_decision.replace("`skipped`: 1", "`skipped`: 0", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V28 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -2971,6 +3049,19 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v28-live-attempt-planner-spec.md",
+        [
+            "status: implemented first live attempt planner in",
+            "prompt.md",
+            "command-plan.json",
+            "status.json",
+            "err_live_attempt_adapter_unavailable",
+            "err_live_attempt_stale_smoke",
+            "err_live_attempt_unknown_task",
+            "err_live_attempt_unsafe_command",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -3019,7 +3110,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `62`",
+            "`release_command_count`: `64`",
             "does not claim workflow execution",
         ],
     )
@@ -3148,6 +3239,7 @@ def main() -> None:
     require_v25_tasks_decision_summary_consistency()
     require_v26_attempts_decision_summary_consistency()
     require_v27_smoke_decision_summary_consistency()
+    require_v28_live_plan_decision_summary_consistency()
     print("contract smoke: pass")
 
 

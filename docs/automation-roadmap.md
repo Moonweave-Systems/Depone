@@ -625,7 +625,9 @@ The planned roadmap splits the remaining product into versioned specs:
 - V26 benchmark attempt harness:
   `docs/v26-benchmark-attempt-harness-spec.md`,
 - V27 adapter smoke:
-  `docs/v27-adapter-smoke-spec.md`.
+  `docs/v27-adapter-smoke-spec.md`,
+- V28 live attempt planner:
+  `docs/v28-live-attempt-planner-spec.md`.
 
 These specs define the intended path to an independent DWM product that can use
 Codex CLI directly through DWM Runner while keeping OMX optional rather than a

@@ -38,10 +38,10 @@ entrypoint remains `dynamic-workflow-designer`.
 | Human gate resolution | consume explicit human approval and complete human-gated frontier | first resolution slice implemented |
 | Product surface | plugin, CLI, dashboard, and release packaging | first operator guidance slice implemented |
 | Adapter command planner | generate exact next adapter commands without execution | planned V12 |
-| DWM Runner | execute DWM-approved packets through Codex CLI with evidence | planned V13 |
+| DWM Runner | execute read-only or pre-isolated DWM-approved packets through Codex CLI with evidence | planned V13 |
 | Session/worktree runtime | durable sessions, worktree isolation, logs, and resume | planned V14 |
-| Multi-worker fanout | bounded parallel Codex workers and deterministic fan-in | planned V15 |
-| Runtime review/repair | runner-backed review, repair, and retry loops | planned V16 |
+| Runtime review/repair | runner-backed review, repair, and retry loops | planned V15 |
+| Multi-worker fanout | bounded parallel Codex workers and deterministic fan-in | planned V16 |
 | Dashboard/HUD | local evidence browser, human gates, and next-action UI | planned V17 |
 | Plugin/install packaging | installable CLI/plugin and migration surface | planned V18 |
 | Adapter ecosystem | optional Codex, OMX, Claude, shell, and fixture adapters | planned V19 |
@@ -591,10 +591,10 @@ The planned roadmap splits the remaining product into versioned specs:
   `docs/v13-dwm-runner-mvp-spec.md`,
 - V14 session and worktree runtime:
   `docs/v14-session-worktree-runtime-spec.md`,
-- V15 multi-worker fanout:
-  `docs/v15-multi-worker-fanout-spec.md`,
-- V16 runtime review and repair:
-  `docs/v16-runtime-review-repair-spec.md`,
+- V15 runtime review and repair:
+  `docs/v15-runtime-review-repair-spec.md`,
+- V16 multi-worker fanout:
+  `docs/v16-multi-worker-fanout-spec.md`,
 - V17 dashboard and approval UI:
   `docs/v17-dashboard-hud-spec.md`,
 - V18 plugin and install packaging:

@@ -1,4 +1,4 @@
-# V15 Multi-Worker Fanout Spec
+# V16 Multi-Worker Fanout Spec
 
 Status: planned; not implemented.
 
@@ -10,7 +10,7 @@ durable enough to preserve evidence per worker.
 
 ## Product Position And Non-Goals
 
-V15 adds bounded parallel worker execution. It is not an unrestricted team
+V16 adds bounded parallel worker execution. It is not an unrestricted team
 launcher.
 
 Non-goals:

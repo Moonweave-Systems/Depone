@@ -29,10 +29,10 @@ required dependency for the core DWM workflow contract.
 | Version | Name | Layer | Goal |
 | --- | --- | --- | --- |
 | V12 | Adapter Command Planner | Core/Product CLI | Generate exact next adapter commands without executing them. |
-| V13 | DWM Runner MVP | Runner | Execute one approved packet through Codex CLI with evidence capture. |
+| V13 | DWM Runner MVP | Runner | Execute one approved packet only in read-only mode or an already isolated worktree. |
 | V14 | Session And Worktree Runtime | Runner | Add durable sessions, worktree isolation, logs, and resume. |
-| V15 | Multi-Worker Fanout | Runner | Run bounded parallel Codex workers with deterministic fan-in. |
-| V16 | Runtime Review And Repair | Core/Runner | Add runner-backed review, repair, and retry loops. |
+| V15 | Runtime Review And Repair | Core/Runner | Add runner-backed review, repair, and retry loops. |
+| V16 | Multi-Worker Fanout | Runner | Run bounded parallel Codex workers with deterministic fan-in. |
 | V17 | Dashboard And Approval UI | Product Shell | Provide local UI for runs, evidence, human gates, and next actions. |
 | V18 | Plugin And Install Packaging | Product Shell | Package DWM as an installable CLI/plugin with stable contracts. |
 | V19 | Adapter Ecosystem | Integration | Support optional Codex, OMX, Claude, shell, and local fixture adapters. |
@@ -77,6 +77,8 @@ DWM Product Shell owns:
 - Do not make OMX a required dependency.
 - Do not hide execution state in opaque logs.
 - Do not execute risky actions without DWM Core gates.
+- Do not let V13 create worktrees, attach sessions, or execute write-mode
+  packets unless the caller already provided an isolated worktree.
 - Do not treat model output as proof without artifacts and verification.
 
 ## Completion Target

@@ -1,4 +1,4 @@
-# V16 Runtime Review And Repair Spec
+# V15 Runtime Review And Repair Spec
 
 Status: planned; not implemented.
 
@@ -10,7 +10,7 @@ model claims.
 
 ## Product Position And Non-Goals
 
-V16 adds runner-backed review and bounded repair.
+V15 adds runner-backed review and bounded repair.
 
 Non-goals:
 

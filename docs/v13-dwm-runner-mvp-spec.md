@@ -12,7 +12,8 @@ to DWM Core.
 ## Product Position And Non-Goals
 
 V13 introduces DWM Runner as the first native execution layer. It is still not
-a multi-agent runtime.
+a multi-agent runtime, and it may execute only read-only packets or packets
+whose caller has already placed execution inside an isolated worktree.
 
 Non-goals:
 
@@ -21,6 +22,7 @@ Non-goals:
 - do not provide a dashboard,
 - do not support arbitrary shell commands,
 - do not bypass DWM gates.
+- do not create worktrees or attach durable sessions before V14.
 
 ## Workflow Architecture
 
@@ -45,8 +47,9 @@ Runner output should include:
 ## Execution Model
 
 The MVP runner may call Codex CLI only through an explicit allowlisted command
-shape. It must capture outputs before DWM Core decides whether the run is
-trusted.
+shape planned by V12. It must capture outputs before DWM Core decides whether
+the run is trusted. Write-mode execution is allowed only when the input run
+already points at an isolated worktree prepared outside V13.
 
 ## Safety And Verification Gates
 

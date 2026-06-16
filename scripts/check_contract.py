@@ -1678,6 +1678,8 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_live_report.py", "--manifest", "fixtures/v35/manifest.json", "--out", "out/live-reports/v35-final"],
         [sys.executable, "scripts/dwm_readme_benchmark_graph.py", "--self-test"],
         [sys.executable, "scripts/dwm_readme_benchmark_graph.py", "--manifest", "fixtures/v36/manifest.json", "--out", "out/readme-benchmark-graphs/v36-final"],
+        [sys.executable, "scripts/dwm_benchmark_history.py", "--self-test"],
+        [sys.executable, "scripts/dwm_benchmark_history.py", "--manifest", "fixtures/v38/manifest.json", "--out", "out/benchmark-history/v38-final"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -3194,6 +3196,7 @@ def main() -> None:
             "python scripts/dwm_live_runner_preflight.py preflight --plan out/live-attempt-plans/<plan_id> --out out/live-runner-preflight/<preflight_id>",
             "python scripts/dwm_live_receipt.py ingest --preflight out/live-runner-preflight/<preflight_id> --receipt receipt.json --out out/live-receipts/<receipt_id>",
             "python scripts/dwm_live_report.py publish --review out/live-score-reviews/<review_id> --out out/live-reports/<report_id>",
+            "python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>",
             "python scripts/dwm_readme_benchmark_graph.py generate --report out/live-reports/<report_id> --out out/readme-benchmark-graphs/<graph_id>",
             "python scripts/dwm_hud.py approve --hud out/hud/<hud_id> --out out/hud/<approval_id> --approver <name>",
             "python scripts/dwm_install.py validate",
@@ -3203,6 +3206,8 @@ def main() -> None:
             "benchmark-graph.json",
             "benchmark-graph.svg",
             "readme-snippet.md",
+            "history.json",
+            "trend.svg",
             "assets/dwm-hero.svg",
             "assets/dwm-live-benchmark.svg",
             "assets/dwm-live-benchmark.json",
@@ -3214,6 +3219,7 @@ def main() -> None:
             "docs/v35-live-report-spec.md",
             "docs/v36-readme-benchmark-graph-spec.md",
             "docs/v37-readme-public-page-spec.md",
+            "docs/v38-benchmark-history-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "deterministic control-plane above agent clis",
             "bounded adapter surfaces",
@@ -3746,6 +3752,19 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v38-benchmark-history-spec.md",
+        [
+            "status: implemented first benchmark history ledger and trend graph in",
+            "history.json",
+            "trend.svg",
+            "report.json.graph_metrics",
+            "err_benchmark_history_artifact_missing",
+            "err_benchmark_history_stale_report",
+            "err_benchmark_history_metrics_invalid",
+            "err_benchmark_history_duplicate_report",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -3794,7 +3813,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `80`",
+            "`release_command_count`: `82`",
             "does not claim workflow execution",
         ],
     )

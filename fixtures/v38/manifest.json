@@ -1,0 +1,56 @@
+{
+  "fixtures": [
+    {
+      "expected_entry_count": 1,
+      "expected_status": "history-recorded",
+      "id": "benchmark-history-single-report",
+      "kind": "history-single-report",
+      "required": true
+    },
+    {
+      "expected_entry_count": 2,
+      "expected_status": "history-recorded",
+      "id": "benchmark-history-two-point-trend",
+      "kind": "history-two-point-trend",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_HISTORY_STALE_REPORT",
+      "expected_report_hash": "stale-report-hash",
+      "expected_status": "blocked",
+      "id": "benchmark-history-stale-report-blocked",
+      "kind": "stale-report",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_HISTORY_METRICS_INVALID",
+      "expected_status": "blocked",
+      "id": "benchmark-history-metrics-invalid-blocked",
+      "kind": "metrics-invalid",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_HISTORY_DUPLICATE_REPORT",
+      "expected_status": "blocked",
+      "id": "benchmark-history-duplicate-report-blocked",
+      "kind": "duplicate-report",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_HISTORY_ARTIFACT_MISSING",
+      "expected_status": "blocked",
+      "id": "benchmark-history-missing-artifact-blocked",
+      "kind": "missing-artifact",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "benchmark-history-single-report",
+    "benchmark-history-two-point-trend",
+    "benchmark-history-stale-report-blocked",
+    "benchmark-history-metrics-invalid-blocked",
+    "benchmark-history-duplicate-report-blocked",
+    "benchmark-history-missing-artifact-blocked"
+  ],
+  "suite_id": "v38-benchmark-history"
+}

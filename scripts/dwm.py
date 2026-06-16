@@ -57,6 +57,8 @@ RELEASE_COMMANDS = [
     "python scripts/dwm.py resume --run out/v21/release-run-smoke --json",
     "python scripts/dwm_roles.py --self-test",
     "python scripts/dwm_roles.py --manifest fixtures/v22/manifest.json --out out/roles/v22-final",
+    "python scripts/dwm_benchmark.py --self-test",
+    "python scripts/dwm_benchmark.py --manifest fixtures/v23/manifest.json --out out/benchmarks/v23-final",
     "python scripts/run_workflow.py --self-test",
     "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
     "python scripts/orchestrate_workflow.py --self-test",
@@ -122,7 +124,10 @@ BASE_REQUIRED_PATHS = [
     "docs/v21-product-shell-spec.md",
     "docs/v22-decision.md",
     "docs/v22-role-pack-spec.md",
+    "docs/v23-decision.md",
+    "docs/v23-harness-benchmark-spec.md",
     "packaging/dwm-adapters.json",
+    "packaging/dwm-benchmarks.json",
     "packaging/dwm-package.json",
     "packaging/dwm-roles.json",
     "scripts/dwm.py",
@@ -134,6 +139,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_review_gate.py",
     "scripts/dwm_dogfood_replay.py",
     "scripts/dwm_roles.py",
+    "scripts/dwm_benchmark.py",
 ]
 
 

@@ -1,0 +1,67 @@
+{
+  "metrics": [
+    "evidence_completeness",
+    "unreviewed_change_control",
+    "recovery_quality",
+    "gate_correctness",
+    "verification_strength",
+    "operator_clarity"
+  ],
+  "modes": [
+    "direct-codex",
+    "dwm-over-codex",
+    "claude-direct",
+    "fixture-control"
+  ],
+  "schema_version": "1.0",
+  "tasks": [
+    {
+      "id": "failing-test-fix",
+      "mode_results": {
+        "direct-codex": [2, 2, 1, 2, 3, 2],
+        "dwm-over-codex": [4, 4, 4, 4, 4, 4],
+        "fixture-control": [3, 4, 3, 4, 3, 4]
+      }
+    },
+    {
+      "id": "small-refactor",
+      "mode_results": {
+        "direct-codex": [2, 2, 2, 2, 3, 2],
+        "dwm-over-codex": [4, 4, 3, 4, 4, 4],
+        "fixture-control": [3, 4, 3, 4, 3, 4]
+      }
+    },
+    {
+      "id": "auth-permission-audit",
+      "mode_results": {
+        "direct-codex": [2, 3, 2, 2, 3, 2],
+        "dwm-over-codex": [4, 4, 4, 4, 4, 4],
+        "fixture-control": [3, 4, 3, 4, 3, 4]
+      }
+    },
+    {
+      "id": "ui-render-regression",
+      "mode_results": {
+        "direct-codex": [2, 2, 2, 2, 2, 2],
+        "dwm-over-codex": [4, 4, 3, 4, 4, 4],
+        "fixture-control": [3, 4, 3, 4, 3, 4]
+      }
+    },
+    {
+      "id": "docs-code-consistency",
+      "mode_results": {
+        "direct-codex": [2, 3, 2, 2, 2, 2],
+        "dwm-over-codex": [4, 4, 4, 4, 4, 4],
+        "fixture-control": [3, 4, 3, 4, 3, 4]
+      }
+    },
+    {
+      "id": "multi-file-migration",
+      "mode_results": {
+        "direct-codex": [2, 1, 1, 2, 2, 1],
+        "dwm-over-codex": [4, 4, 4, 4, 4, 4],
+        "fixture-control": [3, 4, 3, 4, 3, 4]
+      }
+    }
+  ]
+}

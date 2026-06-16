@@ -50,6 +50,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | Dogfood replay | deterministic replay evidence for canonical dogfood chain | planned V20.6, replay gate implemented |
 | Product shell | memorable `plan`, `run`, and `resume` commands over safe artifacts | planned V21, first shell slice implemented |
 | Role pack | role contracts for planner, explorer, worker, reviewer, verifier, and operator | planned V22, first registry implemented |
+| Harness benchmark | corpus and scoring gate for direct harness comparisons | planned V23, first benchmark gate implemented |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
 launch UX, worktree/tmux operation, durable state, and team execution. This repo
@@ -614,7 +615,9 @@ The planned roadmap splits the remaining product into versioned specs:
 - V21 product shell:
   `docs/v21-product-shell-spec.md`,
 - V22 role pack:
-  `docs/v22-role-pack-spec.md`.
+  `docs/v22-role-pack-spec.md`,
+- V23 harness benchmark:
+  `docs/v23-harness-benchmark-spec.md`.
 
 These specs define the intended path to an independent DWM product that can use
 Codex CLI directly through DWM Runner while keeping OMX optional rather than a

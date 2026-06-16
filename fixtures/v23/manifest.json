@@ -1,0 +1,47 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "valid",
+      "expected_task_count": 6,
+      "id": "benchmark-corpus-valid",
+      "kind": "corpus",
+      "required": true
+    },
+    {
+      "expected_margin_min": 8,
+      "expected_status": "accepted",
+      "id": "benchmark-dwm-margin",
+      "kind": "dwm-margin",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_BASELINE_MISSING",
+      "expected_status": "blocked",
+      "id": "benchmark-missing-baseline-blocked",
+      "kind": "missing-baseline",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_SAFETY_REGRESSION",
+      "expected_status": "blocked",
+      "id": "benchmark-safety-regression-blocked",
+      "kind": "safety-regression",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_UNSUPPORTED_CLAIM",
+      "expected_status": "blocked",
+      "id": "benchmark-unsupported-claim-blocked",
+      "kind": "unsupported-claim",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "benchmark-corpus-valid",
+    "benchmark-dwm-margin",
+    "benchmark-missing-baseline-blocked",
+    "benchmark-safety-regression-blocked",
+    "benchmark-unsupported-claim-blocked"
+  ],
+  "suite_id": "v23-harness-benchmark"
+}

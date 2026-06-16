@@ -1058,6 +1058,50 @@ def require_v23_decision_summary_consistency() -> None:
         raise SystemExit(f"V23 decision consistency failed: {exc}") from exc
 
 
+def require_v24_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/dwm_live_benchmark.py --manifest fixtures/v24/manifest.json --out out/benchmarks-live/v24-final",
+        "fixture-control",
+        "adapter-availability",
+        "err_live_benchmark_corpus_missing",
+        "err_live_benchmark_unsafe_mode",
+        "err_live_benchmark_stale_score",
+        "err_live_benchmark_adapter_unavailable",
+        "does not claim live model execution",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v24-decision.md does not match V24 summary: {missing}")
+
+
+def require_v24_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/dwm_live_benchmark.py",
+                "--manifest",
+                "fixtures/v24/manifest.json",
+                "--out",
+                "out/benchmarks-live/v24-final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        require_v24_decision_summary_text(summary, (ROOT / "docs" / "v24-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V24 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
@@ -1083,6 +1127,8 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_roles.py", "--manifest", "fixtures/v22/manifest.json", "--out", "out/roles/v22-final"],
         [sys.executable, "scripts/dwm_benchmark.py", "--self-test"],
         [sys.executable, "scripts/dwm_benchmark.py", "--manifest", "fixtures/v23/manifest.json", "--out", "out/benchmarks/v23-final"],
+        [sys.executable, "scripts/dwm_live_benchmark.py", "--self-test"],
+        [sys.executable, "scripts/dwm_live_benchmark.py", "--manifest", "fixtures/v24/manifest.json", "--out", "out/benchmarks-live/v24-final"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -2126,6 +2172,38 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V23 decision summary passed")
 
+    v24_summary = {
+        "suite_id": "v24-final",
+        "fixture_count": 5,
+        "required_fixture_count": 5,
+        "required_passed": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 1,
+        "decision": "keep",
+    }
+    good_v24_decision = (
+        "Decision: keep\n"
+        "python scripts/dwm_live_benchmark.py --manifest fixtures/v24/manifest.json --out out/benchmarks-live/v24-final\n"
+        "- `suite_id`: `v24-final`\n"
+        "- `fixture_count`: 5\n"
+        "- `required_fixture_count`: 5\n"
+        "- `required_passed`: 5\n"
+        "- `passed`: 5\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 1\n"
+        "- `decision`: `keep`\n"
+        "The accepted suite covers fixture-control, adapter-availability, ERR_LIVE_BENCHMARK_CORPUS_MISSING, ERR_LIVE_BENCHMARK_UNSAFE_MODE, ERR_LIVE_BENCHMARK_STALE_SCORE, and ERR_LIVE_BENCHMARK_ADAPTER_UNAVAILABLE.\n"
+        "This decision does not claim live model execution.\n"
+    )
+    require_v24_decision_summary_text(v24_summary, good_v24_decision)
+    try:
+        require_v24_decision_summary_text(v24_summary, good_v24_decision.replace("`skipped`: 1", "`skipped`: 0", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V24 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -2599,6 +2677,23 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v24-live-benchmark-evidence-spec.md",
+        [
+            "status: implemented first live benchmark evidence capture in",
+            "fixture-control",
+            "adapter-availability",
+            "run.json",
+            "commands.json",
+            "evidence.json",
+            "score.json",
+            "status.json",
+            "err_live_benchmark_corpus_missing",
+            "err_live_benchmark_unsafe_mode",
+            "err_live_benchmark_stale_score",
+            "err_live_benchmark_adapter_unavailable",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -2647,7 +2742,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `54`",
+            "`release_command_count`: `56`",
             "does not claim workflow execution",
         ],
     )
@@ -2772,6 +2867,7 @@ def main() -> None:
     require_v206_decision_summary_consistency()
     require_v22_decision_summary_consistency()
     require_v23_decision_summary_consistency()
+    require_v24_decision_summary_consistency()
     print("contract smoke: pass")
 
 

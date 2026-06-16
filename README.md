@@ -167,6 +167,8 @@ task itself needs dynamic orchestration.
 ├── docs/v22-decision.md
 ├── docs/v23-harness-benchmark-spec.md
 ├── docs/v23-decision.md
+├── docs/v24-live-benchmark-evidence-spec.md
+├── docs/v24-decision.md
 ├── docs/github-research.md          # Prior-art survey and import decisions
 ├── docs/dwm-branding.md             # Product naming and compatibility rules
 ├── assets/dwm-hero.svg              # README hero image
@@ -234,6 +236,8 @@ python scripts/dwm_roles.py --self-test
 python scripts/dwm_roles.py --manifest fixtures/v22/manifest.json --out out/roles/v22-final
 python scripts/dwm_benchmark.py --self-test
 python scripts/dwm_benchmark.py --manifest fixtures/v23/manifest.json --out out/benchmarks/v23-final
+python scripts/dwm_live_benchmark.py --self-test
+python scripts/dwm_live_benchmark.py --manifest fixtures/v24/manifest.json --out out/benchmarks-live/v24-final
 python scripts/run_workflow.py --self-test
 python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final
 python scripts/orchestrate_workflow.py --self-test
@@ -278,6 +282,13 @@ For V23 harness benchmark checks, use:
 ```bash
 python scripts/dwm_benchmark.py corpus
 python scripts/dwm_benchmark.py claim --min-margin 8
+```
+
+For V24 live benchmark evidence capture, use:
+
+```bash
+python scripts/dwm_live_benchmark.py capture --out out/benchmarks-live/<capture_id>
+python scripts/dwm_live_benchmark.py adapter-check --mode codex-cli --adapter-command codex
 ```
 
 For hash-bound HUD evidence approval, use:

@@ -41,7 +41,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | DWM Runner | execute read-only or pre-isolated DWM-approved packets through Codex CLI with evidence | planned V13, MVP implemented |
 | Session/worktree runtime | durable sessions, worktree isolation, logs, and resume | planned V14, implemented |
 | Runtime review/repair | runner-backed review, repair, and retry loops | planned V15, implemented |
-| Multi-worker fanout | bounded parallel Codex workers and deterministic fan-in | planned V16 |
+| Multi-worker fanout | bounded parallel Codex workers and deterministic fan-in | planned V16, implemented |
 | Dashboard/HUD | local evidence browser, human gates, and next-action UI | planned V17 |
 | Plugin/install packaging | installable CLI/plugin and migration surface | planned V18 |
 | Adapter ecosystem | optional Codex, OMX, Claude, shell, and fixture adapters | planned V19 |

@@ -45,6 +45,7 @@ SESSIONS_ROOT = ROOT / "out" / "sessions"
 WORKTREES_ROOT = ROOT / "out" / "worktrees"
 REVIEWS_ROOT = ROOT / "out" / "reviews"
 REPAIRS_ROOT = ROOT / "out" / "repairs"
+FANOUT_ROOT = ROOT / "out" / "fanout"
 SENTINEL = ".dwm_runner-owned.json"
 PROMPT_REL = "packets/001-first-slice.prompt.md"
 PACKET_REL = "packets/001-first-slice.packet.json"
@@ -157,6 +158,10 @@ def resolve_review_out(value: str | Path) -> Path:
 
 def resolve_repair_out(value: str | Path) -> Path:
     return resolve_under(value, REPAIRS_ROOT, label="repair")
+
+
+def resolve_fanout_out(value: str | Path) -> Path:
+    return resolve_under(value, FANOUT_ROOT, label="fanout")
 
 
 def safe_segment(value: str, *, code: str) -> str:
@@ -757,6 +762,116 @@ def repair_review(review_dir: Path, out_dir: Path, *, retry_budget: int = 1, ret
     return status
 
 
+def worker_ownership_conflicts(workers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    owners: dict[str, list[str]] = {}
+    for worker in workers:
+        worker_id = str(worker["id"])
+        for item in worker.get("ownership", []):
+            owners.setdefault(str(item), []).append(worker_id)
+    return [
+        {"ownership": ownership, "worker_ids": worker_ids}
+        for ownership, worker_ids in sorted(owners.items())
+        if len(worker_ids) > 1
+    ]
+
+
+def fanout(v1_run: Path, out_dir: Path, *, workers: list[dict[str, Any]], cap: int) -> dict[str, Any]:
+    if cap < 1:
+        raise RunnerError("ERR_FANOUT_CAP_EXCEEDED", "fanout cap must be positive")
+    if len(workers) > cap:
+        raise RunnerError("ERR_FANOUT_CAP_EXCEEDED", "worker count exceeds concurrency cap")
+    v1_run = resolve_v1_run(v1_run)
+    out_dir = resolve_fanout_out(out_dir)
+    fanout_id = out_dir.name
+    if out_dir.exists():
+        if out_dir.is_symlink():
+            raise RunnerError("ERR_FANOUT_PATH_SYMLINK", "fanout path is a symlink", path=out_dir)
+        if not out_dir.is_dir():
+            raise RunnerError("ERR_FANOUT_PATH_UNSAFE", "fanout path is not a directory", path=out_dir)
+        sentinel = read_sentinel(out_dir)
+        if sentinel is None:
+            raise RunnerError("ERR_FANOUT_PATH_UNSAFE", "existing fanout is not runner-owned", path=out_dir)
+        shutil.rmtree(out_dir)
+    FANOUT_ROOT.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True)
+    write_json(out_dir / SENTINEL, sentinel_payload(fanout_id, v1_run, mode="fanout"), root=out_dir)
+    context = load_trusted_context(v1_run)
+    conflicts = worker_ownership_conflicts(workers)
+    review_queue = []
+    worker_summaries = []
+    for index, worker in enumerate(workers):
+        worker_id = safe_segment(str(worker["id"]), code="ERR_FANOUT_WORKER_INVALID")
+        worker_dir = out_dir / "workers" / worker_id
+        worker_dir.mkdir(parents=True, exist_ok=True)
+        status_value = "failed" if worker.get("fail") else "prepared"
+        attempt = {
+            "attempt_id": f"worker-{index:04d}",
+            "worker_id": worker_id,
+            "packet_hash": context["packet_hash"],
+            "prompt_hash": context["prompt_hash"],
+            "ownership": worker.get("ownership", []),
+            "status": status_value,
+            "error": {"code": "ERR_FANOUT_WORKER_FAILED", "message": "fixture worker failed"} if worker.get("fail") else None,
+        }
+        status = {
+            "worker_id": worker_id,
+            "status": status_value,
+            "requires_review": True,
+            "attempt_path": f"workers/{worker_id}/attempt.json",
+        }
+        write_json(worker_dir / "attempt.json", attempt, root=out_dir)
+        write_json(worker_dir / "status.json", status, root=out_dir)
+        worker_summaries.append(status)
+        review_queue.append({"worker_id": worker_id, "status": status_value, "attempt_path": status["attempt_path"]})
+    fanin = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "fanout_version": "16.0.0",
+        "fanout_id": fanout_id,
+        "created_at": now_utc(),
+        "cap": cap,
+        "worker_count": len(workers),
+        "workers": worker_summaries,
+        "failed_workers": [item["worker_id"] for item in worker_summaries if item["status"] == "failed"],
+    }
+    status_value = "review-required" if conflicts else "fanout-ready"
+    status = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "fanout_id": fanout_id,
+        "status": status_value,
+        "cap": cap,
+        "worker_count": len(workers),
+        "failed_workers": fanin["failed_workers"],
+        "conflict_count": len(conflicts),
+        "review_queue_count": len(review_queue),
+        "error": None,
+    }
+    write_json(out_dir / "fanin.json", fanin, root=out_dir)
+    write_json(out_dir / "conflicts.json", {"conflicts": conflicts}, root=out_dir)
+    write_json(out_dir / "review-queue.json", {"items": review_queue}, root=out_dir)
+    write_json(out_dir / "status.json", status, root=out_dir)
+    return status
+
+
+def fanin(fanout_dir: Path) -> dict[str, Any]:
+    fanout_dir = resolve_fanout_out(fanout_dir)
+    status = read_json_obj(fanout_dir / "status.json", root=fanout_dir, label="status.json")
+    queue = read_json_obj(fanout_dir / "review-queue.json", root=fanout_dir, label="review-queue.json")
+    conflicts = read_json_obj(fanout_dir / "conflicts.json", root=fanout_dir, label="conflicts.json")
+    result = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "fanout_id": status.get("fanout_id"),
+        "status": status.get("status"),
+        "review_queue_count": len(queue.get("items", [])) if isinstance(queue.get("items"), list) else 0,
+        "conflict_count": len(conflicts.get("conflicts", [])) if isinstance(conflicts.get("conflicts"), list) else 0,
+        "failed_workers": status.get("failed_workers", []),
+    }
+    write_json(fanout_dir / "fanin-status.json", result, root=fanout_dir)
+    return result
+
+
 def mutate_fixture_v1_run(run_dir: Path, fixture: dict[str, Any], plan_path: Path) -> None:
     if fixture.get("stale_prompt"):
         prompt_path = run_dir / PROMPT_REL
@@ -918,6 +1033,45 @@ def run_review_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Path
         return {"id": fixture_id, "status": "fail", "required": fixture.get("required", True), "error": record}
 
 
+def run_fanout_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Path) -> dict[str, Any]:
+    fixture_id = fixture["id"]
+    try:
+        plan_path = write_fixture_plan(temp_root, fixture)
+        v1_run_dir = V1_OUT_ROOT / f"v16-{suite_dir.name}" / fixture_id
+        compile_plan(plan_path, v1_run_dir, run_id=f"v16/{fixture_id}", mode="fixture")
+        out_dir = FANOUT_ROOT / f"{suite_dir.name}-{fixture_id}"
+        try:
+            status = fanout(v1_run_dir, out_dir, workers=fixture["workers"], cap=int(fixture["cap"]))
+            fanin_status = fanin(out_dir)
+        except RunnerError as exc:
+            status_path = out_dir / "status.json"
+            status = json.loads(status_path.read_text()) if status_path.is_file() else {"status": "blocked", "error": exc.to_record()}
+            fanin_status = {}
+            if fixture.get("expected_error") != exc.code:
+                raise
+        expected_status = fixture.get("expected_status")
+        if expected_status is not None and status.get("status") != expected_status:
+            raise RunnerError("ERR_FANOUT_FIXTURE_FAILED", f"expected status {expected_status}, got {status.get('status')}")
+        expected_review_queue_count = fixture.get("expected_review_queue_count")
+        if expected_review_queue_count is not None and fanin_status.get("review_queue_count") != expected_review_queue_count:
+            raise RunnerError("ERR_FANOUT_FIXTURE_FAILED", f"expected review queue count {expected_review_queue_count}, got {fanin_status.get('review_queue_count')}")
+        expected_conflict_count = fixture.get("expected_conflict_count")
+        if expected_conflict_count is not None and status.get("conflict_count") != expected_conflict_count:
+            raise RunnerError("ERR_FANOUT_FIXTURE_FAILED", f"expected conflict count {expected_conflict_count}, got {status.get('conflict_count')}")
+        expected_failed_workers = fixture.get("expected_failed_workers")
+        if expected_failed_workers is not None and status.get("failed_workers") != expected_failed_workers:
+            raise RunnerError("ERR_FANOUT_FIXTURE_FAILED", f"expected failed workers {expected_failed_workers}, got {status.get('failed_workers')}")
+        expected_error = fixture.get("expected_error")
+        actual_error = status.get("error", {}).get("code") if isinstance(status.get("error"), dict) else None
+        if expected_error is not None and actual_error != expected_error:
+            raise RunnerError("ERR_FANOUT_FIXTURE_FAILED", f"expected error {expected_error}, got {actual_error}")
+        return {"id": fixture_id, "status": "pass", "required": fixture.get("required", True)}
+    except (RunnerError, CompileError) as exc:
+        record = exc.to_record() if isinstance(exc, RunnerError) else {"code": exc.code, "message": exc.message, "path": exc.path}
+        record["fixture_id"] = fixture_id
+        return {"id": fixture_id, "status": "fail", "required": fixture.get("required", True), "error": record}
+
+
 def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
     manifest = read_json(manifest_path)
     suite_id = Path(out_dir).name
@@ -938,6 +1092,8 @@ def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
         if str(fixture.get("type", "")).startswith("session-")
         else run_review_fixture(fixture, suite_dir, temp_root)
         if str(fixture.get("type", "")).startswith(("review-", "repair-"))
+        else run_fanout_fixture(fixture, suite_dir, temp_root)
+        if str(fixture.get("type", "")).startswith("fanout")
         else run_fixture(fixture, suite_dir, temp_root)
         for fixture in fixtures
     ]
@@ -991,9 +1147,18 @@ def review_self_test() -> None:
     print("dwm_runner review self-test: pass")
 
 
+def fanout_self_test() -> None:
+    V13_OUT_ROOT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="dwm-fanout-self-test-", dir=V13_OUT_ROOT) as tmp:
+        summary = evaluate_manifest(ROOT / "fixtures" / "v16" / "manifest.json", Path(tmp) / "fanout-self-test")
+    if summary["decision"] != "keep":
+        raise RunnerError("ERR_FANOUT_FIXTURE_FAILED", "fanout self-test manifest did not keep")
+    print("dwm_runner fanout self-test: pass")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", nargs="?", choices=["run", "session", "review", "repair"])
+    parser.add_argument("command", nargs="?", choices=["run", "session", "review", "repair", "fanout", "fanin"])
     parser.add_argument("session_command", nargs="?", choices=["start", "status", "resume"])
     parser.add_argument("--run")
     parser.add_argument("--out")
@@ -1002,6 +1167,8 @@ def main() -> int:
     parser.add_argument("--decision", default="approved")
     parser.add_argument("--retry-budget", type=int, default=1)
     parser.add_argument("--retry-attempts-used", type=int, default=0)
+    parser.add_argument("--workers-json")
+    parser.add_argument("--cap", type=int, default=1)
     parser.add_argument("--mode", default="dry-run", choices=sorted(ALLOWED_MODES))
     parser.add_argument("--fixture-command-json")
     parser.add_argument("--manifest")
@@ -1013,6 +1180,8 @@ def main() -> int:
                 session_self_test()
             elif args.command == "review":
                 review_self_test()
+            elif args.command == "fanout":
+                fanout_self_test()
             else:
                 self_test()
         elif args.manifest:
@@ -1056,8 +1225,21 @@ def main() -> int:
                 raise RunnerError("ERR_REPAIR_PATH_UNSAFE", "repair requires --review and --out")
             status = repair_review(Path(args.review), Path(args.out), retry_budget=args.retry_budget, retry_attempts_used=args.retry_attempts_used)
             print(canonical_json_text(status))
+        elif args.command == "fanout":
+            if not args.run or not args.out or not args.workers_json:
+                raise RunnerError("ERR_FANOUT_PATH_UNSAFE", "fanout requires --run, --out, and --workers-json")
+            workers = json.loads(args.workers_json)
+            if not isinstance(workers, list) or not all(isinstance(item, dict) for item in workers):
+                raise RunnerError("ERR_FANOUT_WORKER_INVALID", "--workers-json must be a list of objects")
+            status = fanout(Path(args.run), Path(args.out), workers=workers, cap=args.cap)
+            print(canonical_json_text(status))
+        elif args.command == "fanin":
+            if not args.run:
+                raise RunnerError("ERR_FANOUT_PATH_UNSAFE", "fanin requires --run pointing at fanout output")
+            status = fanin(Path(args.run))
+            print(canonical_json_text(status))
         else:
-            parser.error("expected --self-test, --manifest, run, session, review, or repair subcommand")
+            parser.error("expected --self-test, --manifest, run, session, review, repair, fanout, or fanin subcommand")
     except (RunnerError, CompileError) as exc:
         record = exc.to_record() if isinstance(exc, RunnerError) else {"code": exc.code, "message": exc.message, "path": exc.path}
         print(canonical_json_text(record), file=sys.stderr)

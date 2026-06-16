@@ -112,6 +112,7 @@ Use $dynamic-workflow-designer to plan a 500-file migration with verification ga
 ├── docs/v15-runtime-review-repair-spec.md
 ├── docs/v15-decision.md
 ├── docs/v16-multi-worker-fanout-spec.md
+├── docs/v16-decision.md
 ├── docs/v17-dashboard-hud-spec.md
 ├── docs/v18-plugin-install-packaging-spec.md
 ├── docs/v19-adapter-ecosystem-spec.md

@@ -1,6 +1,6 @@
 # V16 Multi-Worker Fanout Spec
 
-Status: planned; not implemented.
+Status: implemented in `scripts/dwm_runner.py fanout` and `fanin`.
 
 ## Research And Prior Art
 
@@ -25,8 +25,8 @@ Non-goals:
 Add:
 
 ```bash
-python scripts/dwm_runner.py fanout --run out/<run> --cap <n>
-python scripts/dwm_runner.py fanin --session out/sessions/<id>
+python scripts/dwm_runner.py fanout --run out/v1/<run> --out out/fanout/<id> --cap <n> --workers-json '<json>'
+python scripts/dwm_runner.py fanin --run out/fanout/<id>
 ```
 
 Fanout artifacts:
@@ -39,9 +39,9 @@ Fanout artifacts:
 
 ## Execution Model
 
-Each worker gets one packet, one worktree, one attempt ledger, and one evidence
+Each worker gets one packet reference, one attempt ledger, and one status
 bundle. Fan-in never trusts a worker directly; it produces review inputs for
-DWM Core.
+DWM Core. Live multi-Codex launch remains deferred.
 
 ## Safety And Verification Gates
 
@@ -50,14 +50,14 @@ Any worker that requests risky actions stops at a human gate.
 
 ## Evaluation Fixtures
 
-- positive: two independent read-only packets fan out and fan in,
-- positive: one worker failure preserves other evidence,
+- positive: two independent read-only workers fan out and fan in,
+- positive: one worker failure preserves other worker evidence,
 - negative: concurrency cap exceeded,
 - negative: overlapping file ownership requires review.
 
 ## Release Plan
 
-1. Add fanout planner that reads DWM schedules.
+1. Add fanout planner that reads explicit worker definitions.
 2. Add fixture worker backend for deterministic tests.
 3. Add fan-in summary and review queue artifacts.
 4. Defer live multi-Codex fanout until fixture behavior is stable.

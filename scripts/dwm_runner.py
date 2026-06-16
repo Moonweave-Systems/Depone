@@ -43,6 +43,8 @@ V13_OUT_ROOT = ROOT / "out" / "v13"
 V1_OUT_ROOT = ROOT / "out" / "v1"
 SESSIONS_ROOT = ROOT / "out" / "sessions"
 WORKTREES_ROOT = ROOT / "out" / "worktrees"
+REVIEWS_ROOT = ROOT / "out" / "reviews"
+REPAIRS_ROOT = ROOT / "out" / "repairs"
 SENTINEL = ".dwm_runner-owned.json"
 PROMPT_REL = "packets/001-first-slice.prompt.md"
 PACKET_REL = "packets/001-first-slice.packet.json"
@@ -147,6 +149,14 @@ def resolve_session_out(value: str | Path) -> Path:
         if exc.code == "ERR_RUNNER_PATH_UNSAFE":
             raise RunnerError("ERR_SESSION_PATH_UNSAFE", exc.message, path=exc.path) from exc
         raise
+
+
+def resolve_review_out(value: str | Path) -> Path:
+    return resolve_under(value, REVIEWS_ROOT, label="review")
+
+
+def resolve_repair_out(value: str | Path) -> Path:
+    return resolve_under(value, REPAIRS_ROOT, label="repair")
 
 
 def safe_segment(value: str, *, code: str) -> str:
@@ -585,6 +595,168 @@ def run(v1_run: Path, out_dir: Path, *, mode: str = "dry-run", fixture_command: 
     return status
 
 
+def verify_runner_hashes(run_dir: Path) -> dict[str, str]:
+    run_dir = resolve_v13_out(run_dir)
+    hashes = read_json_obj(run_dir / "hashes.json", root=run_dir, label="hashes.json")
+    expected: dict[str, str] = {}
+    for rel_path in ["runner.json", "attempt.json", "stdout.txt", "stderr.txt", "transcript.md", "git-status-before.txt", "git-status-after.txt"]:
+        path = run_dir / rel_path
+        ensure_contained(run_dir, path)
+        if not path.is_file() or path.is_symlink():
+            raise RunnerError("ERR_REVIEW_STALE_EVIDENCE", f"{rel_path} is missing or symlinked", path=path)
+        if rel_path.endswith(".json"):
+            expected[rel_path] = canonical_hash(read_json_obj(path, root=run_dir, label=rel_path))
+        else:
+            expected[rel_path] = sha256_text(path.read_text())
+        if hashes.get(rel_path) != expected[rel_path]:
+            raise RunnerError("ERR_REVIEW_STALE_EVIDENCE", f"{rel_path} hash changed", path=path)
+    return expected
+
+
+def render_review_markdown(review: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# V15 Runtime Review",
+            "",
+            f"Decision: `{review['decision']}`",
+            f"Runner status: `{review['runner_status']}`",
+            "",
+            "## Findings",
+            *[f"- {item}" for item in review["findings"]],
+            "",
+        ]
+    )
+
+
+def review_runner(run_dir: Path, out_dir: Path, *, decision: str = "approved") -> dict[str, Any]:
+    if decision not in {"approved", "request_changes"}:
+        raise RunnerError("ERR_REVIEW_DECISION_INVALID", "review decision must be approved or request_changes")
+    run_dir = resolve_v13_out(run_dir)
+    out_dir = resolve_review_out(out_dir)
+    review_id = out_dir.name
+    if out_dir.exists():
+        if out_dir.is_symlink():
+            raise RunnerError("ERR_REVIEW_PATH_SYMLINK", "review path is a symlink", path=out_dir)
+        if not out_dir.is_dir():
+            raise RunnerError("ERR_REVIEW_PATH_UNSAFE", "review path is not a directory", path=out_dir)
+        sentinel = read_sentinel(out_dir)
+        if sentinel is None:
+            raise RunnerError("ERR_REVIEW_PATH_UNSAFE", "existing review is not runner-owned", path=out_dir)
+        shutil.rmtree(out_dir)
+    REVIEWS_ROOT.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True)
+    write_json(out_dir / SENTINEL, sentinel_payload(review_id, run_dir, mode="review"), root=out_dir)
+    artifact_hashes = verify_runner_hashes(run_dir)
+    runner_status = read_json_obj(run_dir / "status.json", root=run_dir, label="status.json")
+    findings = ["runner evidence hashes match recorded ledger"]
+    if runner_status.get("status") == "blocked":
+        findings.append("runner status is blocked; repair may be required")
+    if decision == "request_changes":
+        findings.append("review requested bounded repair")
+    review = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "review_version": "15.0.0",
+        "review_id": review_id,
+        "created_at": now_utc(),
+        "runner_path": rel(run_dir),
+        "runner_status": runner_status.get("status"),
+        "decision": decision,
+        "independent_reviewer_required": True,
+        "artifact_hashes": artifact_hashes,
+        "findings": findings,
+    }
+    status = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "review_id": review_id,
+        "status": "reviewed",
+        "decision": decision,
+        "runner_path": rel(run_dir),
+        "error": None,
+    }
+    write_json(out_dir / "review.json", review, root=out_dir)
+    write_text(out_dir / "review.md", render_review_markdown(review), root=out_dir)
+    write_json(out_dir / "status.json", status, root=out_dir)
+    return status
+
+
+def render_repair_markdown(repair_plan: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# V15 Repair Plan",
+            "",
+            f"Status: `{repair_plan['status']}`",
+            f"Retry budget: `{repair_plan['retry_budget']['used']}/{repair_plan['retry_budget']['max']}`",
+            "",
+            "Repairs create new attempts and do not mutate prior runner evidence.",
+            "",
+        ]
+    )
+
+
+def repair_review(review_dir: Path, out_dir: Path, *, retry_budget: int = 1, retry_attempts_used: int = 0) -> dict[str, Any]:
+    review_dir = resolve_review_out(review_dir)
+    out_dir = resolve_repair_out(out_dir)
+    repair_id = out_dir.name
+    if retry_attempts_used >= retry_budget:
+        error = {"code": "ERR_REPAIR_RETRY_EXHAUSTED", "message": "retry budget exhausted"}
+        if out_dir.exists() and out_dir.is_dir() and read_sentinel(out_dir) is not None:
+            shutil.rmtree(out_dir)
+        REPAIRS_ROOT.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        write_json(out_dir / SENTINEL, sentinel_payload(repair_id, review_dir, mode="repair"), root=out_dir)
+        status = {"tool": TOOL, "schema_version": SCHEMA_VERSION, "repair_id": repair_id, "status": "blocked", "error": error}
+        write_json(out_dir / "status.json", status, root=out_dir)
+        raise RunnerError(error["code"], error["message"], path=out_dir)
+    if out_dir.exists():
+        if out_dir.is_symlink():
+            raise RunnerError("ERR_REPAIR_PATH_SYMLINK", "repair path is a symlink", path=out_dir)
+        if not out_dir.is_dir():
+            raise RunnerError("ERR_REPAIR_PATH_UNSAFE", "repair path is not a directory", path=out_dir)
+        sentinel = read_sentinel(out_dir)
+        if sentinel is None:
+            raise RunnerError("ERR_REPAIR_PATH_UNSAFE", "existing repair is not runner-owned", path=out_dir)
+        shutil.rmtree(out_dir)
+    REPAIRS_ROOT.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True)
+    write_json(out_dir / SENTINEL, sentinel_payload(repair_id, review_dir, mode="repair"), root=out_dir)
+    review = read_json_obj(review_dir / "review.json", root=review_dir, label="review.json")
+    retry = {"max": retry_budget, "used": retry_attempts_used, "remaining": retry_budget - retry_attempts_used}
+    repair_plan = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "repair_version": "15.0.0",
+        "repair_id": repair_id,
+        "review_path": rel(review_dir),
+        "review_decision": review.get("decision"),
+        "status": "prepared",
+        "retry_budget": retry,
+        "mutates_prior_evidence": False,
+        "requires_human_gate_for_risky_actions": True,
+    }
+    repair_attempt = {
+        "attempt_id": "repair-0000",
+        "status": "planned",
+        "created_at": now_utc(),
+        "source_review_hash": canonical_hash(review),
+    }
+    status = {
+        "tool": TOOL,
+        "schema_version": SCHEMA_VERSION,
+        "repair_id": repair_id,
+        "status": "prepared",
+        "error": None,
+        "review_path": rel(review_dir),
+    }
+    write_json(out_dir / "retry-budget.json", retry, root=out_dir)
+    write_json(out_dir / "repair-plan.json", repair_plan, root=out_dir)
+    write_json(out_dir / "repair-attempt.json", repair_attempt, root=out_dir)
+    write_text(out_dir / "repair.md", render_repair_markdown(repair_plan), root=out_dir)
+    write_json(out_dir / "status.json", status, root=out_dir)
+    return status
+
+
 def mutate_fixture_v1_run(run_dir: Path, fixture: dict[str, Any], plan_path: Path) -> None:
     if fixture.get("stale_prompt"):
         prompt_path = run_dir / PROMPT_REL
@@ -688,6 +860,64 @@ def run_session_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Pat
         return {"id": fixture_id, "status": "fail", "required": fixture.get("required", True), "error": record}
 
 
+def run_review_fixture(fixture: dict[str, Any], suite_dir: Path, temp_root: Path) -> dict[str, Any]:
+    fixture_id = fixture["id"]
+    try:
+        plan_path = write_fixture_plan(temp_root, fixture)
+        v1_run_dir = V1_OUT_ROOT / f"v15-{suite_dir.name}" / fixture_id
+        compile_plan(plan_path, v1_run_dir, run_id=f"v15/{fixture_id}", mode="fixture")
+        runner_dir = V13_OUT_ROOT / f"v15-{suite_dir.name}" / fixture_id
+        run(v1_run_dir, runner_dir, mode="dry-run")
+        if fixture.get("stale_runner_evidence"):
+            stdout_path = runner_dir / "stdout.txt"
+            write_text_atomic(stdout_path, stdout_path.read_text() + "stale\n", root=runner_dir)
+        review_dir = REVIEWS_ROOT / f"{suite_dir.name}-{fixture_id}"
+        decision = "request_changes" if fixture["type"] == "repair-prepared" else "approved"
+        try:
+            review_status = review_runner(runner_dir, review_dir, decision=decision)
+        except RunnerError as exc:
+            if fixture.get("expected_error") != exc.code:
+                raise
+            review_status = {"status": "blocked", "decision": None, "error": exc.to_record()}
+        expected_status = fixture.get("expected_status")
+        if expected_status is not None and review_status.get("status") != expected_status:
+            raise RunnerError("ERR_REVIEW_FIXTURE_FAILED", f"expected status {expected_status}, got {review_status.get('status')}")
+        expected_decision = fixture.get("expected_review_decision")
+        if expected_decision is not None and review_status.get("decision") != expected_decision:
+            raise RunnerError("ERR_REVIEW_FIXTURE_FAILED", f"expected review decision {expected_decision}, got {review_status.get('decision')}")
+        if fixture["type"] == "repair-prepared" and review_status.get("status") == "reviewed":
+            repair_dir = REPAIRS_ROOT / f"{suite_dir.name}-{fixture_id}"
+            try:
+                repair_status = repair_review(
+                    review_dir,
+                    repair_dir,
+                    retry_budget=int(fixture.get("retry_budget", 1)),
+                    retry_attempts_used=int(fixture.get("retry_attempts_used", 0)),
+                )
+            except RunnerError as exc:
+                status_path = repair_dir / "status.json"
+                repair_status = json.loads(status_path.read_text()) if status_path.is_file() else {"status": "blocked", "error": exc.to_record()}
+                if fixture.get("expected_error") != exc.code:
+                    raise
+            expected_repair_status = fixture.get("expected_repair_status")
+            if expected_repair_status is not None and repair_status.get("status") != expected_repair_status:
+                raise RunnerError("ERR_REPAIR_FIXTURE_FAILED", f"expected repair status {expected_repair_status}, got {repair_status.get('status')}")
+            expected_error = fixture.get("expected_error")
+            actual_error = repair_status.get("error", {}).get("code") if isinstance(repair_status.get("error"), dict) else None
+            if expected_error is not None and actual_error != expected_error:
+                raise RunnerError("ERR_REPAIR_FIXTURE_FAILED", f"expected error {expected_error}, got {actual_error}")
+        expected_error = fixture.get("expected_error")
+        if fixture["type"] != "repair-prepared" and expected_error is not None:
+            actual_error = review_status.get("error", {}).get("code") if isinstance(review_status.get("error"), dict) else None
+            if actual_error != expected_error:
+                raise RunnerError("ERR_REVIEW_FIXTURE_FAILED", f"expected error {expected_error}, got {actual_error}")
+        return {"id": fixture_id, "status": "pass", "required": fixture.get("required", True)}
+    except (RunnerError, CompileError) as exc:
+        record = exc.to_record() if isinstance(exc, RunnerError) else {"code": exc.code, "message": exc.message, "path": exc.path}
+        record["fixture_id"] = fixture_id
+        return {"id": fixture_id, "status": "fail", "required": fixture.get("required", True), "error": record}
+
+
 def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
     manifest = read_json(manifest_path)
     suite_id = Path(out_dir).name
@@ -706,6 +936,8 @@ def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
     results = [
         run_session_fixture(fixture, suite_dir, temp_root)
         if str(fixture.get("type", "")).startswith("session-")
+        else run_review_fixture(fixture, suite_dir, temp_root)
+        if str(fixture.get("type", "")).startswith(("review-", "repair-"))
         else run_fixture(fixture, suite_dir, temp_root)
         for fixture in fixtures
     ]
@@ -750,13 +982,26 @@ def session_self_test() -> None:
     print("dwm_runner session self-test: pass")
 
 
+def review_self_test() -> None:
+    V13_OUT_ROOT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="dwm-review-self-test-", dir=V13_OUT_ROOT) as tmp:
+        summary = evaluate_manifest(ROOT / "fixtures" / "v15" / "manifest.json", Path(tmp) / "review-self-test")
+    if summary["decision"] != "keep":
+        raise RunnerError("ERR_REVIEW_FIXTURE_FAILED", "review self-test manifest did not keep")
+    print("dwm_runner review self-test: pass")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", nargs="?", choices=["run", "session"])
+    parser.add_argument("command", nargs="?", choices=["run", "session", "review", "repair"])
     parser.add_argument("session_command", nargs="?", choices=["start", "status", "resume"])
     parser.add_argument("--run")
     parser.add_argument("--out")
     parser.add_argument("--session")
+    parser.add_argument("--review")
+    parser.add_argument("--decision", default="approved")
+    parser.add_argument("--retry-budget", type=int, default=1)
+    parser.add_argument("--retry-attempts-used", type=int, default=0)
     parser.add_argument("--mode", default="dry-run", choices=sorted(ALLOWED_MODES))
     parser.add_argument("--fixture-command-json")
     parser.add_argument("--manifest")
@@ -766,6 +1011,8 @@ def main() -> int:
         if args.self_test:
             if args.command == "session":
                 session_self_test()
+            elif args.command == "review":
+                review_self_test()
             else:
                 self_test()
         elif args.manifest:
@@ -799,8 +1046,18 @@ def main() -> int:
                 print(canonical_json_text(status))
             else:
                 raise RunnerError("ERR_SESSION_PATH_UNSAFE", "expected session start, status, or resume")
+        elif args.command == "review":
+            if not args.run or not args.out:
+                raise RunnerError("ERR_REVIEW_PATH_UNSAFE", "review requires --run and --out")
+            status = review_runner(Path(args.run), Path(args.out), decision=args.decision)
+            print(canonical_json_text(status))
+        elif args.command == "repair":
+            if not args.review or not args.out:
+                raise RunnerError("ERR_REPAIR_PATH_UNSAFE", "repair requires --review and --out")
+            status = repair_review(Path(args.review), Path(args.out), retry_budget=args.retry_budget, retry_attempts_used=args.retry_attempts_used)
+            print(canonical_json_text(status))
         else:
-            parser.error("expected --self-test, --manifest, run --run --out, or session subcommand")
+            parser.error("expected --self-test, --manifest, run, session, review, or repair subcommand")
     except (RunnerError, CompileError) as exc:
         record = exc.to_record() if isinstance(exc, RunnerError) else {"code": exc.code, "message": exc.message, "path": exc.path}
         print(canonical_json_text(record), file=sys.stderr)

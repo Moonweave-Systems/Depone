@@ -640,6 +640,47 @@ def require_v14_decision_summary_consistency() -> None:
         raise SystemExit(f"V14 decision consistency failed: {exc}") from exc
 
 
+def require_v15_decision_summary_text(summary: dict[str, object], decision_text: str) -> None:
+    normalized_decision_text = " ".join(decision_text.lower().split())
+    required_snippets = [
+        f"decision: {summary['decision']}",
+        f"`suite_id`: `{summary['suite_id']}`",
+        f"`fixture_count`: {summary['fixture_count']}",
+        f"`required_fixture_count`: {summary['required_fixture_count']}",
+        f"`required_passed`: {summary['required_passed']}",
+        f"`passed`: {summary['passed']}",
+        f"`failed`: {summary['failed']}",
+        f"`skipped`: {summary['skipped']}",
+        f"`decision`: `{summary['decision']}`",
+        "python scripts/dwm_runner.py --manifest fixtures/v15/manifest.json --out out/v13/v15-final",
+        "does not claim unlimited repair loops",
+        "mutation of prior evidence",
+        "self-review approval",
+        "multi-worker fanout",
+    ]
+    missing = [snippet for snippet in required_snippets if snippet not in normalized_decision_text]
+    if missing:
+        raise SystemExit(f"docs/v15-decision.md does not match V15 summary: {missing}")
+
+
+def require_v15_decision_summary_consistency() -> None:
+    try:
+        completed = run_contract_command(
+            [
+                sys.executable,
+                "scripts/dwm_runner.py",
+                "--manifest",
+                "fixtures/v15/manifest.json",
+                "--out",
+                "out/v13/v15-final",
+            ],
+        )
+        summary = json.loads(completed.stdout)
+        require_v15_decision_summary_text(summary, (ROOT / "docs" / "v15-decision.md").read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"V15 decision consistency failed: {exc}") from exc
+
+
 def require_release_commands_pass() -> None:
     commands = [
         [sys.executable, "scripts/quick_validate_skill.py", "."],
@@ -650,6 +691,7 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/execute_packet.py", "--manifest", "fixtures/v2.5/manifest.json", "--out", "out/v2.5/final"],
         [sys.executable, "scripts/dwm_runner.py", "--self-test"],
         [sys.executable, "scripts/dwm_runner.py", "session", "--self-test"],
+        [sys.executable, "scripts/dwm_runner.py", "review", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -1380,6 +1422,37 @@ Overclaims execution: no
     else:
         raise SystemExit("self-test failed: stale V14 decision summary passed")
 
+    v15_summary = {
+        "suite_id": "v15-final",
+        "fixture_count": 4,
+        "required_fixture_count": 4,
+        "required_passed": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "decision": "keep",
+    }
+    good_v15_decision = (
+        "Decision: keep\n"
+        "python scripts/dwm_runner.py --manifest fixtures/v15/manifest.json --out out/v13/v15-final\n"
+        "- `suite_id`: `v15-final`\n"
+        "- `fixture_count`: 4\n"
+        "- `required_fixture_count`: 4\n"
+        "- `required_passed`: 4\n"
+        "- `passed`: 4\n"
+        "- `failed`: 0\n"
+        "- `skipped`: 0\n"
+        "- `decision`: `keep`\n"
+        "This decision does not claim unlimited repair loops, mutation of prior evidence, final self-review approval, risky repair execution, or multi-worker fanout.\n"
+    )
+    require_v15_decision_summary_text(v15_summary, good_v15_decision)
+    try:
+        require_v15_decision_summary_text(v15_summary, good_v15_decision.replace("`passed`: 4", "`passed`: 3", 1))
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("self-test failed: stale V15 decision summary passed")
+
     print("contract self-test: pass")
 
 
@@ -1579,7 +1652,7 @@ def main() -> None:
     require_terms(
         "docs/v12-to-v20-final-roadmap.md",
         [
-            "status: v12-v14 implemented; v15-v20 planned.",
+            "status: v12-v15 implemented; v16-v20 planned.",
             "dwm core",
             "dwm runner",
             "codex cli workers",
@@ -1625,8 +1698,20 @@ def main() -> None:
             "## release plan",
         ],
     )
-    for spec_path in [
+    require_terms(
         "docs/v15-runtime-review-repair-spec.md",
+        [
+            "status: implemented in `scripts/dwm_runner.py review` and `repair`.",
+            "## research and prior art",
+            "## product position and non-goals",
+            "## workflow architecture",
+            "## execution model",
+            "## safety and verification gates",
+            "## evaluation fixtures",
+            "## release plan",
+        ],
+    )
+    for spec_path in [
         "docs/v16-multi-worker-fanout-spec.md",
         "docs/v17-dashboard-hud-spec.md",
         "docs/v18-plugin-install-packaging-spec.md",
@@ -1695,7 +1780,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `31`",
+            "`release_command_count`: `33`",
             "does not claim workflow execution",
         ],
     )
@@ -1810,6 +1895,7 @@ def main() -> None:
     require_v11_decision_summary_consistency()
     require_v13_decision_summary_consistency()
     require_v14_decision_summary_consistency()
+    require_v15_decision_summary_consistency()
     print("contract smoke: pass")
 
 

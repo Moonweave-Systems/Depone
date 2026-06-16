@@ -1,6 +1,6 @@
 # V15 Runtime Review And Repair Spec
 
-Status: planned; not implemented.
+Status: implemented in `scripts/dwm_runner.py review` and `repair`.
 
 ## Research And Prior Art
 
@@ -24,8 +24,8 @@ Non-goals:
 Add:
 
 ```bash
-python scripts/dwm_runner.py review --session out/sessions/<id>
-python scripts/dwm_runner.py repair --review out/<review>
+python scripts/dwm_runner.py review --run out/v13/<runner-id> --out out/reviews/<id>
+python scripts/dwm_runner.py repair --review out/reviews/<id> --out out/repairs/<id>
 ```
 
 Artifacts:
@@ -40,7 +40,8 @@ Artifacts:
 ## Execution Model
 
 Reviewers read runner evidence, git diffs, verification output, and packet
-contracts. Repairs create new attempts and never mutate prior evidence.
+contracts. V15 verifies runner evidence hashes before producing review output.
+Repairs create new repair attempt ledgers and never mutate prior evidence.
 
 ## Safety And Verification Gates
 
@@ -50,14 +51,14 @@ messages require human gates.
 
 ## Evaluation Fixtures
 
-- positive: review-approved attempt advances,
+- positive: review-approved runner evidence advances to reviewed,
 - positive: repair-prepared attempt stays bounded,
 - negative: repeated failure stops at retry cap,
 - negative: stale evidence invalidates repair.
 
 ## Release Plan
 
-1. Connect runner evidence to existing review vocabulary.
+1. Connect runner evidence to review vocabulary.
 2. Add repair attempt ledgers.
 3. Add retry-cap fixtures.
 4. Require independent reviewer approval before ingestion.

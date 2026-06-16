@@ -1,0 +1,61 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "series-recorded",
+      "id": "benchmark-series-recorded",
+      "kind": "series-recorded",
+      "required": true
+    },
+    {
+      "expected_status": "series-recorded",
+      "id": "benchmark-series-from-root",
+      "kind": "series-from-root",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_SERIES_INSUFFICIENT_SNAPSHOTS",
+      "expected_status": "blocked",
+      "id": "benchmark-series-insufficient-snapshots-blocked",
+      "kind": "insufficient-snapshots",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_SERIES_DUPLICATE_RELEASE",
+      "expected_status": "blocked",
+      "id": "benchmark-series-duplicate-release-blocked",
+      "kind": "duplicate-release",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_SERIES_DUPLICATE_REPORT",
+      "expected_status": "blocked",
+      "id": "benchmark-series-duplicate-report-blocked",
+      "kind": "duplicate-report",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_SERIES_STALE_SNAPSHOT",
+      "expected_status": "blocked",
+      "id": "benchmark-series-stale-snapshot-blocked",
+      "kind": "stale-snapshot",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_BENCHMARK_SERIES_SOURCE_NOT_RELEASE",
+      "expected_status": "blocked",
+      "id": "benchmark-series-source-not-release-blocked",
+      "kind": "source-not-release",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "benchmark-series-recorded",
+    "benchmark-series-from-root",
+    "benchmark-series-insufficient-snapshots-blocked",
+    "benchmark-series-duplicate-release-blocked",
+    "benchmark-series-duplicate-report-blocked",
+    "benchmark-series-stale-snapshot-blocked",
+    "benchmark-series-source-not-release-blocked"
+  ],
+  "suite_id": "v41-benchmark-series"
+}

@@ -101,6 +101,8 @@ V39 adds the promotion gate: at least three release-kind snapshots, unique
 report hashes, a non-decreasing score sequence, and a minimum improvement.
 V40 records the release snapshots themselves as `snapshot.json` files bound to a
 release id, git commit, score metrics, and report hash.
+V41 collects release snapshots into a sorted `series.json` and generates the V38
+history ledger without manually selecting benchmark points.
 
 Generate graph artifacts with:
 
@@ -139,6 +141,7 @@ python scripts/dwm_live_runner_preflight.py preflight --plan out/live-attempt-pl
 python scripts/dwm_live_receipt.py ingest --preflight out/live-runner-preflight/<preflight_id> --receipt receipt.json --out out/live-receipts/<receipt_id>
 python scripts/dwm_live_report.py publish --review out/live-score-reviews/<review_id> --out out/live-reports/<report_id>
 python scripts/dwm_benchmark_snapshot.py record --report out/live-reports/<report_id> --release-id <release_id> --out out/benchmark-snapshots/<snapshot_id>
+python scripts/dwm_benchmark_series.py build --snapshot-root out/benchmark-snapshots --out out/benchmark-series/<series_id>
 python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
 python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
 ```
@@ -164,6 +167,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 | `scripts/dwm_runner.py` | Runner, session/worktree, review/repair, and fanout surfaces. |
 | `scripts/dwm_live_*.py` | Live evidence, receipt, score, review, report, and graph gates. |
 | `scripts/dwm_benchmark_snapshot.py` | Release benchmark snapshot recorder. |
+| `scripts/dwm_benchmark_series.py` | Release snapshot series builder. |
 | `scripts/dwm_benchmark_history.py` | Benchmark history ledger and trend graph builder. |
 | `scripts/dwm_benchmark_promotion.py` | Benchmark trend promotion gate for public graph claims. |
 | `docs/automation-roadmap.md` | Implementation roadmap and completed slices. |
@@ -185,6 +189,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v38-benchmark-history-spec.md`](docs/v38-benchmark-history-spec.md): benchmark history ledger and trend graph gate.
 - [`docs/v39-benchmark-promotion-spec.md`](docs/v39-benchmark-promotion-spec.md): public benchmark trend promotion gate.
 - [`docs/v40-benchmark-snapshot-spec.md`](docs/v40-benchmark-snapshot-spec.md): release benchmark snapshot recorder.
+- [`docs/v41-benchmark-series-spec.md`](docs/v41-benchmark-series-spec.md): release snapshot series builder.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

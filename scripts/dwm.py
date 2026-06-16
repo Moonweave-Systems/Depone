@@ -91,6 +91,8 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_benchmark_promotion.py --manifest fixtures/v39/manifest.json --out out/benchmark-promotions/v39-final",
     "python scripts/dwm_benchmark_snapshot.py --self-test",
     "python scripts/dwm_benchmark_snapshot.py --manifest fixtures/v40/manifest.json --out out/benchmark-snapshots/v40-final",
+    "python scripts/dwm_benchmark_series.py --self-test",
+    "python scripts/dwm_benchmark_series.py --manifest fixtures/v41/manifest.json --out out/benchmark-series/v41-final",
     "python scripts/run_workflow.py --self-test",
     "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
     "python scripts/orchestrate_workflow.py --self-test",
@@ -194,6 +196,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v39-benchmark-promotion-spec.md",
     "docs/v40-decision.md",
     "docs/v40-benchmark-snapshot-spec.md",
+    "docs/v41-decision.md",
+    "docs/v41-benchmark-series-spec.md",
     "packaging/dwm-benchmark-attempts.json",
     "packaging/dwm-adapters.json",
     "packaging/dwm-benchmarks.json",
@@ -226,6 +230,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_benchmark_history.py",
     "scripts/dwm_benchmark_promotion.py",
     "scripts/dwm_benchmark_snapshot.py",
+    "scripts/dwm_benchmark_series.py",
 ]
 
 

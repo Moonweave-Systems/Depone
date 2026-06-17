@@ -192,6 +192,11 @@ only from graph-ready local pair series, while README graph promotion remains
 human-review gated.
 V60 records `chart-review.json` and `chart-review.md` only when a human review
 receipt approves the chart candidate hash without public benchmark claims.
+V61 adds `scripts/dwm_dogfood_acquire.py` so one command can run the local
+measurement, stop with a direct receipt template, or continue through pair,
+series, and chart-candidate updates when a human-gated receipt is supplied. It
+writes `acquisition.json`, `acquisition.md`, and `direct-receipt-template.json`
+when direct evidence is still needed.
 
 Generate graph artifacts with:
 
@@ -243,6 +248,7 @@ python scripts/dwm_dogfood_pair.py pair --dwm-measure out/dogfood-measurements/<
 python scripts/dwm_dogfood_pair_series.py build --pair-root out/dogfood-pairs --out out/dogfood-pair-series/<series_id>
 python scripts/dwm_dogfood_chart_candidate.py candidate --series out/dogfood-pair-series/<series_id> --out out/dogfood-chart-candidates/<chart_id>
 python scripts/dwm_dogfood_chart_review.py review --candidate out/dogfood-chart-candidates/<chart_id> --receipt review-receipt.json --out out/dogfood-chart-reviews/<review_id>
+python scripts/dwm_dogfood_acquire.py acquire --task-id <task_id> --out out/dogfood-acquisitions/<acquisition_id>
 python scripts/dwm_daily_operator.py today --corpus out/dogfood-corpus/<corpus_id> --out out/daily-operator/<operator_id>
 python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
 python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
@@ -285,6 +291,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 | `scripts/dwm_dogfood_pair_series.py` | Dogfood pair series and graph-readiness gate. |
 | `scripts/dwm_dogfood_chart_candidate.py` | Local dogfood chart candidate gate. |
 | `scripts/dwm_dogfood_chart_review.py` | Human-reviewed local dogfood chart gate. |
+| `scripts/dwm_dogfood_acquire.py` | One-command dogfood evidence acquisition loop. |
 | `scripts/dwm_daily_operator.py` | Daily operator loop for ready, blocked, and freshness state. |
 | `scripts/dwm_adapters.py` | Adapter registry, normalized evidence, and parity matrix checks. |
 | `scripts/dwm_adapter_live_matrix.py` | Local adapter command availability and auth-assumption matrix. |
@@ -330,6 +337,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v58-dogfood-pair-series-spec.md`](docs/v58-dogfood-pair-series-spec.md): dogfood pair series and graph-readiness gate.
 - [`docs/v59-dogfood-chart-candidate-spec.md`](docs/v59-dogfood-chart-candidate-spec.md): local dogfood chart candidate gate.
 - [`docs/v60-dogfood-chart-review-spec.md`](docs/v60-dogfood-chart-review-spec.md): human-reviewed local dogfood chart gate.
+- [`docs/v61-dogfood-acquire-spec.md`](docs/v61-dogfood-acquire-spec.md): one-command dogfood evidence acquisition loop.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

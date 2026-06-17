@@ -107,6 +107,9 @@ V42 turns a promotion-ready series into `candidate.json`, the final pre-publish
 artifact before any README asset changes.
 V43 records the direction checkpoint and next roadmap so graph publication stays
 tied to real evidence, review gates, and operator value.
+V44 reviews a candidate into `candidate-review.json`, emits
+`publish-checklist.md`, and blocks unsupported public benchmark claims before
+README asset promotion.
 
 Generate graph artifacts with:
 
@@ -147,6 +150,7 @@ python scripts/dwm_live_report.py publish --review out/live-score-reviews/<revie
 python scripts/dwm_benchmark_snapshot.py record --report out/live-reports/<report_id> --release-id <release_id> --out out/benchmark-snapshots/<snapshot_id>
 python scripts/dwm_benchmark_series.py build --snapshot-root out/benchmark-snapshots --out out/benchmark-series/<series_id>
 python scripts/dwm_benchmark_candidate.py make --series out/benchmark-series/<series_id> --out out/benchmark-candidates/<candidate_id>
+python scripts/dwm_benchmark_candidate_review.py review --candidate out/benchmark-candidates/<candidate_id> --out out/benchmark-candidate-reviews/<review_id>
 python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
 python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
 ```
@@ -174,6 +178,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 | `scripts/dwm_benchmark_snapshot.py` | Release benchmark snapshot recorder. |
 | `scripts/dwm_benchmark_series.py` | Release snapshot series builder. |
 | `scripts/dwm_benchmark_candidate.py` | Promotion-ready benchmark publish candidate workflow. |
+| `scripts/dwm_benchmark_candidate_review.py` | Benchmark candidate review gate before README asset promotion. |
 | `scripts/dwm_benchmark_history.py` | Benchmark history ledger and trend graph builder. |
 | `scripts/dwm_benchmark_promotion.py` | Benchmark trend promotion gate for public graph claims. |
 | `docs/automation-roadmap.md` | Implementation roadmap and completed slices. |
@@ -198,6 +203,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v41-benchmark-series-spec.md`](docs/v41-benchmark-series-spec.md): release snapshot series builder.
 - [`docs/v42-benchmark-candidate-spec.md`](docs/v42-benchmark-candidate-spec.md): benchmark publish candidate workflow.
 - [`docs/v43-direction-check-roadmap.md`](docs/v43-direction-check-roadmap.md): direction check and V44-V50 roadmap.
+- [`docs/v44-candidate-review-gate-spec.md`](docs/v44-candidate-review-gate-spec.md): benchmark candidate review gate.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

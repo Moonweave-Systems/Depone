@@ -3207,6 +3207,7 @@ def main() -> None:
             "python scripts/dwm_benchmark_snapshot.py record --report out/live-reports/<report_id> --release-id <release_id> --out out/benchmark-snapshots/<snapshot_id>",
             "python scripts/dwm_benchmark_series.py build --snapshot-root out/benchmark-snapshots --out out/benchmark-series/<series_id>",
             "python scripts/dwm_benchmark_candidate.py make --series out/benchmark-series/<series_id> --out out/benchmark-candidates/<candidate_id>",
+            "python scripts/dwm_benchmark_candidate_review.py review --candidate out/benchmark-candidates/<candidate_id> --out out/benchmark-candidate-reviews/<review_id>",
             "python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>",
             "python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>",
             "python scripts/dwm_readme_benchmark_graph.py generate --report out/live-reports/<report_id> --out out/readme-benchmark-graphs/<graph_id>",
@@ -3225,6 +3226,8 @@ def main() -> None:
             "snapshot.json",
             "series.json",
             "candidate.json",
+            "candidate-review.json",
+            "publish-checklist.md",
             "assets/dwm-hero.svg",
             "assets/dwm-live-benchmark.svg",
             "assets/dwm-live-benchmark.json",
@@ -3242,6 +3245,7 @@ def main() -> None:
             "docs/v41-benchmark-series-spec.md",
             "docs/v42-benchmark-candidate-spec.md",
             "docs/v43-direction-check-roadmap.md",
+            "docs/v44-candidate-review-gate-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "deterministic control-plane above agent clis",
             "bounded adapter surfaces",
@@ -3851,6 +3855,18 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v44-candidate-review-gate-spec.md",
+        [
+            "status: implemented first benchmark candidate review gate in",
+            "candidate-review.json",
+            "publish-checklist.md",
+            "err_benchmark_candidate_review_stale_candidate",
+            "err_benchmark_candidate_review_promotion_missing",
+            "err_benchmark_candidate_review_hash_mismatch",
+            "err_benchmark_candidate_review_overclaim",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -3899,7 +3915,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `90`",
+            "`release_command_count`: `92`",
             "does not claim workflow execution",
         ],
     )

@@ -58,6 +58,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | Benchmark series | ordered release snapshot collection and history generation | planned V41, first series slice implemented |
 | Benchmark candidate | promotion-ready pre-publish benchmark candidate | planned V42, first candidate slice implemented |
 | Direction checkpoint | evidence-backed direction check and V44-V50 roadmap | planned V43, direction checkpoint written |
+| Candidate review | pre-publish candidate review and overclaim gate | planned V44, first review gate implemented |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
 launch UX, worktree/tmux operation, durable state, and team execution. This repo
@@ -668,6 +669,8 @@ The planned roadmap splits the remaining product into versioned specs:
 - V43 direction check:
   `docs/v43-direction-check-roadmap.md`,
   `docs/v43-direction-check-roadmap.workflow.plan.json`.
+- V44 candidate review:
+  `docs/v44-candidate-review-gate-spec.md`.
 
 These specs define the intended path to an independent DWM product that can use
 Codex CLI directly through DWM Runner while keeping optional adapter targets
@@ -690,6 +693,23 @@ Done means:
 - V44-V50 are ordered by user value and benchmark integrity;
 - README and roadmap point to the checkpoint;
 - tracked benchmark assets remain unchanged until a later candidate review gate.
+
+### V44: Candidate Review Gate
+
+Status: first review gate implemented.
+
+Purpose: review V42 candidate evidence before any tracked README asset is
+changed.
+
+Spec: `docs/v44-candidate-review-gate-spec.md`.
+
+Done means:
+
+- `scripts/dwm_benchmark_candidate_review.py` writes `candidate-review.json`;
+- candidate, promotion, series, and history hashes are recomputed;
+- unsupported external benchmark or model-superiority claims are blocked;
+- `fixtures/v44/manifest.json` proves ready, stale, missing-promotion,
+  hash-drift, and overclaim paths.
 
 ## Strategic Decisions
 

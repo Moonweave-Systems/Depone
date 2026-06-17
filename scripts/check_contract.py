@@ -1698,6 +1698,8 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_benchmark_candidate.py", "--manifest", "fixtures/v42/manifest.json", "--out", "out/benchmark-candidates/v42-final"],
         [sys.executable, "scripts/dwm_dogfood_attempts.py", "--self-test"],
         [sys.executable, "scripts/dwm_dogfood_attempts.py", "--manifest", "fixtures/v54/manifest.json", "--out", "out/dogfood-attempts/v54-final"],
+        [sys.executable, "scripts/dwm_dogfood_measure.py", "--self-test"],
+        [sys.executable, "scripts/dwm_dogfood_measure.py", "--manifest", "fixtures/v56/manifest.json", "--out", "out/dogfood-measurements/v56-final"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -3224,6 +3226,7 @@ def main() -> None:
             "python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>",
             "python scripts/dwm_dogfood_corpus.py record --out out/dogfood-corpus/<corpus_id>",
             "python scripts/dwm_dogfood_attempts.py record --corpus out/dogfood-corpus/<corpus_id> --attempts attempts.json --out out/dogfood-attempts/<attempt_id>",
+            "python scripts/dwm_dogfood_measure.py sample --out out/dogfood-measurements/<measurement_id>",
             "python scripts/dwm_daily_operator.py today --corpus out/dogfood-corpus/<corpus_id> --out out/daily-operator/<operator_id>",
             "python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>",
             "python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>",
@@ -3257,6 +3260,8 @@ def main() -> None:
             "queue-packets.json",
             "dogfood-attempts.json",
             "comparison-ledger.json",
+            "measurement.json",
+            "attempts.json",
             "operator-loop.json",
             "today.md",
             "adapter-parity.json",
@@ -3299,6 +3304,7 @@ def main() -> None:
             "docs/v53-demo-inspect-spec.md",
             "docs/v54-dogfood-attempts-spec.md",
             "docs/v55-adapter-live-matrix-spec.md",
+            "docs/v56-dogfood-measure-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "deterministic control-plane above agent clis",
             "bounded adapter surfaces",
@@ -4114,6 +4120,31 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v56-dogfood-measure-spec.md",
+        [
+            "status: implemented first measured local dogfood sample runner in",
+            "python scripts/dwm_dogfood_measure.py sample --out out/dogfood-measurements/<measurement_id>",
+            "measurement.json",
+            "attempts.json",
+            "err_dogfood_measure_direct_requires_gate",
+            "err_dogfood_measure_unknown_task",
+            "err_dogfood_measure_command_unsafe",
+            "do not fill `direct-codex` comparison slots without a human-gated live",
+        ],
+    )
+    require_terms(
+        "docs/v56-decision.md",
+        [
+            "decision: keep",
+            "python scripts/dwm_dogfood_measure.py --manifest fixtures/v56/manifest.json --out out/dogfood-measurements/v56-final",
+            "measurement.json",
+            "attempts.json",
+            "linked `dogfood-attempts.json`",
+            "direct codex gate blocking",
+            "does not claim live adapter execution",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -4162,7 +4193,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `110`",
+            "`release_command_count`: `112`",
             "does not claim workflow execution",
         ],
     )

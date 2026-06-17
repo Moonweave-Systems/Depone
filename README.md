@@ -178,6 +178,9 @@ claims.
 V55 records `adapter-live-matrix.json` and `adapter-live-matrix.md` so local
 Codex, Claude, and OpenCode command availability can be inspected without task
 execution or secret access.
+V56 records `measurement.json`, `attempts.json`, and linked dogfood ledgers for
+the first real DWM-controlled local measurement point without filling direct
+Codex comparison slots.
 
 Generate graph artifacts with:
 
@@ -224,6 +227,7 @@ python scripts/dwm_workflow_queue.py create --packets packets.json --out out/wor
 python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>
 python scripts/dwm_dogfood_corpus.py record --out out/dogfood-corpus/<corpus_id>
 python scripts/dwm_dogfood_attempts.py record --corpus out/dogfood-corpus/<corpus_id> --attempts attempts.json --out out/dogfood-attempts/<attempt_id>
+python scripts/dwm_dogfood_measure.py sample --out out/dogfood-measurements/<measurement_id>
 python scripts/dwm_daily_operator.py today --corpus out/dogfood-corpus/<corpus_id> --out out/daily-operator/<operator_id>
 python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
 python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
@@ -261,6 +265,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 | `scripts/dwm_workflow_queue.py` | Long-run workflow queue and next safe action selector. |
 | `scripts/dwm_dogfood_corpus.py` | Local dogfood task corpus recorder with comparison placeholders. |
 | `scripts/dwm_dogfood_attempts.py` | Measured local dogfood comparison ledger. |
+| `scripts/dwm_dogfood_measure.py` | Measured local dogfood sample runner. |
 | `scripts/dwm_daily_operator.py` | Daily operator loop for ready, blocked, and freshness state. |
 | `scripts/dwm_adapters.py` | Adapter registry, normalized evidence, and parity matrix checks. |
 | `scripts/dwm_adapter_live_matrix.py` | Local adapter command availability and auth-assumption matrix. |
@@ -301,6 +306,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v53-demo-inspect-spec.md`](docs/v53-demo-inspect-spec.md): demo inspect surface.
 - [`docs/v54-dogfood-attempts-spec.md`](docs/v54-dogfood-attempts-spec.md): measured dogfood comparison ledger.
 - [`docs/v55-adapter-live-matrix-spec.md`](docs/v55-adapter-live-matrix-spec.md): adapter live availability matrix.
+- [`docs/v56-dogfood-measure-spec.md`](docs/v56-dogfood-measure-spec.md): measured local dogfood sample runner.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

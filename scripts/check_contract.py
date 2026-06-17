@@ -3209,6 +3209,8 @@ def main() -> None:
             "python scripts/dwm_benchmark_candidate.py make --series out/benchmark-series/<series_id> --out out/benchmark-candidates/<candidate_id>",
             "python scripts/dwm_benchmark_candidate_review.py review --candidate out/benchmark-candidates/<candidate_id> --out out/benchmark-candidate-reviews/<review_id>",
             "python scripts/dwm_readme_asset_promotion.py promote --review out/benchmark-candidate-reviews/<review_id> --out out/readme-asset-promotions/<promotion_id>",
+            "python scripts/dwm_workflow_queue.py create --packets packets.json --out out/workflow-queues/<queue_id>",
+            "python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>",
             "python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>",
             "python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>",
             "python scripts/dwm_readme_benchmark_graph.py generate --report out/live-reports/<report_id> --out out/readme-benchmark-graphs/<graph_id>",
@@ -3231,6 +3233,8 @@ def main() -> None:
             "publish-checklist.md",
             "asset-promotion.json",
             "asset-diff.md",
+            "queue.json",
+            "next-action.md",
             "assets/dwm-hero.svg",
             "assets/dwm-live-benchmark.svg",
             "assets/dwm-live-benchmark.json",
@@ -3250,6 +3254,7 @@ def main() -> None:
             "docs/v43-direction-check-roadmap.md",
             "docs/v44-candidate-review-gate-spec.md",
             "docs/v45-readme-asset-promotion-spec.md",
+            "docs/v46-long-run-workflow-queue-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "deterministic control-plane above agent clis",
             "bounded adapter surfaces",
@@ -3884,6 +3889,19 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v46-long-run-workflow-queue-spec.md",
+        [
+            "status: implemented first long-run workflow queue in",
+            "queue.json",
+            "next-action.md",
+            "err_dwm_queue_evidence_missing",
+            "err_dwm_queue_unsafe_action",
+            "err_dwm_queue_verification_failed",
+            "err_dwm_queue_human_gate_required",
+            "err_dwm_queue_stale_status",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -3932,7 +3950,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `94`",
+            "`release_command_count`: `96`",
             "does not claim workflow execution",
         ],
     )

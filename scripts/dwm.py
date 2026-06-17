@@ -99,6 +99,8 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_benchmark_candidate_review.py --manifest fixtures/v44/manifest.json --out out/benchmark-candidate-reviews/v44-final",
     "python scripts/dwm_readme_asset_promotion.py --self-test",
     "python scripts/dwm_readme_asset_promotion.py --manifest fixtures/v45/manifest.json --out out/readme-asset-promotions/v45-final",
+    "python scripts/dwm_workflow_queue.py --self-test",
+    "python scripts/dwm_workflow_queue.py --manifest fixtures/v46/manifest.json --out out/workflow-queues/v46-final",
     "python scripts/run_workflow.py --self-test",
     "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
     "python scripts/orchestrate_workflow.py --self-test",
@@ -212,6 +214,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v44-candidate-review-gate-spec.md",
     "docs/v45-decision.md",
     "docs/v45-readme-asset-promotion-spec.md",
+    "docs/v46-decision.md",
+    "docs/v46-long-run-workflow-queue-spec.md",
     "packaging/dwm-benchmark-attempts.json",
     "packaging/dwm-adapters.json",
     "packaging/dwm-benchmarks.json",
@@ -248,6 +252,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_benchmark_candidate.py",
     "scripts/dwm_benchmark_candidate_review.py",
     "scripts/dwm_readme_asset_promotion.py",
+    "scripts/dwm_workflow_queue.py",
 ]
 
 

@@ -60,6 +60,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | Direction checkpoint | evidence-backed direction check and V44-V50 roadmap | planned V43, direction checkpoint written |
 | Candidate review | pre-publish candidate review and overclaim gate | planned V44, first review gate implemented |
 | README asset promotion | approved asset bundle and diff summary before tracked changes | planned V45, first promotion bundle implemented |
+| Long-run workflow queue | ordered packets, resume, next safe action, and blocked reasons | planned V46, first queue gate implemented |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
 launch UX, worktree/tmux operation, durable state, and team execution. This repo
@@ -674,6 +675,8 @@ The planned roadmap splits the remaining product into versioned specs:
   `docs/v44-candidate-review-gate-spec.md`.
 - V45 README asset promotion:
   `docs/v45-readme-asset-promotion-spec.md`.
+- V46 long-run workflow queue:
+  `docs/v46-long-run-workflow-queue-spec.md`.
 
 These specs define the intended path to an independent DWM product that can use
 Codex CLI directly through DWM Runner while keeping optional adapter targets
@@ -730,6 +733,23 @@ Done means:
 - `asset-diff.md` records the proposed tracked asset and README changes;
 - stale review, missing asset, hash drift, non-approved review, and overclaim
   paths are blocked.
+
+### V46: Long-Run Workflow Queue
+
+Status: first queue gate implemented.
+
+Purpose: let DWM continue from ordered roadmap packets without constant manual
+nudges while still stopping on real gates.
+
+Spec: `docs/v46-long-run-workflow-queue-spec.md`.
+
+Done means:
+
+- `scripts/dwm_workflow_queue.py` writes `queue.json` and `next-action.md`;
+- the first safe non-terminal packet becomes `ready`;
+- terminal packets can produce a `complete` queue state;
+- missing evidence, unsafe actions, failed verification, human gates, and stale
+  queue status are blocked.
 
 ## Strategic Decisions
 

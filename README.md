@@ -112,6 +112,8 @@ V44 reviews a candidate into `candidate-review.json`, emits
 README asset promotion.
 V45 turns an approved review into an `asset-promotion.json` bundle with
 `asset-diff.md` for human inspection before tracked asset changes.
+V46 records long-run workflow packets in `queue.json` and emits `next-action.md`
+so DWM can continue from the next safe action or a precise blocked reason.
 
 Generate graph artifacts with:
 
@@ -154,6 +156,8 @@ python scripts/dwm_benchmark_series.py build --snapshot-root out/benchmark-snaps
 python scripts/dwm_benchmark_candidate.py make --series out/benchmark-series/<series_id> --out out/benchmark-candidates/<candidate_id>
 python scripts/dwm_benchmark_candidate_review.py review --candidate out/benchmark-candidates/<candidate_id> --out out/benchmark-candidate-reviews/<review_id>
 python scripts/dwm_readme_asset_promotion.py promote --review out/benchmark-candidate-reviews/<review_id> --out out/readme-asset-promotions/<promotion_id>
+python scripts/dwm_workflow_queue.py create --packets packets.json --out out/workflow-queues/<queue_id>
+python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>
 python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
 python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
 ```
@@ -183,6 +187,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 | `scripts/dwm_benchmark_candidate.py` | Promotion-ready benchmark publish candidate workflow. |
 | `scripts/dwm_benchmark_candidate_review.py` | Benchmark candidate review gate before README asset promotion. |
 | `scripts/dwm_readme_asset_promotion.py` | README benchmark asset promotion bundle and diff summary. |
+| `scripts/dwm_workflow_queue.py` | Long-run workflow queue and next safe action selector. |
 | `scripts/dwm_benchmark_history.py` | Benchmark history ledger and trend graph builder. |
 | `scripts/dwm_benchmark_promotion.py` | Benchmark trend promotion gate for public graph claims. |
 | `docs/automation-roadmap.md` | Implementation roadmap and completed slices. |
@@ -209,6 +214,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v43-direction-check-roadmap.md`](docs/v43-direction-check-roadmap.md): direction check and V44-V50 roadmap.
 - [`docs/v44-candidate-review-gate-spec.md`](docs/v44-candidate-review-gate-spec.md): benchmark candidate review gate.
 - [`docs/v45-readme-asset-promotion-spec.md`](docs/v45-readme-asset-promotion-spec.md): README asset promotion bundle.
+- [`docs/v46-long-run-workflow-queue-spec.md`](docs/v46-long-run-workflow-queue-spec.md): long-run workflow queue.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

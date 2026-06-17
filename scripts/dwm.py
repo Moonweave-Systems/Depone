@@ -103,6 +103,8 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_workflow_queue.py --manifest fixtures/v46/manifest.json --out out/workflow-queues/v46-final",
     "python scripts/dwm_dogfood_corpus.py --self-test",
     "python scripts/dwm_dogfood_corpus.py --manifest fixtures/v47/manifest.json --out out/dogfood-corpus/v47-final",
+    "python scripts/dwm_daily_operator.py --self-test",
+    "python scripts/dwm_daily_operator.py --manifest fixtures/v48/manifest.json --out out/daily-operator/v48-final",
     "python scripts/run_workflow.py --self-test",
     "python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final",
     "python scripts/orchestrate_workflow.py --self-test",
@@ -220,6 +222,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v46-long-run-workflow-queue-spec.md",
     "docs/v47-decision.md",
     "docs/v47-real-dogfood-corpus-spec.md",
+    "docs/v48-decision.md",
+    "docs/v48-daily-operator-loop-spec.md",
     "packaging/dwm-benchmark-attempts.json",
     "packaging/dwm-adapters.json",
     "packaging/dwm-benchmarks.json",
@@ -258,6 +262,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_readme_asset_promotion.py",
     "scripts/dwm_workflow_queue.py",
     "scripts/dwm_dogfood_corpus.py",
+    "scripts/dwm_daily_operator.py",
 ]
 
 

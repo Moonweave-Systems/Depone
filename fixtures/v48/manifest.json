@@ -1,0 +1,45 @@
+{
+  "fixtures": [
+    {
+      "expected_status": "ready",
+      "id": "daily-operator-ready",
+      "kind": "operator-ready",
+      "required": true
+    },
+    {
+      "expected_status": "blocked",
+      "id": "daily-operator-blocked",
+      "kind": "operator-blocked",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_DAILY_OPERATOR_STALE_QUEUE",
+      "expected_status": "blocked",
+      "id": "daily-operator-stale-queue-blocked",
+      "kind": "stale-queue",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_DAILY_OPERATOR_CORPUS_MISSING",
+      "expected_status": "blocked",
+      "id": "daily-operator-missing-corpus-blocked",
+      "kind": "missing-corpus",
+      "required": true
+    },
+    {
+      "expected_error": "ERR_DAILY_OPERATOR_STALE_QUEUE",
+      "expected_status": "blocked",
+      "id": "daily-operator-missing-queue-blocked",
+      "kind": "missing-queue",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "daily-operator-ready",
+    "daily-operator-blocked",
+    "daily-operator-stale-queue-blocked",
+    "daily-operator-missing-corpus-blocked",
+    "daily-operator-missing-queue-blocked"
+  ],
+  "suite_id": "v48-daily-operator"
+}

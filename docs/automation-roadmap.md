@@ -62,6 +62,7 @@ entrypoint remains `dynamic-workflow-designer`.
 | README asset promotion | approved asset bundle and diff summary before tracked changes | planned V45, first promotion bundle implemented |
 | Long-run workflow queue | ordered packets, resume, next safe action, and blocked reasons | planned V46, first queue gate implemented |
 | Real dogfood corpus | local DWM maintenance tasks and comparison placeholders | planned V47, first corpus recorder implemented |
+| Daily operator loop | ready action, blocked gates, and evidence freshness view | planned V48, first operator loop implemented |
 
 Prior art such as `oh-my-codex` already covers a broad Codex runtime layer:
 launch UX, worktree/tmux operation, durable state, and team execution. This repo
@@ -680,6 +681,8 @@ The planned roadmap splits the remaining product into versioned specs:
   `docs/v46-long-run-workflow-queue-spec.md`.
 - V47 real dogfood corpus:
   `docs/v47-real-dogfood-corpus-spec.md`.
+- V48 daily operator loop:
+  `docs/v48-daily-operator-loop-spec.md`.
 
 These specs define the intended path to an independent DWM product that can use
 Codex CLI directly through DWM Runner while keeping optional adapter targets
@@ -771,6 +774,22 @@ Done means:
 - unsafe tasks, public claims, missing required tasks, and missing evidence
   requirements are blocked;
 - V46 queue packets are emitted for later measured attempts.
+
+### V48: Daily Operator Loop
+
+Status: first operator loop implemented.
+
+Purpose: show the next safe daily action, blocked gates, and evidence freshness
+across current queue and corpus artifacts.
+
+Spec: `docs/v48-daily-operator-loop-spec.md`.
+
+Done means:
+
+- `scripts/dwm_daily_operator.py` writes `operator-loop.json` and `today.md`;
+- ready queue actions are surfaced without executing them;
+- blocked queues surface explicit blocked reasons;
+- stale queue, missing corpus, and missing linked queue states are blocked.
 
 ## Strategic Decisions
 

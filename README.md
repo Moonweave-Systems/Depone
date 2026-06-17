@@ -117,6 +117,8 @@ so DWM can continue from the next safe action or a precise blocked reason.
 V47 records a local dogfood corpus in `dogfood-corpus.json`, emits
 `queue-packets.json`, and keeps direct/DWM comparison slots as `not-run` until
 later measured attempts exist.
+V48 emits `operator-loop.json` and `today.md` so daily work can start from the
+next safe queue action or a precise blocked reason.
 
 Generate graph artifacts with:
 
@@ -162,6 +164,7 @@ python scripts/dwm_readme_asset_promotion.py promote --review out/benchmark-cand
 python scripts/dwm_workflow_queue.py create --packets packets.json --out out/workflow-queues/<queue_id>
 python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>
 python scripts/dwm_dogfood_corpus.py record --out out/dogfood-corpus/<corpus_id>
+python scripts/dwm_daily_operator.py today --corpus out/dogfood-corpus/<corpus_id> --out out/daily-operator/<operator_id>
 python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
 python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
 ```
@@ -193,6 +196,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 | `scripts/dwm_readme_asset_promotion.py` | README benchmark asset promotion bundle and diff summary. |
 | `scripts/dwm_workflow_queue.py` | Long-run workflow queue and next safe action selector. |
 | `scripts/dwm_dogfood_corpus.py` | Local dogfood task corpus recorder with comparison placeholders. |
+| `scripts/dwm_daily_operator.py` | Daily operator loop for ready, blocked, and freshness state. |
 | `scripts/dwm_benchmark_history.py` | Benchmark history ledger and trend graph builder. |
 | `scripts/dwm_benchmark_promotion.py` | Benchmark trend promotion gate for public graph claims. |
 | `docs/automation-roadmap.md` | Implementation roadmap and completed slices. |
@@ -221,6 +225,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v45-readme-asset-promotion-spec.md`](docs/v45-readme-asset-promotion-spec.md): README asset promotion bundle.
 - [`docs/v46-long-run-workflow-queue-spec.md`](docs/v46-long-run-workflow-queue-spec.md): long-run workflow queue.
 - [`docs/v47-real-dogfood-corpus-spec.md`](docs/v47-real-dogfood-corpus-spec.md): real local dogfood corpus.
+- [`docs/v48-daily-operator-loop-spec.md`](docs/v48-daily-operator-loop-spec.md): daily operator loop.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

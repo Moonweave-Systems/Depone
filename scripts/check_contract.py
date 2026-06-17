@@ -3212,6 +3212,7 @@ def main() -> None:
             "python scripts/dwm_workflow_queue.py create --packets packets.json --out out/workflow-queues/<queue_id>",
             "python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>",
             "python scripts/dwm_dogfood_corpus.py record --out out/dogfood-corpus/<corpus_id>",
+            "python scripts/dwm_daily_operator.py today --corpus out/dogfood-corpus/<corpus_id> --out out/daily-operator/<operator_id>",
             "python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>",
             "python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>",
             "python scripts/dwm_readme_benchmark_graph.py generate --report out/live-reports/<report_id> --out out/readme-benchmark-graphs/<graph_id>",
@@ -3238,6 +3239,8 @@ def main() -> None:
             "next-action.md",
             "dogfood-corpus.json",
             "queue-packets.json",
+            "operator-loop.json",
+            "today.md",
             "assets/dwm-hero.svg",
             "assets/dwm-live-benchmark.svg",
             "assets/dwm-live-benchmark.json",
@@ -3259,6 +3262,7 @@ def main() -> None:
             "docs/v45-readme-asset-promotion-spec.md",
             "docs/v46-long-run-workflow-queue-spec.md",
             "docs/v47-real-dogfood-corpus-spec.md",
+            "docs/v48-daily-operator-loop-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "deterministic control-plane above agent clis",
             "bounded adapter surfaces",
@@ -3919,6 +3923,17 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v48-daily-operator-loop-spec.md",
+        [
+            "status: implemented first daily operator loop in",
+            "operator-loop.json",
+            "today.md",
+            "err_daily_operator_corpus_missing",
+            "err_daily_operator_stale_queue",
+            "err_daily_operator_queue_missing",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -3967,7 +3982,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `98`",
+            "`release_command_count`: `100`",
             "does not claim workflow execution",
         ],
     )

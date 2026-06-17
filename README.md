@@ -12,14 +12,21 @@
 ![DWM hero](assets/dwm-hero.svg)
 
 **DWM** is a deterministic workflow control-plane for Codex-era agentic work.
+It sits above agent CLIs and local harnesses, records every important decision
+as an artifact, and refuses to blur planned work with executed work.
+
 The installed skill remains named `dynamic-workflow-designer` for compatibility,
-but this repository now provides a broader product surface: workflow design,
-packet compilation, bounded runner gates, review/repair evidence, live scoring
-artifacts, and release checks.
+but the product surface is broader: workflow design, packet compilation,
+bounded runner gates, review/repair evidence, live scoring artifacts, adapter
+parity checks, daily operator state, and release candidate checks.
+
+Use DWM when the question is not just "what should the agent do next?", but
+"what can be resumed, verified, reviewed, blocked, or released from evidence?"
 
 ## Quickstart
 
-Run the local demo first:
+Run the local demo first. It is the fastest way to see the product loop without
+executing live adapters or mutating source files:
 
 ```bash
 python scripts/dwm_demo.py run --out out/demo/quickstart
@@ -30,13 +37,23 @@ This writes `demo.json`, `status.json`, and `README.md` under
 plan, compile, packet-review, adapter-parity, dogfood, daily-operator, and
 release-candidate surfaces without live adapter execution.
 
-Use the skill when a task is too large or risky for one normal agent turn:
+Then use the skill when a task is too large or risky for one normal agent turn:
 
 ```text
 Use $dynamic-workflow-designer to design a workflow for auditing every route for missing authorization.
 ```
 
-Inspect the product surface:
+## Normal Loop
+
+For day-to-day use, DWM works as a local operator loop:
+
+1. design or resume a workflow,
+2. inspect the next safe action,
+3. run only the approved bounded step,
+4. review evidence before claiming progress,
+5. cut release candidates only from coherent artifacts.
+
+Inspect an existing run:
 
 ```bash
 python scripts/dwm.py status --run out/v9/v32-semantic-dogfood
@@ -45,7 +62,7 @@ python scripts/dwm.py doctor
 python scripts/dwm.py commands --kind product
 ```
 
-Run the release contract:
+Run the release contract before publishing changes:
 
 ```bash
 python scripts/check_contract.py
@@ -57,7 +74,7 @@ For the full release command corpus, use:
 python scripts/dwm.py commands --kind release
 ```
 
-## Current Surface
+## What Exists Today
 
 | Layer | Capability |
 | --- | --- |
@@ -69,6 +86,17 @@ python scripts/dwm.py commands --kind release
 | HUD | Produces read-only status views and hash-bound approval artifacts. |
 | Live evidence | Plans adapter commands, preflights them, ingests receipts, judges receipts, scores verified evidence, and reports graph-ready metrics. |
 | Packaging | Validates repo-local install metadata, adapter registries, compatibility, and release evidence. |
+
+## What Is Still Honest
+
+| Claim | Current status |
+| --- | --- |
+| Local artifact loop | Implemented and covered by the canonical demo. |
+| Adapter parity | Implemented as a support matrix and blocker, not a live parity claim. |
+| Release candidate | Implemented from daily operator and adapter parity evidence. |
+| Benchmark graph | Source-bound graph artifacts exist, but public trend promotion requires real release history. |
+| Direct-agent superiority | Not claimed. Future comparison must come from measured dogfood attempts. |
+| Unrestricted autonomy | Not claimed. Risky work remains gate-bound by default. |
 
 ## Safety Model
 
@@ -137,6 +165,8 @@ V50 records `release-candidate.json`, `release-notes.md`, and
 `release-checklist.md` from coherent V48/V49 evidence before any public release.
 V51 records `demo.json`, `status.json`, and `README.md` for the canonical local
 demo so new users can see the full artifact loop first.
+V52 reorganizes the README around the quick demo, normal loop, current honesty
+boundaries, and benchmark-readiness caveats before adding any new graph claims.
 
 Generate graph artifacts with:
 
@@ -252,6 +282,7 @@ python scripts/dwm_release.py status --out out/release/<release_id>
 - [`docs/v49-adapter-parity-matrix-spec.md`](docs/v49-adapter-parity-matrix-spec.md): adapter parity matrix.
 - [`docs/v50-release-candidate-cut-spec.md`](docs/v50-release-candidate-cut-spec.md): release candidate cut.
 - [`docs/v51-canonical-demo-spec.md`](docs/v51-canonical-demo-spec.md): canonical local demo.
+- [`docs/v52-readme-ux-spec.md`](docs/v52-readme-ux-spec.md): README UX consolidation.
 
 Generated `out/` directories are verification evidence, not source of truth.
 

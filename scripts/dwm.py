@@ -235,6 +235,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v50-release-candidate-cut-spec.md",
     "docs/v51-decision.md",
     "docs/v51-canonical-demo-spec.md",
+    "docs/v52-decision.md",
+    "docs/v52-readme-ux-spec.md",
     "packaging/dwm-benchmark-attempts.json",
     "packaging/dwm-adapters.json",
     "packaging/dwm-benchmarks.json",
@@ -279,6 +281,8 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_release_candidate.py",
     "fixtures/v51/manifest.json",
     "scripts/dwm_demo.py",
+    "docs/v52-decision.md",
+    "docs/v52-readme-ux-spec.md",
 ]
 
 

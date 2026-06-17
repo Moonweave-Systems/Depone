@@ -3281,9 +3281,14 @@ def main() -> None:
             "docs/v49-adapter-parity-matrix-spec.md",
             "docs/v50-release-candidate-cut-spec.md",
             "docs/v51-canonical-demo-spec.md",
+            "docs/v52-readme-ux-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "deterministic control-plane above agent clis",
             "bounded adapter surfaces",
+            "normal loop",
+            "what is still honest",
+            "direct-agent superiority",
+            "public trend promotion requires real release history",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)
@@ -3990,6 +3995,29 @@ def main() -> None:
             "err_demo_path_unsafe",
             "err_demo_path_symlink",
             "err_demo_command_failed",
+        ],
+    )
+    require_terms(
+        "docs/v52-readme-ux-spec.md",
+        [
+            "status: implemented readme ux consolidation in",
+            "one-command local demo",
+            "normal loop",
+            "explicit honesty table",
+            "benchmark graph language tied to source-bound evidence",
+            "do not add a fake benchmark trend",
+            "docs/spec.md remains outside this slice",
+        ],
+    )
+    require_terms(
+        "docs/v52-decision.md",
+        [
+            "decision: keep",
+            "python scripts/check_contract.py",
+            "canonical demo as the first action",
+            "current honesty boundaries",
+            "does not claim live adapter execution",
+            "promoted public benchmark trend",
         ],
     )
     require_terms(

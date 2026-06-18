@@ -89,6 +89,8 @@ promotion requires real release history.
   `dwm-dogfood-progress.svg` and `dwm-dogfood-progress.json` promotion bundles.
 - V69: `docs/v69-readme-quality-gate-spec.md` added the README product-page
   quality gate.
+- V70: `docs/v70-contract-timeout-spec.md` added timeout failure reporting for
+  release-contract child commands.
 
 ## Current Public Boundaries
 

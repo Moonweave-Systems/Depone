@@ -302,6 +302,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v68-readme-product-page-spec.md",
     "docs/v69-decision.md",
     "docs/v69-readme-quality-gate-spec.md",
+    "docs/v70-decision.md",
+    "docs/v70-contract-timeout-spec.md",
     "docs/command-reference.md",
     "docs/release-history.md",
     "packaging/dwm-benchmark-attempts.json",
@@ -413,6 +415,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v68-readme-product-page-spec.md",
     "docs/v69-decision.md",
     "docs/v69-readme-quality-gate-spec.md",
+    "docs/v70-decision.md",
+    "docs/v70-contract-timeout-spec.md",
 ]
 
 

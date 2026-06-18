@@ -1,0 +1,185 @@
+{
+  "fixtures": [
+    {
+      "control": {
+        "blocked_by": [],
+        "control": {
+          "blocked_by": [],
+          "max_score": 12,
+          "status": "large-workflow-controlled",
+          "total_score": 12
+        },
+        "dogfood_id": "fixture-ready",
+        "schema_version": "1.0",
+        "source_hashes": {
+          "control": "fixture-control",
+          "run_status": "fixture-run",
+          "workflow": "fixture-workflow"
+        },
+        "status": "dogfood-control-recorded",
+        "tool": "dwm_large_workflow_dogfood.py"
+      },
+      "control_path": "fixture-ready-control",
+      "expected_decision": "command_ready",
+      "expected_status": "next-workflow-ready",
+      "id": "ready-control-selects-next-command",
+      "required": true
+    },
+    {
+      "control": {
+        "blocked_by": [
+          {
+            "code": "ERR_LARGE_WORKFLOW_DOGFOOD_INVALIDATED",
+            "message": "fixture invalidator"
+          }
+        ],
+        "control": {
+          "blocked_by": [],
+          "max_score": 12,
+          "status": "large-workflow-controlled",
+          "total_score": 12
+        },
+        "dogfood_id": "fixture-blocked",
+        "schema_version": "1.0",
+        "source_hashes": {
+          "control": "fixture-control",
+          "run_status": "fixture-run",
+          "workflow": "fixture-workflow"
+        },
+        "status": "dogfood-control-blocked",
+        "tool": "dwm_large_workflow_dogfood.py"
+      },
+      "control_path": "fixture-blocked-control",
+      "expected_decision": "blocked",
+      "expected_status": "next-workflow-blocked",
+      "id": "blocked-control-blocks-next-command",
+      "required": true
+    },
+    {
+      "control": {
+        "blocked_by": [],
+        "control": {
+          "blocked_by": [],
+          "max_score": 12,
+          "status": "large-workflow-controlled",
+          "total_score": 12
+        },
+        "dogfood_id": "fixture-ready",
+        "schema_version": "1.0",
+        "source_hashes": {
+          "control": "fixture-control",
+          "run_status": "fixture-run",
+          "workflow": "fixture-workflow"
+        },
+        "status": "dogfood-control-recorded",
+        "tool": "dwm_large_workflow_dogfood.py"
+      },
+      "control_path": "fixture-ready-control",
+      "expected_control_hash": "wrong-hash",
+      "expected_decision": "blocked",
+      "expected_status": "next-workflow-blocked",
+      "id": "source-hash-drift-blocked",
+      "required": true
+    },
+    {
+      "candidates": [
+        {
+          "claim_limits": [
+            "human approval required before execution"
+          ],
+          "evidence_requirements": [
+            "dogfood-control.json",
+            "human approval receipt"
+          ],
+          "id": "write-risk-followup",
+          "next_command": "python scripts/dwm_large_workflow_next.py select --control out/large-workflow-dogfood/v74-canonical/dogfood-control.json --out out/large-workflow-next/<next_id>",
+          "objective": "Prepare a follow-up that would write files after human approval.",
+          "priority": 100,
+          "risk_codes": [
+            "write"
+          ],
+          "success_criteria": [
+            "human gate is explicit",
+            "no command is emitted before approval"
+          ]
+        }
+      ],
+      "control": {
+        "blocked_by": [],
+        "control": {
+          "blocked_by": [],
+          "max_score": 12,
+          "status": "large-workflow-controlled",
+          "total_score": 12
+        },
+        "dogfood_id": "fixture-ready",
+        "schema_version": "1.0",
+        "source_hashes": {
+          "control": "fixture-control",
+          "run_status": "fixture-run",
+          "workflow": "fixture-workflow"
+        },
+        "status": "dogfood-control-recorded",
+        "tool": "dwm_large_workflow_dogfood.py"
+      },
+      "control_path": "fixture-ready-control",
+      "expected_decision": "human_gate_required",
+      "expected_status": "next-workflow-gate-required",
+      "id": "write-risk-requires-human-gate",
+      "required": true
+    },
+    {
+      "candidates": [
+        {
+          "claim_limits": [
+            "internal evidence only"
+          ],
+          "evidence_requirements": [
+            "dogfood-control.json"
+          ],
+          "id": "overclaim-followup",
+          "next_command": "python scripts/dwm.py commands --kind release --json",
+          "objective": "Publish external benchmark superiority from local dogfood evidence.",
+          "priority": 100,
+          "risk_codes": [
+            "read-only"
+          ],
+          "success_criteria": [
+            "claim should be rejected"
+          ]
+        }
+      ],
+      "control": {
+        "blocked_by": [],
+        "control": {
+          "blocked_by": [],
+          "max_score": 12,
+          "status": "large-workflow-controlled",
+          "total_score": 12
+        },
+        "dogfood_id": "fixture-ready",
+        "schema_version": "1.0",
+        "source_hashes": {
+          "control": "fixture-control",
+          "run_status": "fixture-run",
+          "workflow": "fixture-workflow"
+        },
+        "status": "dogfood-control-recorded",
+        "tool": "dwm_large_workflow_dogfood.py"
+      },
+      "control_path": "fixture-ready-control",
+      "expected_decision": "blocked",
+      "expected_status": "next-workflow-blocked",
+      "id": "overclaim-candidate-blocked",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "ready-control-selects-next-command",
+    "blocked-control-blocks-next-command",
+    "source-hash-drift-blocked",
+    "write-risk-requires-human-gate",
+    "overclaim-candidate-blocked"
+  ],
+  "suite_id": "v75-large-workflow-next"
+}

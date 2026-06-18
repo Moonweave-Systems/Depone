@@ -104,6 +104,7 @@ python scripts/dwm_release_timing.py measure --limit 3 --out out/release-timing/
 python scripts/dwm_release_timing_history.py build --timing-root out/release-timing --out out/release-timing-history/<history_id>
 python scripts/dwm_large_workflow_control.py assess --workflow workflow.json --out out/large-workflow-control/<control_id>
 python scripts/dwm_large_workflow_dogfood.py record --run out/v9/v32-semantic-dogfood --out out/large-workflow-dogfood/<dogfood_id>
+python scripts/dwm_large_workflow_next.py select --control out/large-workflow-dogfood/v74-canonical/dogfood-control.json --out out/large-workflow-next/<next_id>
 ```
 
 Release artifacts include `operator-loop.json`, `today.md`,
@@ -111,8 +112,8 @@ Release artifacts include `operator-loop.json`, `today.md`,
 `adapter-live-matrix.md`, `release-candidate.json`, `release-notes.md`, and
 `release-checklist.md`, `release-timing.json`, `release-timing.md`,
 `timing-history.json`, `timing-history.md`, `large-workflow-control.json`,
-`large-workflow-control.md`, `dogfood-control.json`, `dogfood-control.md`, and
-`status.json`.
+`large-workflow-control.md`, `dogfood-control.json`, `dogfood-control.md`,
+`large-workflow-next.json`, `large-workflow-next.md`, and `status.json`.
 
 ## Repository Map
 

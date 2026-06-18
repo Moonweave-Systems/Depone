@@ -1775,6 +1775,9 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_large_workflow_dogfood.py", "--self-test"],
         [sys.executable, "scripts/dwm_large_workflow_dogfood.py", "--manifest", "fixtures/v74/manifest.json", "--out", "out/large-workflow-dogfood/v74-final"],
         [sys.executable, "scripts/dwm_large_workflow_dogfood.py", "record", "--run", "out/v9/v32-semantic-dogfood", "--out", "out/large-workflow-dogfood/v74-canonical"],
+        [sys.executable, "scripts/dwm_large_workflow_next.py", "--self-test"],
+        [sys.executable, "scripts/dwm_large_workflow_next.py", "--manifest", "fixtures/v75/manifest.json", "--out", "out/large-workflow-next/v75-final"],
+        [sys.executable, "scripts/dwm_large_workflow_next.py", "select", "--control", "out/large-workflow-dogfood/v74-canonical/dogfood-control.json", "--out", "out/large-workflow-next/v75-canonical"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -3361,9 +3364,12 @@ def main() -> None:
             "python scripts/dwm_release_timing_history.py build --timing-root out/release-timing --out out/release-timing-history/<history_id>",
             "python scripts/dwm_large_workflow_control.py assess --workflow workflow.json --out out/large-workflow-control/<control_id>",
             "python scripts/dwm_large_workflow_dogfood.py record --run out/v9/v32-semantic-dogfood --out out/large-workflow-dogfood/<dogfood_id>",
+            "python scripts/dwm_large_workflow_next.py select --control out/large-workflow-dogfood/v74-canonical/dogfood-control.json --out out/large-workflow-next/<next_id>",
             "report.json.graph_metrics",
             "benchmark-graph.json",
             "dogfood-progress.json",
+            "large-workflow-next.json",
+            "large-workflow-next.md",
             "dwm-dogfood-progress.svg",
             "assets/dwm-hero.svg",
             "assets/dwm-live-benchmark.svg",
@@ -3389,6 +3395,7 @@ def main() -> None:
             "docs/v72-release-timing-history-spec.md",
             "docs/v73-large-workflow-control-spec.md",
             "docs/v74-large-workflow-dogfood-spec.md",
+            "docs/v75-large-workflow-next-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "direct-agent superiority is not claimed",
             "process progress is not an upward benchmark claim",
@@ -4677,6 +4684,37 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v75-large-workflow-next-spec.md",
+        [
+            "status: implemented control-bound next-action selection in",
+            "`scripts/dwm_large_workflow_next.py`",
+            "`large-workflow-next.json`",
+            "`large-workflow-next.md`",
+            "`command_ready`",
+            "`human_gate_required`",
+            "`blocked`",
+            "source hash drift",
+            "write, delete, network, deploy, secret, or external-message",
+            "does not run adapters",
+            "do not publish upward trend or external superiority claims",
+        ],
+    )
+    require_terms(
+        "docs/v75-decision.md",
+        [
+            "decision: keep",
+            "python scripts/dwm_large_workflow_next.py --manifest fixtures/v75/manifest.json --out out/large-workflow-next/v75-final",
+            "`suite_id`: `v75-large-workflow-next`",
+            "`fixture_count`: 5",
+            "`required_passed`: 5",
+            "`decision`: `keep`",
+            "control-bound next-action selection",
+            "source hash drift blocking",
+            "human gate handling for write-risk candidates",
+            "does not execute selected commands",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -4725,7 +4763,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `146`",
+            "`release_command_count`: `149`",
             "does not claim workflow execution",
         ],
     )

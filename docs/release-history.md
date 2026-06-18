@@ -101,6 +101,9 @@ promotion requires real release history.
   execution quality, efficiency, recovery, and evidence.
 - V74: `docs/v74-large-workflow-dogfood-spec.md` applied the V73 six-axis
   control evaluator to canonical dogfood workflow status.
+- V75: `docs/v75-large-workflow-next-spec.md` added control-bound
+  next-action selection with command-ready, human-gate-required, and blocked
+  decisions.
 
 ## Current Public Boundaries
 

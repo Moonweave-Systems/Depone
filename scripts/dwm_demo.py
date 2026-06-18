@@ -484,13 +484,30 @@ def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
 def self_test() -> None:
     DEMO_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="dwm-demo-self-test-", dir=DEMO_ROOT) as tmp:
-        summary = evaluate_manifest(ROOT / "fixtures" / "v51" / "manifest.json", Path(tmp) / "demo-self-test")
-    if summary["decision"] != "keep":
-        raise DemoError("ERR_DEMO_FIXTURE_FAILED", "demo self-test manifest did not keep")
-    with tempfile.TemporaryDirectory(prefix="dwm-demo-inspect-self-test-", dir=DEMO_ROOT) as tmp:
-        summary = evaluate_manifest(ROOT / "fixtures" / "v53" / "manifest.json", Path(tmp) / "demo-inspect-self-test")
-    if summary["decision"] != "keep":
-        raise DemoError("ERR_DEMO_FIXTURE_FAILED", "demo inspect self-test manifest did not keep")
+        suite_dir = Path(tmp) / "demo-self-test"
+        target = suite_dir / "demo-self-test-canonical"
+        demo = run_demo(target)
+        if demo.get("status") != "demo-recorded":
+            raise DemoError("ERR_DEMO_FIXTURE_FAILED", "demo self-test did not record a canonical demo")
+        inspect = inspect_demo(target)
+        if inspect.get("status") != "inspect-recorded":
+            raise DemoError("ERR_DEMO_FIXTURE_FAILED", "demo self-test did not inspect the canonical demo")
+        blocked_fixture_status("unsafe-out", {"expected_error": "ERR_DEMO_PATH_UNSAFE"}, suite_dir)
+        blocked_fixture_status("non-owned", {"expected_error": "ERR_DEMO_PATH_UNSAFE"}, suite_dir)
+        blocked_fixture_status("inspect-missing-demo", {"expected_error": "ERR_DEMO_ARTIFACT_MISSING"}, suite_dir)
+        demo_path = target / "demo.json"
+        status_path = target / "status.json"
+        stale_demo = read_json_obj(demo_path, label="demo.json")
+        stale_demo["source_hashes"]["commands"] = "stale"
+        write_json_atomic(demo_path, stale_demo, root=target)
+        write_json_atomic(status_path, stale_demo, root=target)
+        try:
+            inspect_demo(target)
+        except DemoError as exc:
+            if exc.code != "ERR_DEMO_STALE_HASH":
+                raise
+        else:
+            raise DemoError("ERR_DEMO_FIXTURE_FAILED", "stale demo inspect unexpectedly passed")
     print("dwm_demo self-test: pass")
 
 

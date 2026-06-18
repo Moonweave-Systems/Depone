@@ -1,0 +1,87 @@
+{
+  "suite_id": "v85-workflow-activation",
+  "fixtures": [
+    {
+      "id": "ready-for-next-workflow",
+      "required": true,
+      "audit": {
+        "decision": "installed_copy_synced",
+        "blocked_by": []
+      },
+      "receipt": {
+        "status": "receipt-dry-run",
+        "executed": false,
+        "blocked_by": []
+      },
+      "run_status": {
+        "status": "workflow-complete",
+        "human_approved_phase_ids": [
+          "human_gate"
+        ]
+      },
+      "expected_decision": "ready_for_next_workflow_design"
+    },
+    {
+      "id": "blocked-stale-install",
+      "required": true,
+      "audit": {
+        "decision": "blocked",
+        "blocked_by": [
+          {
+            "code": "ERR_INSTALLED_SURFACE_COPY_STALE"
+          }
+        ]
+      },
+      "receipt": {
+        "status": "receipt-dry-run",
+        "executed": false,
+        "blocked_by": []
+      },
+      "run_status": {
+        "status": "workflow-complete",
+        "human_approved_phase_ids": [
+          "human_gate"
+        ]
+      },
+      "expected_decision": "blocked"
+    },
+    {
+      "id": "blocked-executed-receipt",
+      "required": true,
+      "audit": {
+        "decision": "installed_copy_synced",
+        "blocked_by": []
+      },
+      "receipt": {
+        "status": "receipt-recorded",
+        "executed": true,
+        "blocked_by": []
+      },
+      "run_status": {
+        "status": "workflow-complete",
+        "human_approved_phase_ids": [
+          "human_gate"
+        ]
+      },
+      "expected_decision": "blocked"
+    },
+    {
+      "id": "blocked-incomplete-run",
+      "required": true,
+      "audit": {
+        "decision": "installed_copy_synced",
+        "blocked_by": []
+      },
+      "receipt": {
+        "status": "receipt-dry-run",
+        "executed": false,
+        "blocked_by": []
+      },
+      "run_status": {
+        "status": "running",
+        "human_approved_phase_ids": []
+      },
+      "expected_decision": "blocked"
+    }
+  ]
+}

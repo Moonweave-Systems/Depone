@@ -130,6 +130,9 @@ promotion requires real release history.
 - V84: `docs/v84-installed-surface-audit-spec.md` added
   `installed-surface-audit.json` and `installed-surface-audit.md` to verify
   the active local skill path before execution.
+- V85: `docs/v85-workflow-activation-spec.md` added
+  `workflow-activation.json` and `workflow-activation.md` to decide whether the
+  next safe action is workflow design.
 
 ## Current Public Boundaries
 

@@ -114,6 +114,7 @@ python scripts/dwm_multi_slice_batch.py plan --boundary out/continuation-boundar
 python scripts/dwm_execution_receipt_schema.py preflight --batch out/multi-slice-batches/v81-canonical/multi-slice-batch.json --out out/execution-receipt-schemas/<schema_id>
 python scripts/dwm_runner_receipt_dry_run.py dry-run --schema out/execution-receipt-schemas/v82-canonical/execution-receipt-schema.json --batch out/multi-slice-batches/v81-canonical/multi-slice-batch.json --out out/runner-receipt-dry-runs/<dry_run_id>
 python scripts/dwm_installed_surface_audit.py audit --active-skill SKILL.md --out out/installed-surface-audits/<audit_id>
+python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --out out/workflow-activations/<activation_id>
 ```
 
 Release artifacts include `operator-loop.json`, `today.md`,
@@ -131,6 +132,7 @@ Release artifacts include `operator-loop.json`, `today.md`,
 `execution-receipt-schema.json`, `execution-receipt-schema.md`,
 `sample-receipt.json`, `runner-receipt.json`, `runner-receipt.md`, and
 `installed-surface-audit.json`, `installed-surface-audit.md`, and
+`workflow-activation.json`, `workflow-activation.md`, and
 `status.json`.
 
 ## Repository Map
@@ -170,6 +172,7 @@ Release artifacts include `operator-loop.json`, `today.md`,
 | `scripts/dwm_execution_receipt_schema.py` | Execution receipt schema preflight before actual queued execution. |
 | `scripts/dwm_runner_receipt_dry_run.py` | Fixture-only runner receipt dry-run gate with `executed: false`. |
 | `scripts/dwm_installed_surface_audit.py` | Active local skill path and copied install drift audit. |
+| `scripts/dwm_workflow_activation.py` | Next workflow activation gate from install, receipt, and completed-run evidence. |
 | `scripts/dwm_daily_operator.py` | Daily operator loop for ready, blocked, and freshness state. |
 | `scripts/dwm_adapters.py` | Adapter registry, normalized evidence, and parity matrix checks. |
 | `scripts/dwm_adapter_live_matrix.py` | Local adapter command availability and auth-assumption matrix. |

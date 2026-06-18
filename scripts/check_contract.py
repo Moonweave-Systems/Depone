@@ -1806,6 +1806,9 @@ def require_release_commands_pass() -> None:
         [sys.executable, "scripts/dwm_installed_surface_audit.py", "--self-test"],
         [sys.executable, "scripts/dwm_installed_surface_audit.py", "--manifest", "fixtures/v84/manifest.json", "--out", "out/installed-surface-audits/v84-final"],
         [sys.executable, "scripts/dwm_installed_surface_audit.py", "audit", "--active-skill", "SKILL.md", "--out", "out/installed-surface-audits/v84-canonical"],
+        [sys.executable, "scripts/dwm_workflow_activation.py", "--self-test"],
+        [sys.executable, "scripts/dwm_workflow_activation.py", "--manifest", "fixtures/v85/manifest.json", "--out", "out/workflow-activations/v85-final"],
+        [sys.executable, "scripts/dwm_workflow_activation.py", "activate", "--audit", "out/installed-surface-audits/v84-canonical/installed-surface-audit.json", "--receipt", "out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json", "--status", "out/v9/v32-semantic-dogfood/status.json", "--out", "out/workflow-activations/v85-canonical"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -3402,6 +3405,7 @@ def main() -> None:
             "python scripts/dwm_execution_receipt_schema.py preflight --batch out/multi-slice-batches/v81-canonical/multi-slice-batch.json --out out/execution-receipt-schemas/<schema_id>",
             "python scripts/dwm_runner_receipt_dry_run.py dry-run --schema out/execution-receipt-schemas/v82-canonical/execution-receipt-schema.json --batch out/multi-slice-batches/v81-canonical/multi-slice-batch.json --out out/runner-receipt-dry-runs/<dry_run_id>",
             "python scripts/dwm_installed_surface_audit.py audit --active-skill skill.md --out out/installed-surface-audits/<audit_id>",
+            "python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --out out/workflow-activations/<activation_id>",
             "report.json.graph_metrics",
             "benchmark-graph.json",
             "dogfood-progress.json",
@@ -3427,6 +3431,8 @@ def main() -> None:
             "runner-receipt.md",
             "installed-surface-audit.json",
             "installed-surface-audit.md",
+            "workflow-activation.json",
+            "workflow-activation.md",
             "dwm-dogfood-progress.svg",
             "assets/dwm-hero.svg",
             "assets/dwm-live-benchmark.svg",
@@ -3462,12 +3468,14 @@ def main() -> None:
             "docs/v82-execution-receipt-schema-spec.md",
             "docs/v83-runner-receipt-dry-run-spec.md",
             "docs/v84-installed-surface-audit-spec.md",
+            "docs/v85-workflow-activation-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "direct-agent superiority is not claimed",
             "process progress is not an upward benchmark claim",
             "multi-slice continuation is allowed only for source-only or fixture-only",
             "receipt work is allowed through dry-run evidence only",
             "active local skill path",
+            "next safe action is workflow design",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)
@@ -5033,6 +5041,32 @@ def main() -> None:
         ],
     )
     require_terms(
+        "docs/v85-workflow-activation-spec.md",
+        [
+            "status: implemented next workflow activation gate in",
+            "`scripts/dwm_workflow_activation.py`",
+            "`workflow-activation.json`",
+            "`workflow-activation.md`",
+            "`ready_for_next_workflow_design`",
+            "`design_next_workflow`",
+            "live execution remains behind a human gate",
+        ],
+    )
+    require_terms(
+        "docs/v85-decision.md",
+        [
+            "decision: keep",
+            "python scripts/dwm_workflow_activation.py --manifest fixtures/v85/manifest.json --out out/workflow-activations/v85-final",
+            "`suite_id`: `v85-workflow-activation`",
+            "`fixture_count`: 4",
+            "`required_passed`: 4",
+            "`decision`: `keep`",
+            "`decision`: `ready_for_next_workflow_design`",
+            "`next_safe_action`: `design_next_workflow`",
+            "does not claim autonomous execution",
+        ],
+    )
+    require_terms(
         "docs/v7.5-decision.md",
         [
             "decision: keep",
@@ -5081,7 +5115,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `176`",
+            "`release_command_count`: `179`",
             "does not claim workflow execution",
         ],
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -103,6 +104,20 @@ def read_sentinel(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def remove_owned_dir(path: Path) -> None:
+    for index in range(100):
+        tombstone = path.with_name(f".{path.name}.deleting-{os.getpid()}-{index}")
+        if tombstone.exists():
+            continue
+        path.rename(tombstone)
+        try:
+            shutil.rmtree(tombstone)
+        except OSError:
+            pass
+        return
+    raise DemoError("ERR_DEMO_PATH_UNSAFE", "could not allocate demo tombstone path", path=path)
+
+
 def prepare_out_dir(path: Path, demo_id: str, *, source: Path) -> None:
     if path.exists():
         if path.is_symlink():
@@ -112,7 +127,7 @@ def prepare_out_dir(path: Path, demo_id: str, *, source: Path) -> None:
         sentinel = read_sentinel(path)
         if sentinel is None or sentinel.get("demo_id") != demo_id:
             raise DemoError("ERR_DEMO_PATH_UNSAFE", "existing demo output is not demo-owned", path=path)
-        shutil.rmtree(path)
+        remove_owned_dir(path)
     DEMO_ROOT.mkdir(parents=True, exist_ok=True)
     path.mkdir(parents=True)
     write_json_atomic(
@@ -307,6 +322,23 @@ def run_demo(out_dir: Path) -> dict[str, Any]:
         "safe_default": "inspect generated artifacts before any live adapter execution",
         "next_read": f"out/release-candidates/{demo_id}-rc/release-notes.md",
     }
+    if not out_dir.exists():
+        out_dir.mkdir(parents=True, exist_ok=True)
+        write_json_atomic(
+            out_dir / SENTINEL,
+            {
+                "tool": TOOL,
+                "schema_version": SCHEMA_VERSION,
+                "demo_version": DEMO_VERSION,
+                "demo_id": demo_id,
+                "source_path": rel(ROOT / "fixtures" / "v51" / "manifest.json"),
+                "created_at": now_utc(),
+            },
+            root=out_dir,
+        )
+    sentinel = read_sentinel(out_dir)
+    if sentinel is None or sentinel.get("demo_id") != demo_id:
+        raise DemoError("ERR_DEMO_PATH_UNSAFE", "demo output ownership was lost during run", path=out_dir)
     write_json_atomic(out_dir / "demo.json", demo, root=out_dir)
     write_json_atomic(out_dir / "status.json", demo, root=out_dir)
     write_text_atomic(out_dir / "README.md", render_demo_readme(demo), root=out_dir)
@@ -453,7 +485,7 @@ def evaluate_manifest(manifest_path: Path, out_dir: Path) -> dict[str, Any]:
         sentinel = read_sentinel(suite_dir)
         if sentinel is None or sentinel.get("demo_id") != suite_id:
             raise DemoError("ERR_DEMO_PATH_UNSAFE", "existing demo suite is not demo-owned", path=suite_dir)
-        shutil.rmtree(suite_dir)
+        remove_owned_dir(suite_dir)
     prepare_out_dir(suite_dir, suite_id, source=manifest_path)
     fixtures = manifest["fixtures"]
     required_ids = set(manifest["required_fixture_ids"])
@@ -508,6 +540,40 @@ def self_test() -> None:
                 raise
         else:
             raise DemoError("ERR_DEMO_FIXTURE_FAILED", "stale demo inspect unexpectedly passed")
+        flaky_target = suite_dir / "demo-self-test-flaky-delete"
+        prepare_out_dir(
+            flaky_target,
+            flaky_target.name,
+            source=ROOT / "fixtures" / "v53" / "manifest.json",
+        )
+        write_json_atomic(flaky_target / "summary.json", {"stale": True}, root=flaky_target)
+        original_rmtree = shutil.rmtree
+        state = {"failed": False}
+
+        def flaky_rmtree(path: Path | str, *args: Any, **kwargs: Any) -> None:
+            target_path = Path(path)
+            if "flaky-delete" in target_path.name and not state["failed"]:
+                state["failed"] = True
+                sentinel = target_path / SENTINEL
+                if sentinel.exists():
+                    sentinel.unlink()
+                raise OSError("simulated partial rmtree")
+            original_rmtree(path, *args, **kwargs)
+
+        shutil.rmtree = flaky_rmtree
+        try:
+            prepare_out_dir(
+                flaky_target,
+                flaky_target.name,
+                source=ROOT / "fixtures" / "v53" / "manifest.json",
+            )
+        finally:
+            shutil.rmtree = original_rmtree
+        if not state["failed"]:
+            raise DemoError("ERR_DEMO_FIXTURE_FAILED", "flaky rmtree did not run")
+        sentinel = read_sentinel(flaky_target)
+        if sentinel is None or sentinel.get("demo_id") != flaky_target.name:
+            raise DemoError("ERR_DEMO_FIXTURE_FAILED", "flaky delete recovery did not keep owned target")
     print("dwm_demo self-test: pass")
 
 

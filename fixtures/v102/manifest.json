@@ -1,0 +1,260 @@
+{
+  "suite_id": "v102-live-proof",
+  "fixtures": [
+    {
+      "id": "recorded-pass",
+      "expected_decision": "live-proof-pass",
+      "expected_valid": true,
+      "bundle": {
+        "proof_id": "recorded-pass",
+        "schema_version": "102.0.0",
+        "tool": "dwm_live_proof.py",
+        "task": {
+          "id": "live-proof-1",
+          "seed_path": "fixtures/live-proof/seed",
+          "objective": "Make the seeded pytest check pass.",
+          "verification_command": "python -m pytest -q"
+        },
+        "backend": "codex-cli",
+        "mode": "installed-codex",
+        "model_provider": "codex-cli-default",
+        "worktree": {
+          "path": "out/live-proofs/recorded-pass/workspace",
+          "isolated": true,
+          "pre_state": {
+            "status": ""
+          },
+          "post_state": {
+            "status": " M live_math.py"
+          }
+        },
+        "prompt_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packet_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "adapter_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "commands": [
+          {
+            "argv": [
+              "codex",
+              "exec",
+              "--skip-git-repo-check",
+              "--cd",
+              "out/live-proofs/recorded-pass/workspace",
+              "--sandbox",
+              "workspace-write",
+              "--output-last-message",
+              "out/live-proofs/recorded-pass/transcript.md",
+              "-"
+            ],
+            "cwd": "out/live-proofs/recorded-pass/workspace",
+            "timeout_seconds": 120
+          }
+        ],
+        "files_touched": [
+          "live_math.py"
+        ],
+        "transcript_path": "transcript.md",
+        "verification": {
+          "command": "python -m pytest -q",
+          "returncode": 0,
+          "passed": true,
+          "before": "red",
+          "after": "green",
+          "output_path": "verification-after.txt"
+        },
+        "review": {
+          "decision": "approved",
+          "evidence_path": "review.json"
+        },
+        "elapsed_seconds": 12.4,
+        "interruptions": 0,
+        "repo_tracked_diff_unchanged": true,
+        "dogfood_comparison": {
+          "mode": "dwm-controlled",
+          "status": "run",
+          "metrics": {
+            "elapsed_seconds": 12.4,
+            "interruptions": 0,
+            "verification_passed": true
+          }
+        },
+        "decision": "live-proof-pass",
+        "blocked_by": [],
+        "claim_policy": "live n=1 only; no direct-agent superiority claim",
+        "source_hashes": {
+          "seed": "3333333333333333333333333333333333333333333333333333333333333333",
+          "plan": "4444444444444444444444444444444444444444444444444444444444444444",
+          "packet": "1111111111111111111111111111111111111111111111111111111111111111",
+          "prompt": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": "auth-blocked",
+      "expected_decision": "blocked",
+      "expected_valid": true,
+      "bundle": {
+        "proof_id": "auth-blocked",
+        "schema_version": "102.0.0",
+        "tool": "dwm_live_proof.py",
+        "task": {
+          "id": "live-proof-1",
+          "seed_path": "fixtures/live-proof/seed",
+          "objective": "Make the seeded pytest check pass.",
+          "verification_command": "python -m pytest -q"
+        },
+        "backend": "codex-cli",
+        "mode": "installed-codex",
+        "model_provider": "codex-cli-default",
+        "worktree": {
+          "path": "out/live-proofs/auth-blocked/workspace",
+          "isolated": true,
+          "pre_state": {
+            "status": ""
+          },
+          "post_state": {
+            "status": ""
+          }
+        },
+        "prompt_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packet_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "adapter_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "commands": [],
+        "files_touched": [],
+        "transcript_path": "transcript.md",
+        "verification": {
+          "command": "python -m pytest -q",
+          "returncode": null,
+          "passed": false,
+          "before": "red",
+          "after": "not-run",
+          "output_path": "verification-before.txt"
+        },
+        "review": {
+          "decision": "blocked",
+          "evidence_path": "review.json"
+        },
+        "elapsed_seconds": 0.2,
+        "interruptions": 0,
+        "repo_tracked_diff_unchanged": true,
+        "dogfood_comparison": {
+          "mode": "dwm-controlled",
+          "status": "blocked",
+          "metrics": {
+            "elapsed_seconds": 0.2,
+            "interruptions": 0,
+            "verification_passed": false
+          }
+        },
+        "decision": "blocked",
+        "blocked_by": [
+          {
+            "code": "ERR_EXEC_BACKEND_AUTH",
+            "message": "Codex CLI authentication failed"
+          }
+        ],
+        "claim_policy": "live n=1 only; no direct-agent superiority claim",
+        "source_hashes": {
+          "seed": "3333333333333333333333333333333333333333333333333333333333333333",
+          "plan": "4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      }
+    },
+    {
+      "id": "verification-failed",
+      "expected_decision": "failed",
+      "expected_valid": true,
+      "bundle": {
+        "proof_id": "verification-failed",
+        "schema_version": "102.0.0",
+        "tool": "dwm_live_proof.py",
+        "task": {
+          "id": "live-proof-1",
+          "seed_path": "fixtures/live-proof/seed",
+          "objective": "Make the seeded pytest check pass.",
+          "verification_command": "python -m pytest -q"
+        },
+        "backend": "codex-cli",
+        "mode": "installed-codex",
+        "model_provider": "codex-cli-default",
+        "worktree": {
+          "path": "out/live-proofs/verification-failed/workspace",
+          "isolated": true,
+          "pre_state": {
+            "status": ""
+          },
+          "post_state": {
+            "status": " M live_math.py"
+          }
+        },
+        "prompt_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packet_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "adapter_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "commands": [
+          {
+            "argv": [
+              "codex",
+              "exec"
+            ],
+            "cwd": "out/live-proofs/verification-failed/workspace",
+            "timeout_seconds": 120
+          }
+        ],
+        "files_touched": [
+          "live_math.py"
+        ],
+        "transcript_path": "transcript.md",
+        "verification": {
+          "command": "python -m pytest -q",
+          "returncode": 1,
+          "passed": false,
+          "before": "red",
+          "after": "red",
+          "output_path": "verification-after.txt"
+        },
+        "review": {
+          "decision": "request-changes",
+          "evidence_path": "review.json"
+        },
+        "elapsed_seconds": 8.1,
+        "interruptions": 0,
+        "repo_tracked_diff_unchanged": true,
+        "dogfood_comparison": {
+          "mode": "dwm-controlled",
+          "status": "run",
+          "metrics": {
+            "elapsed_seconds": 8.1,
+            "interruptions": 0,
+            "verification_passed": false
+          }
+        },
+        "decision": "failed",
+        "blocked_by": [
+          {
+            "code": "ERR_EXEC_VERIFY_FAILED",
+            "message": "verification failed after Codex execution"
+          }
+        ],
+        "claim_policy": "live n=1 only; no direct-agent superiority claim",
+        "source_hashes": {
+          "seed": "3333333333333333333333333333333333333333333333333333333333333333",
+          "plan": "4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      }
+    },
+    {
+      "id": "tampered-rejected",
+      "expected_decision": "live-proof-pass",
+      "expected_valid": false,
+      "bundle": {
+        "proof_id": "tampered-rejected",
+        "schema_version": "102.0.0",
+        "tool": "dwm_live_proof.py",
+        "decision": "live-proof-pass",
+        "backend": "codex-cli",
+        "mode": "installed-codex",
+        "repo_tracked_diff_unchanged": false,
+        "claim_policy": "live n=1 only; no direct-agent superiority claim"
+      }
+    }
+  ]
+}

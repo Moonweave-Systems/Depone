@@ -217,6 +217,8 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_promotion_route.py --self-test",
     "python scripts/dwm_promotion_route.py --manifest fixtures/v101/manifest.json --out out/promotion-routes/v101-final",
     "python scripts/dwm_promotion_route.py route --evidence out/promotion-evidence/v100-canonical/promotion-evidence.json --out out/promotion-routes/v101-canonical",
+    "python scripts/dwm_live_proof.py --self-test",
+    "python scripts/dwm_live_proof.py --manifest fixtures/v102/manifest.json --out out/v102/final",
     "python scripts/dwm_daily_operator.py --self-test",
     "python scripts/dwm_daily_operator.py --manifest fixtures/v48/manifest.json --out out/daily-operator/v48-final",
     "python scripts/dwm_release_candidate.py --self-test",
@@ -674,6 +676,13 @@ BASE_REQUIRED_PATHS = [
     "fixtures/v101/manifest.json",
     "docs/v101-decision.md",
     "docs/v101-promotion-route-spec.md",
+    "scripts/dwm_live_proof.py",
+    "fixtures/v102/manifest.json",
+    "fixtures/live-proof/live-proof-1.workflow.plan.json",
+    "fixtures/live-proof/seed/live_math.py",
+    "fixtures/live-proof/seed/test_live_math.py",
+    "docs/v102-decision.md",
+    "docs/v102-live-proof-1-spec.md",
 ]
 
 

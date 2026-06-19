@@ -174,6 +174,9 @@ promotion requires real release history.
   evidence recording before any README graph publication review.
 - V101: `docs/v101-promotion-route-spec.md` added source-only routing from
   promotion evidence to dogfood acquisition planning or a human gate.
+- V102: `docs/v102-live-proof-1-spec.md` added a deterministic live-proof
+  recorder and fixture gate for one bounded Codex-backed attempt while keeping
+  the first real `codex exec` run opt-in behind explicit approval.
 
 ## Current Public Boundaries
 

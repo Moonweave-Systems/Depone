@@ -1,6 +1,6 @@
 # Keelplane Automation Roadmap
 
-Status: V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented; V10 product CLI implemented; V11 operator guidance implemented; V12-V20 product roadmap implemented; V52-V87 product evidence, graph timing, activation, and brand boundary gates implemented; V88 roadmap reconciliation audit implemented; V89 command safety gate implemented; V90 activation v2 implemented; V91 contract tiering implemented; V92 evidence oracle implemented; V93 workflow narrative implemented; V94 control deck score implemented; V95 score history implemented; V96 metric ladder implemented; V97 benchmark readiness implemented; V98 wave operator implemented; V99 wave receipt implemented; V100 promotion evidence implemented; V101 promotion route implemented
+Status: V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented; V10 product CLI implemented; V11 operator guidance implemented; V12-V20 product roadmap implemented; V52-V87 product evidence, graph timing, activation, and brand boundary gates implemented; V88 roadmap reconciliation audit implemented; V89 command safety gate implemented; V90 activation v2 implemented; V91 contract tiering implemented; V92 evidence oracle implemented; V93 workflow narrative implemented; V94 control deck score implemented; V95 score history implemented; V96 metric ladder implemented; V97 benchmark readiness implemented; V98 wave operator implemented; V99 wave receipt implemented; V100 promotion evidence implemented; V101 promotion route implemented; V102 deterministic live-proof recorder implemented with live Codex run behind explicit human approval
 Date: 2026-06-19
 
 ## Purpose
@@ -849,9 +849,9 @@ First canonical demo done means:
 - unsafe and non-owned output paths are blocked;
 - `fixtures/v51/manifest.json` passes with `decision: "keep"`.
 
-### V52-V101: Product Evidence And Control Deck
+### V52-V102: Product Evidence And Control Deck
 
-Status: implemented through V101.
+Status: implemented through V102 deterministic recorder; live Codex execution remains behind an explicit human gate.
 
 Purpose: move from a runnable demo into a product that can explain its current
 state, measure real dogfood evidence, gate graph claims, continue safely across
@@ -904,10 +904,14 @@ Implemented continuation:
   default.
 - V101 promotion route turns that evidence into either the next dogfood
   acquisition command plan or a README publication human gate.
+- V102 live proof adds a deterministic evidence schema and recorder for one
+  bounded Codex-backed run. The deterministic fixture gate is implemented; the
+  first real `codex exec` attempt is opt-in only and is not part of the release
+  contract.
 
 Next roadmap direction:
 
-1. Use the V101 promotion route to continue dogfood evidence acquisition until public graph promotion can enter human review.
+1. Use the V102 live-proof command only after explicit approval to record the first bounded live n=1 Codex attempt.
 2. Increase real dogfood acquisition so future graphs show measured process
    history rather than decorative upward motion.
 3. Improve public install and quickstart flow without renaming packages until a

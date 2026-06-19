@@ -4002,7 +4002,7 @@ def main() -> None:
             "`roadmap-reconciliation.md`",
             "public product brand: `keelplane`",
             "internal engine name: `dwm core`",
-            "latest reconciled version: `v101`",
+            "latest reconciled version: `v102`",
             "does not claim autonomous execution",
         ],
     )
@@ -4016,7 +4016,7 @@ def main() -> None:
             "`required_passed`: 4",
             "`decision`: `keep`",
             "`decision`: `roadmap_reconciled`",
-            "`latest_version`: `v101`",
+            "`latest_version`: `v102`",
             "does not execute queued commands",
         ],
     )
@@ -4068,7 +4068,7 @@ def main() -> None:
             "`fixture_count`: 4",
             "`required_passed`: 4",
             "`decision`: `keep`",
-            "`roadmap_latest_version`: `v101`",
+            "`roadmap_latest_version`: `v102`",
             "`command_safety_decision`: `keep`",
         ],
     )
@@ -5995,7 +5995,7 @@ def main() -> None:
             "python scripts/dwm.py commands --kind release --json",
             "`status`: `workflow-complete`",
             "`doctor_ok`: `true`",
-            "`release_command_count`: `185`",
+            "`release_command_count`: `223`",
             "does not claim workflow execution",
         ],
     )

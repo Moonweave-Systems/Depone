@@ -66,35 +66,10 @@ python scripts/dwm.py doctor
 python scripts/dwm.py commands --kind product
 ```
 
-Render the current Control Deck when V88-V93 evidence artifacts exist:
-
-```bash
-python scripts/dwm_workflow_narrative.py render --out out/workflow-narratives/local
-python scripts/dwm_control_deck_score.py score --out out/control-deck-scores/local
-python scripts/dwm_control_deck_score_history.py build --score out/control-deck-scores/local --out out/control-deck-score-history/local
-python scripts/dwm_metric_ladder.py assess --history out/control-deck-score-history/local/control-deck-score-history.json --out out/metric-ladders/local
-python scripts/dwm_benchmark_readiness.py assess --ladder out/metric-ladders/local/metric-ladder.json --out out/benchmark-readiness/local
-python scripts/dwm_wave_operator.py select --readiness out/benchmark-readiness/local/benchmark-readiness.json --activation out/workflow-activations/v90-canonical/workflow-activation.json --out out/wave-operators/local
-python scripts/dwm_wave_receipt.py record --wave out/wave-operators/local/wave-operator.json --acquisition out/dogfood-acquisitions/v61-final/summary.json --out out/wave-receipts/local
-python scripts/dwm_promotion_evidence.py record --receipt out/wave-receipts/local/wave-receipt.json --readiness out/benchmark-readiness/local/benchmark-readiness.json --out out/promotion-evidence/local
-python scripts/dwm_promotion_route.py route --evidence out/promotion-evidence/local/promotion-evidence.json --out out/promotion-routes/local
-```
-
-The Control Deck may say things like `Chart: roadmap reconciled`, `Gate:
-command safety clear`, and `Oracle: evidence claims verified`. Those labels are
-status rendering only; artifacts and source hashes remain the source of truth.
-The Control Deck score is operator readiness, not a public benchmark or upward
-trend claim. The score history can render an internal readiness SVG, but it is
-still not a public benchmark graph. The Metric Ladder states which graph level
-is currently supported before any benchmark claim is made. Benchmark Readiness
-records the current internal score and keeps README benchmark publication
-blocked until promotion evidence exists. The Wave Operator selects the next
-source-only product wave from readiness and activation evidence. Wave Receipt
-checks that the selected dogfood evidence wave has usable acquisition evidence.
-Promotion Evidence records whether those source artifacts can enter human
-review for README graph publication; it does not publish benchmark claims.
-Promotion Route turns that evidence into either the next dogfood acquisition
-command plan or a README publication human gate.
+Control Deck, readiness, wave, and promotion commands live in
+[`docs/command-reference.md`](docs/command-reference.md). Those surfaces render
+operator state only; artifacts and source hashes remain the source of truth, and
+README graph publication stays behind human review.
 
 Run the release contract before publishing changes:
 
@@ -120,16 +95,11 @@ python scripts/dwm.py commands --kind release
 | Review | Records review findings, repair prompts, retry state, and verification evidence. |
 | Fanout | Runs bounded multi-worker slices with deterministic fan-in. |
 | HUD | Produces read-only status views and hash-bound approval artifacts. |
-| Live evidence | Plans adapter commands, preflights them, ingests receipts, judges receipts, scores verified evidence, and reports graph-ready metrics. |
-| Control Deck | Renders artifact-backed Chart, Gate, Activation, Oracle, and Next move status without claiming autonomous execution. |
-| Readiness score | Scores Control Deck completeness for operator status without claiming benchmark progress. |
-| Readiness history | Records Control Deck score movement as internal operator history without publishing benchmark claims. |
-| Metric Ladder | Separates process, operator-readiness, and public-benchmark graph levels so metrics can grow without overclaiming. |
-| Benchmark readiness | Reports internal readiness and public benchmark publication state without granting README publication approval. |
-| Wave Operator | Selects the next source-only product wave and keeps public benchmark publication behind human review. |
-| Wave Receipt | Verifies the selected dogfood evidence wave against acquisition evidence without publishing benchmark claims. |
-| Promotion Evidence | Records whether source evidence can enter human review while keeping README graph publication blocked by default. |
-| Promotion Route | Plans the next dogfood evidence command or stops at a README publication human gate without executing anything. |
+| Live evidence | Plans, preflights, records, and reviews bounded adapter evidence without overclaiming. |
+| Control Deck | Renders artifact-backed operator status without claiming autonomous execution. |
+| Readiness and graphs | Separates process progress, internal readiness, and public benchmark claims. |
+| Promotion route | Plans the next dogfood evidence command or stops at a README publication human gate. |
+| Live proof | V102 recorder and schema gate are deterministic; the first real Codex run remains opt-in. |
 | Packaging | Validates repo-local install metadata, adapter registries, compatibility, and release evidence. |
 
 ## What Is Still Honest
@@ -139,7 +109,8 @@ python scripts/dwm.py commands --kind release
 | Local artifact loop | Implemented and covered by the canonical demo. |
 | Adapter parity | Implemented as a support matrix and blocker, not a live parity claim. |
 | Release candidate | Implemented from daily operator and adapter parity evidence. |
-| Benchmark graph | Source-bound graph artifacts exist, but public trend promotion requires real release history. |
+| Benchmark graph | Source-bound graph artifacts exist; public trend promotion requires real release history. |
+| Live n=1 execution | Not claimed yet. V102 stops before `codex exec` until explicit approval. |
 | Direct-agent superiority | Not claimed. Future comparison must come from measured dogfood attempts. |
 | Unrestricted autonomy | Not claimed. Risky work remains gate-bound by default. |
 

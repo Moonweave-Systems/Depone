@@ -117,6 +117,8 @@ python scripts/dwm_installed_surface_audit.py audit --active-skill SKILL.md --ou
 python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --out out/workflow-activations/<activation_id>
 python scripts/dwm_brand_boundary_audit.py audit --out out/brand-boundary-audits/<audit_id>
 python scripts/dwm_roadmap_reconciliation.py audit --out out/roadmap-reconciliations/<audit_id>
+# command safety
+python scripts/dwm_command_safety.py --manifest fixtures/v89/manifest.json --out out/command-safety/<safety_id>
 ```
 
 Release artifacts include `operator-loop.json`, `today.md`,

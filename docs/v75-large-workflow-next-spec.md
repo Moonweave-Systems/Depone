@@ -34,7 +34,8 @@ Non-goals:
 
 `scripts/dwm_large_workflow_next.py` reads a V74 `dogfood-control.json`,
 validates the embedded V73 control result, checks source hashes, ranks
-candidate next actions by priority and id, and writes:
+candidate next actions by priority and id, evaluates command safety with
+`scripts/dwm_command_safety.py`, and writes:
 
 - `large-workflow-next.json`,
 - `large-workflow-next.md`,
@@ -48,6 +49,10 @@ The output has one of three decisions:
   risk,
 - `blocked`: the control receipt, source hash, candidate contract, or claim
   policy failed.
+
+The selector does not trust candidate-declared `risk_codes` alone. It parses
+the selected command, checks a supported `python scripts/*.py` entrypoint, and
+adds inferred gated risks before deciding whether a command may be emitted.
 
 ## Execution Model
 
@@ -73,11 +78,14 @@ The selector blocks if:
 - control source hashes are missing,
 - an expected control hash mismatches the current receipt,
 - a candidate is malformed or duplicated,
+- a candidate command is unsupported or not allowlisted,
 - a candidate makes a forbidden public overclaim.
 
 The selector returns `human_gate_required` and emits no command if the selected
-candidate includes write, delete, network, deploy, secret, or external-message
-risk.
+candidate declares or infers write, delete, network, deploy, secret,
+dependency, database, history-rewrite, or external-message risk.
+The legacy V75 gate phrase remains: write, delete, network, deploy, secret, or
+external-message work is never surfaced as an automatic command.
 
 Safe default: stop before command execution and preserve the receipt.
 
@@ -89,6 +97,7 @@ Safe default: stop before command execution and preserve the receipt.
 - blocked dogfood control blocking next selection,
 - source hash drift blocking next selection,
 - write-risk candidate requiring a human gate,
+- undeclared runner command risk requiring a human gate,
 - overclaim candidate blocking next selection.
 
 ## Release Plan

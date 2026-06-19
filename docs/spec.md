@@ -1,6 +1,6 @@
 # Keelplane / DWM Core Spec
 
-Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, Last updated: 2026-06-19
+Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, V89 command safety, Last updated: 2026-06-19
 
 ## Purpose
 
@@ -54,9 +54,11 @@ Positioning:
   planning, runner execution, session/worktree durability, review/repair,
   bounded fanout, HUD, install packaging, adapter registry, and release
   hardening.
-- V86-V88 brand and roadmap gate: make Keelplane the public product brand,
-  preserve DWM Core and `dynamic-workflow-designer` compatibility, and keep the
-  spec, roadmap, and release history aligned through audit artifacts.
+- V86-V89 brand, roadmap, and command safety gate: make Keelplane the public
+  product brand, preserve DWM Core and `dynamic-workflow-designer`
+  compatibility, keep the spec, roadmap, and release history aligned through
+  audit artifacts, and prevent command planning from trusting declared
+  `risk_codes` alone.
 
 ## Users
 
@@ -211,11 +213,12 @@ destructive, networked, dependency-installing, secret-reading, external-message,
 database, production, or history-rewrite action occurs without a matching DWM
 gate and a safe default.
 
-### V86-V88: Brand And Roadmap Reconciliation
+### V86-V89: Brand, Roadmap, And Command Safety
 
-V86-V88 align the product surface after the control-plane became broader than a
-single skill. The public product brand is Keelplane. DWM Core remains the
-internal deterministic engine. The compatibility skill name remains
+V86-V89 align the product surface after the control-plane became broader than a
+single skill, then harden the command boundary that follows next-action
+selection. The public product brand is Keelplane. DWM Core remains the internal
+deterministic engine. The compatibility skill name remains
 `dynamic-workflow-designer`, and the repository slug remains `dwm` until a
 separate migration gate proves a rename will not break install surfaces.
 
@@ -228,6 +231,10 @@ and `docs/release-history.md` aligned with the current implementation state.
 This is still audit-only: it does not execute queued commands, run live
 adapters, publish benchmark claims, rename packages, or claim autonomous
 execution.
+
+V89 command safety adds shared command-shape and inferred-risk checks for V75,
+V76, and V77. Candidate-declared `risk_codes` are no longer authoritative on
+their own; supported commands can still be blocked or gated.
 
 ### Harness Strategy
 

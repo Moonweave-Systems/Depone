@@ -1,6 +1,6 @@
 # Keelplane Automation Roadmap
 
-Status: V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented; V10 product CLI implemented; V11 operator guidance implemented; V12-V20 product roadmap implemented; V52-V87 product evidence, graph timing, activation, and brand boundary gates implemented; V88 roadmap reconciliation audit implemented
+Status: V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented; V10 product CLI implemented; V11 operator guidance implemented; V12-V20 product roadmap implemented; V52-V87 product evidence, graph timing, activation, and brand boundary gates implemented; V88 roadmap reconciliation audit implemented; V89 command safety gate implemented
 Date: 2026-06-19
 
 ## Purpose
@@ -849,14 +849,14 @@ First canonical demo done means:
 - unsafe and non-owned output paths are blocked;
 - `fixtures/v51/manifest.json` passes with `decision: "keep"`.
 
-### V52-V88: Product Evidence And Roadmap Reconciliation
+### V52-V89: Product Evidence And Command Safety
 
-Status: implemented through V88.
+Status: implemented through V89.
 
 Purpose: move from a runnable demo into a product that can explain its current
 state, measure real dogfood evidence, gate graph claims, continue safely across
-several source-only waves, activate the next workflow, and keep public
-positioning coherent.
+several source-only waves, activate the next workflow, keep public positioning
+coherent, and avoid trusting declared command risk alone.
 
 Implemented continuation:
 
@@ -875,11 +875,14 @@ Implemented continuation:
 - V86-V87 set Keelplane as the public brand and added the brand boundary audit.
 - V88 roadmap reconciliation audit keeps this spec, roadmap, and release
   history aligned with implementation truth.
+- V89 command safety gate adds shared command-shape and inferred-risk checks
+  across next-action selection, queue bridging, and queue preflight.
 
 Next roadmap direction:
 
 1. Add a wave operator command that summarizes the next safe product wave from
-   existing control, activation, and roadmap reconciliation evidence.
+   existing control, activation, roadmap reconciliation, and command safety
+   evidence.
 2. Increase real dogfood acquisition so future graphs show measured process
    history rather than decorative upward motion.
 3. Improve public install and quickstart flow without renaming packages until a

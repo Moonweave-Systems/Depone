@@ -144,6 +144,8 @@ promotion requires real release history.
   `roadmap-reconciliation.json` and `roadmap-reconciliation.md` to keep
   `docs/spec.md`, `docs/automation-roadmap.md`, and this release history
   aligned with implementation truth.
+- V89: `docs/v89-command-safety-spec.md` added shared command-safety inference
+  so V75/V76/V77 no longer rely on candidate-declared `risk_codes` alone.
 
 ## Current Public Boundaries
 

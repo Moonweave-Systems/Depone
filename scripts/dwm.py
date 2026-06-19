@@ -181,6 +181,8 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_roadmap_reconciliation.py --self-test",
     "python scripts/dwm_roadmap_reconciliation.py --manifest fixtures/v88/manifest.json --out out/roadmap-reconciliations/v88-final",
     "python scripts/dwm_roadmap_reconciliation.py audit --out out/roadmap-reconciliations/v88-canonical",
+    "python scripts/dwm_command_safety.py --self-test",
+    "python scripts/dwm_command_safety.py --manifest fixtures/v89/manifest.json --out out/command-safety/v89-final",
     "python scripts/dwm_daily_operator.py --self-test",
     "python scripts/dwm_daily_operator.py --manifest fixtures/v48/manifest.json --out out/daily-operator/v48-final",
     "python scripts/dwm_release_candidate.py --self-test",
@@ -391,6 +393,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v87-brand-boundary-audit-spec.md",
     "docs/v88-decision.md",
     "docs/v88-roadmap-reconciliation-spec.md",
+    "docs/v89-decision.md",
+    "docs/v89-command-safety-spec.md",
     "docs/command-reference.md",
     "docs/release-history.md",
     "packaging/dwm-benchmark-attempts.json",
@@ -448,6 +452,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_release_timing_history.py",
     "scripts/dwm_large_workflow_control.py",
     "scripts/dwm_large_workflow_dogfood.py",
+    "scripts/dwm_command_safety.py",
     "scripts/dwm_large_workflow_next.py",
     "scripts/dwm_large_workflow_queue_bridge.py",
     "scripts/dwm_large_workflow_queue_preflight.py",
@@ -576,6 +581,9 @@ BASE_REQUIRED_PATHS = [
     "fixtures/v88/manifest.json",
     "docs/v88-decision.md",
     "docs/v88-roadmap-reconciliation-spec.md",
+    "fixtures/v89/manifest.json",
+    "docs/v89-decision.md",
+    "docs/v89-command-safety-spec.md",
 ]
 
 

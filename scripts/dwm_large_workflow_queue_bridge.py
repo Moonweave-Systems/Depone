@@ -17,6 +17,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from compile_workflow import canonical_hash, read_json, write_json_atomic, write_text_atomic  # noqa: E402
+from dwm_command_safety import GATED_RISK_CODES, assess_command_safety  # noqa: E402
 from dwm_workflow_queue import build_queue, resolve_queue_out  # noqa: E402
 
 
@@ -27,7 +28,6 @@ BRIDGE_ROOT = ROOT / "out" / "large-workflow-queue-bridge"
 DEFAULT_SELECTION = ROOT / "out" / "large-workflow-next" / "v75-canonical" / "large-workflow-next.json"
 DEFAULT_QUEUE_OUT = ROOT / "out" / "workflow-queues" / "v76-canonical"
 SENTINEL = ".dwm_large_workflow_queue_bridge-owned.json"
-GATED_RISK_CODES = {"write", "delete", "network", "deploy", "secrets", "secret", "external-message"}
 
 
 class LargeWorkflowQueueBridgeError(ValueError):
@@ -169,9 +169,18 @@ def selection_blockers(selection: dict[str, Any], *, expected_hash: str | None =
         if not isinstance(risk_codes, list) or not all(isinstance(code, str) for code in risk_codes):
             blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_BRIDGE_CANDIDATE_INVALID", "message": "candidate risk_codes are invalid"})
         else:
-            gated = sorted(set(risk_codes) & GATED_RISK_CODES)
+            safety = assess_command_safety(str(command or candidate.get("next_command", "")), risk_codes)
+            for safety_blocker in safety.blocked_by:
+                blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_BRIDGE_COMMAND_UNSAFE", "command_safety": safety_blocker})
+            gated = sorted(set(safety.gated_risk_codes) & GATED_RISK_CODES)
             if gated:
-                blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_BRIDGE_RISK_GATE_REQUIRED", "risk_codes": gated})
+                blockers.append(
+                    {
+                        "code": "ERR_LARGE_WORKFLOW_QUEUE_BRIDGE_RISK_GATE_REQUIRED",
+                        "risk_codes": gated,
+                        "inferred_risk_codes": safety.inferred_risk_codes,
+                    }
+                )
     return blockers
 
 
@@ -194,15 +203,17 @@ def evidence_paths(selection_path: Path, selection: dict[str, Any]) -> list[str]
 
 def packet_from_selection(selection_path: Path, selection: dict[str, Any]) -> dict[str, Any]:
     candidate = selection["selected_candidate"]
+    safety = assess_command_safety(str(selection["command"]), candidate.get("risk_codes", []))
     return {
         "id": str(candidate["id"]),
         "title": str(candidate["objective"]),
         "status": "pending",
         "command": str(selection["command"]),
-        "risk_codes": [str(code) for code in candidate.get("risk_codes", [])],
+        "risk_codes": safety.effective_risk_codes,
         "evidence_paths": evidence_paths(selection_path, selection),
         "verification_status": "pass",
         "requires_human": False,
+        "command_safety": safety.to_record(),
     }
 
 
@@ -408,6 +419,16 @@ def self_test() -> None:
     gated_bridge = make_bridge("self-test-gated", DEFAULT_SELECTION, gated)
     if gated_bridge["status"] != "queue-bridge-blocked":
         raise LargeWorkflowQueueBridgeError("ERR_LARGE_WORKFLOW_QUEUE_BRIDGE_SELF_TEST_FAILED", "write risk should block bridge")
+    undeclared_runner = ready_selection()
+    undeclared_runner["command"] = "python scripts/dwm_runner.py --manifest fixtures/v13/manifest.json --out out/v13/final"
+    undeclared_runner["selected_candidate"] = {
+        **undeclared_runner["selected_candidate"],
+        "risk_codes": ["read-only", "evidence"],
+        "next_command": undeclared_runner["command"],
+    }
+    undeclared_bridge = make_bridge("self-test-undeclared-runner-risk", DEFAULT_SELECTION, undeclared_runner)
+    if undeclared_bridge["status"] != "queue-bridge-blocked":
+        raise LargeWorkflowQueueBridgeError("ERR_LARGE_WORKFLOW_QUEUE_BRIDGE_SELF_TEST_FAILED", "inferred runner write risk should block bridge")
 
 
 def parse_args() -> argparse.Namespace:

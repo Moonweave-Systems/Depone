@@ -132,6 +132,55 @@
       "candidates": [
         {
           "claim_limits": [
+            "internal evidence only",
+            "runner execution requires approval"
+          ],
+          "evidence_requirements": [
+            "dogfood-control.json",
+            "runner approval receipt"
+          ],
+          "id": "undeclared-runner-risk",
+          "next_command": "python scripts/dwm_runner.py --manifest fixtures/v13/manifest.json --out out/v13/final",
+          "objective": "Run the DWM runner while incorrectly declaring only read-only risk.",
+          "priority": 100,
+          "risk_codes": [
+            "read-only",
+            "evidence"
+          ],
+          "success_criteria": [
+            "runner risk is inferred from the command",
+            "no command is emitted before approval"
+          ]
+        }
+      ],
+      "control": {
+        "blocked_by": [],
+        "control": {
+          "blocked_by": [],
+          "max_score": 12,
+          "status": "large-workflow-controlled",
+          "total_score": 12
+        },
+        "dogfood_id": "fixture-ready",
+        "schema_version": "1.0",
+        "source_hashes": {
+          "control": "fixture-control",
+          "run_status": "fixture-run",
+          "workflow": "fixture-workflow"
+        },
+        "status": "dogfood-control-recorded",
+        "tool": "dwm_large_workflow_dogfood.py"
+      },
+      "control_path": "fixture-ready-control",
+      "expected_decision": "human_gate_required",
+      "expected_status": "next-workflow-gate-required",
+      "id": "undeclared-runner-risk-requires-human-gate",
+      "required": true
+    },
+    {
+      "candidates": [
+        {
+          "claim_limits": [
             "internal evidence only"
           ],
           "evidence_requirements": [
@@ -179,6 +228,7 @@
     "blocked-control-blocks-next-command",
     "source-hash-drift-blocked",
     "write-risk-requires-human-gate",
+    "undeclared-runner-risk-requires-human-gate",
     "overclaim-candidate-blocked"
   ],
   "suite_id": "v75-large-workflow-next"

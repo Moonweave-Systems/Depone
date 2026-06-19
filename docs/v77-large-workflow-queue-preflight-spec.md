@@ -9,7 +9,8 @@ V75 selected a next large-workflow command from control evidence. V76 converted
 that selection into a V46 queue packet. V77 adds the missing execution boundary:
 before any runner or operator uses the queued command, DWM verifies that the
 queue is still recorded, the selected packet is still ready, evidence files are
-present, the command shape is supported, and no gated risk is present.
+present, the command shape is supported, and no declared or inferred gated risk
+is present.
 
 This keeps the product aligned with modern agent runtime direction without
 becoming a harness clone. DWM can cooperate with Codex, Claude Code, OpenCode,
@@ -31,7 +32,8 @@ Non-goals:
 ## Workflow Architecture
 
 `scripts/dwm_large_workflow_queue_preflight.py` reads a queue `queue.json`,
-checks the selected `next_action`, resolves the selected packet, and writes:
+checks the selected `next_action`, resolves the selected packet, evaluates
+command safety with `scripts/dwm_command_safety.py`, and writes:
 
 - `queue-preflight.json`,
 - `queue-preflight.md`,
@@ -65,7 +67,8 @@ The preflight blocks if:
 - the packet requires human approval,
 - risk codes include write, delete, network, deploy, secret, dependency,
   database, history-rewrite, or external-message,
-- the command is missing or unsupported,
+- the command is missing, unsupported, not allowlisted, or infers a gated risk
+  omitted from packet `risk_codes`,
 - evidence paths are missing,
 - the expected queue hash mismatches.
 

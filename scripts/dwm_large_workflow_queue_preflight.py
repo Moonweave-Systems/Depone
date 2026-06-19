@@ -17,6 +17,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from compile_workflow import canonical_hash, read_json, write_json_atomic, write_text_atomic  # noqa: E402
+from dwm_command_safety import GATED_RISK_CODES, assess_command_safety  # noqa: E402
 
 
 TOOL = "dwm_large_workflow_queue_preflight.py"
@@ -25,8 +26,6 @@ PREFLIGHT_VERSION = "77.0.0"
 PREFLIGHT_ROOT = ROOT / "out" / "large-workflow-queue-preflight"
 DEFAULT_QUEUE = ROOT / "out" / "workflow-queues" / "v76-canonical" / "queue.json"
 SENTINEL = ".dwm_large_workflow_queue_preflight-owned.json"
-GATED_RISK_CODES = {"write", "delete", "network", "deploy", "secret", "secrets", "dependency", "database", "history-rewrite", "external-message"}
-ALLOWED_COMMAND_PREFIXES = ["python scripts/"]
 
 
 class LargeWorkflowQueuePreflightError(ValueError):
@@ -197,15 +196,22 @@ def preflight_blockers(queue: dict[str, Any], *, expected_hash: str | None = Non
     risk_codes = packet.get("risk_codes")
     if not isinstance(risk_codes, list) or not all(isinstance(code, str) for code in risk_codes):
         blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_PACKET_INVALID", "field": "risk_codes"})
-    else:
-        gated = sorted(set(risk_codes) & GATED_RISK_CODES)
-        if gated:
-            blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_RISK_GATE_REQUIRED", "risk_codes": gated})
     command = next_action.get("command") or packet.get("command")
     if not isinstance(command, str) or not command.strip():
         blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_COMMAND_MISSING", "message": "selected command is missing"})
-    elif not any(command.startswith(prefix) for prefix in ALLOWED_COMMAND_PREFIXES):
-        blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_COMMAND_UNSUPPORTED", "command": command})
+    else:
+        safety = assess_command_safety(command, risk_codes)
+        for safety_blocker in safety.blocked_by:
+            blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_COMMAND_UNSAFE", "command_safety": safety_blocker})
+        gated = sorted(set(safety.gated_risk_codes) & GATED_RISK_CODES)
+        if gated:
+            blockers.append(
+                {
+                    "code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_RISK_GATE_REQUIRED",
+                    "risk_codes": gated,
+                    "inferred_risk_codes": safety.inferred_risk_codes,
+                }
+            )
     missing = missing_evidence(packet)
     if missing:
         blockers.append({"code": "ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_EVIDENCE_MISSING", "paths": missing})
@@ -400,6 +406,14 @@ def self_test() -> None:
     blocked = make_preflight("self-test-gated", gated, queue_path="fixture-queue")
     if blocked["status"] != "queue-preflight-blocked":
         raise LargeWorkflowQueuePreflightError("ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_SELF_TEST_FAILED", "write risk should block preflight")
+    undeclared_runner = ready_queue()
+    undeclared_runner["next_action"]["command"] = "python scripts/dwm_runner.py --manifest fixtures/v13/manifest.json --out out/v13/final"
+    undeclared_runner["packets"][0]["command"] = undeclared_runner["next_action"]["command"]
+    undeclared_runner["packets"][0]["risk_codes"] = ["read-only", "evidence"]
+    undeclared_runner = materialize_fixture_queue({"queue": undeclared_runner}, out_dir)
+    undeclared_blocked = make_preflight("self-test-undeclared-runner-risk", undeclared_runner, queue_path="fixture-queue")
+    if undeclared_blocked["status"] != "queue-preflight-blocked":
+        raise LargeWorkflowQueuePreflightError("ERR_LARGE_WORKFLOW_QUEUE_PREFLIGHT_SELF_TEST_FAILED", "inferred runner write risk should block preflight")
 
 
 def parse_args() -> argparse.Namespace:

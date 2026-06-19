@@ -8,13 +8,14 @@ Status: implemented roadmap reconciliation audit in
 Keep the product spec, automation roadmap, and release history aligned with the
 current Keelplane state. V88 prevents the project from looking half-planned and
 half-implemented after V52-V87 added product evidence, dogfood measurement,
-graph timing, activation, and brand boundary gates.
+graph timing, activation, and brand boundary gates. The audit now reconciles
+through V89 command safety.
 
 ## Product Boundary
 
 - Public product brand: `Keelplane`.
 - Internal engine name: `DWM Core`.
-- Latest reconciled version: `V88`.
+- Latest reconciled version: `V89`.
 - `docs/release-history.md` remains the implementation-history source.
 - `docs/automation-roadmap.md` remains the operator-facing roadmap.
 - `docs/spec.md` remains the product contract and safety boundary.
@@ -27,12 +28,12 @@ The audit reads the three roadmap surfaces and emits
 It blocks when:
 
 - `docs/spec.md` does not use the current Keelplane / DWM Core boundary.
-- `docs/spec.md` lacks the V87 brand boundary audit or V88 roadmap
-  reconciliation status.
+- `docs/spec.md` lacks the V87 brand boundary audit, V88 roadmap
+  reconciliation status, or V89 command safety status.
 - `docs/automation-roadmap.md` still says V12-V20 are planned but not
   implemented.
-- `docs/automation-roadmap.md` lacks the V52-V88 continuation summary.
-- `docs/release-history.md` lacks the V88 entry.
+- `docs/automation-roadmap.md` lacks the V52-V89 continuation summary.
+- `docs/release-history.md` lacks the V88 or V89 entry.
 
 ## Execution Policy
 

@@ -17,6 +17,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from compile_workflow import canonical_hash, read_json, write_json_atomic, write_text_atomic  # noqa: E402
+from dwm_command_safety import GATED_RISK_CODES, assess_command_safety  # noqa: E402
 
 
 TOOL = "dwm_large_workflow_next.py"
@@ -26,7 +27,6 @@ NEXT_ROOT = ROOT / "out" / "large-workflow-next"
 DEFAULT_CONTROL = ROOT / "out" / "large-workflow-dogfood" / "v74-canonical" / "dogfood-control.json"
 SENTINEL = ".dwm_large_workflow_next-owned.json"
 
-GATED_RISK_CODES = {"write", "delete", "network", "deploy", "secrets", "external-message"}
 FORBIDDEN_CLAIM_TERMS = ["external benchmark superiority", "guaranteed best quality", "always autonomous", "no human gate needed"]
 
 
@@ -200,6 +200,9 @@ def candidate_blockers(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]
         for field in ["risk_codes", "success_criteria", "evidence_requirements", "claim_limits"]:
             if not isinstance(candidate.get(field), list) or not candidate[field]:
                 blockers.append({"code": "ERR_LARGE_WORKFLOW_NEXT_CANDIDATE_INVALID", "candidate_id": candidate_id, "field": field})
+        safety = assess_command_safety(str(candidate.get("next_command", "")), candidate.get("risk_codes"))
+        for blocker in safety.blocked_by:
+            blockers.append({"code": "ERR_LARGE_WORKFLOW_NEXT_COMMAND_UNSAFE", "candidate_id": candidate_id, "command_safety": blocker})
         overclaims = detect_overclaims(candidate)
         if overclaims:
             blockers.append({"code": "ERR_LARGE_WORKFLOW_NEXT_CANDIDATE_OVERCLAIM", "candidate_id": candidate_id, "terms": overclaims})
@@ -241,11 +244,19 @@ def make_selection(next_id: str, control: dict[str, Any], candidates: list[dict[
     blockers.extend(candidate_issues)
     ordered_candidates = [] if candidate_issues else sort_candidates(candidates)
     selected = ordered_candidates[0] if ordered_candidates else None
+    command_safety = assess_command_safety(selected["next_command"], selected.get("risk_codes")) if selected is not None else None
     gated_by: list[dict[str, Any]] = []
-    if selected is not None:
-        gated_codes = sorted(set(str(code) for code in selected.get("risk_codes", []) if str(code) in GATED_RISK_CODES))
+    if command_safety is not None:
+        gated_codes = sorted(set(command_safety.gated_risk_codes) & GATED_RISK_CODES)
         if gated_codes:
-            gated_by.append({"code": "ERR_LARGE_WORKFLOW_NEXT_HUMAN_GATE_REQUIRED", "risk_codes": gated_codes, "safe_default": "stop before command execution and request human approval"})
+            gated_by.append(
+                {
+                    "code": "ERR_LARGE_WORKFLOW_NEXT_HUMAN_GATE_REQUIRED",
+                    "risk_codes": gated_codes,
+                    "inferred_risk_codes": command_safety.inferred_risk_codes,
+                    "safe_default": "stop before command execution and request human approval",
+                }
+            )
     if blockers:
         status = "next-workflow-blocked"
         decision = "blocked"
@@ -270,12 +281,14 @@ def make_selection(next_id: str, control: dict[str, Any], candidates: list[dict[
         "candidate_count": len(candidates),
         "ordered_candidate_ids": [candidate["id"] for candidate in ordered_candidates],
         "command": command,
+        "command_safety": command_safety.to_record() if command_safety is not None else None,
         "gated_by": gated_by,
         "blocked_by": blockers,
         "source_hashes": {
             "control": canonical_hash(control),
             "candidates": canonical_hash(candidates),
             "selected_candidate": canonical_hash(selected) if selected is not None else None,
+            "command_safety": canonical_hash(command_safety.to_record()) if command_safety is not None else None,
         },
     }
 
@@ -445,6 +458,15 @@ def self_test() -> None:
     gated = make_selection("self-test-gated", ready_control(), gated_candidates, control_path="fixture-control")
     if gated["status"] != "next-workflow-gate-required" or gated["command"] is not None:
         raise LargeWorkflowNextError("ERR_LARGE_WORKFLOW_NEXT_SELF_TEST_FAILED", "write-risk candidate should require a gate")
+    undeclared_runner_candidates = default_candidates()
+    undeclared_runner_candidates[0] = {
+        **undeclared_runner_candidates[0],
+        "risk_codes": ["read-only", "evidence"],
+        "next_command": "python scripts/dwm_runner.py --manifest fixtures/v13/manifest.json --out out/v13/final",
+    }
+    undeclared_runner = make_selection("self-test-undeclared-runner-risk", ready_control(), undeclared_runner_candidates, control_path="fixture-control")
+    if undeclared_runner["status"] != "next-workflow-gate-required" or undeclared_runner["command"] is not None:
+        raise LargeWorkflowNextError("ERR_LARGE_WORKFLOW_NEXT_SELF_TEST_FAILED", "inferred runner write risk should require a gate")
     drifted = make_selection("self-test-drifted", ready_control(), default_candidates(), control_path="fixture-control", expected_hash="wrong")
     if drifted["status"] != "next-workflow-blocked":
         raise LargeWorkflowNextError("ERR_LARGE_WORKFLOW_NEXT_SELF_TEST_FAILED", "hash mismatch should block")

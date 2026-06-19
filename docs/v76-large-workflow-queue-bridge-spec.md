@@ -19,7 +19,8 @@ into the existing V46 long-run workflow queue.
 
 V76 is a bridge, not an executor. It proves that a `command_ready` V75 selection
 can become a V46 queue packet while preserving evidence paths, risk codes, and
-source hashes.
+source hashes. It reuses `scripts/dwm_command_safety.py` so a stale or
+hand-edited selection cannot bypass command-risk inference.
 
 Non-goals:
 
@@ -70,7 +71,10 @@ The bridge blocks if:
 - the V75 decision is not `command_ready`,
 - the V75 selection carries blockers or gates,
 - the selected command or candidate is missing,
-- the selected candidate carries write, delete, network, deploy, secret, or external-message risk,
+- the selected command is unsupported or not allowlisted,
+- the selected candidate declares or infers write, delete, network, deploy,
+  secret, dependency, database, history-rewrite, or external-message risk,
+- the legacy V76 gated-risk set applies: write, delete, network, deploy, secret, or external-message,
 - the expected selection hash mismatches,
 - required evidence paths are missing,
 - the V46 queue builder does not return a ready next action.

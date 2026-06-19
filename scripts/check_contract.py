@@ -1837,6 +1837,9 @@ def require_release_commands_pass() -> None:
             "--out",
             "out/workflow-activations/v90-canonical",
         ],
+        [sys.executable, "scripts/dwm_evidence_oracle.py", "--self-test"],
+        [sys.executable, "scripts/dwm_evidence_oracle.py", "--manifest", "fixtures/v92/manifest.json", "--out", "out/evidence-oracles/v92-final"],
+        [sys.executable, "scripts/dwm_evidence_oracle.py", "verify", "--claims", "fixtures/v92/canonical-claims.json", "--out", "out/evidence-oracles/v92-canonical"],
         [sys.executable, "scripts/run_workflow.py", "--self-test"],
         [sys.executable, "scripts/run_workflow.py", "--manifest", "fixtures/v3/manifest.json", "--out", "out/v3/final"],
         [sys.executable, "scripts/orchestrate_workflow.py", "--self-test"],
@@ -2144,6 +2147,9 @@ def require_changed_surface_commands_pass() -> None:
             "--out",
             "out/workflow-activations/v90-canonical",
         ],
+        [sys.executable, "scripts/dwm_evidence_oracle.py", "--self-test"],
+        [sys.executable, "scripts/dwm_evidence_oracle.py", "--manifest", "fixtures/v92/manifest.json", "--out", "out/evidence-oracles/v92-final"],
+        [sys.executable, "scripts/dwm_evidence_oracle.py", "verify", "--claims", "fixtures/v92/canonical-claims.json", "--out", "out/evidence-oracles/v92-canonical"],
         [sys.executable, "scripts/dwm.py", "doctor", "--json"],
         [sys.executable, "scripts/check_release_text.py", "."],
     ]
@@ -3548,6 +3554,7 @@ def main() -> None:
             "python scripts/dwm_roadmap_reconciliation.py audit --out out/roadmap-reconciliations/<audit_id>",
             "python scripts/dwm_command_safety.py --manifest fixtures/v89/manifest.json --out out/command-safety/<safety_id>",
             "python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --brand-audit out/brand-boundary-audits/v87-canonical/brand-boundary-audit.json --roadmap-reconciliation out/roadmap-reconciliations/v88-canonical/roadmap-reconciliation.json --command-safety out/command-safety/v89-final/summary.json --out out/workflow-activations/<activation_id>",
+            "python scripts/dwm_evidence_oracle.py verify --claims fixtures/v92/canonical-claims.json --out out/evidence-oracles/<oracle_id>",
             "report.json.graph_metrics",
             "benchmark-graph.json",
             "dogfood-progress.json",
@@ -3579,7 +3586,10 @@ def main() -> None:
             "brand-boundary-audit.md",
             "roadmap-reconciliation.json",
             "roadmap-reconciliation.md",
+            "evidence-oracle.json",
+            "evidence-oracle.md",
             "command safety",
+            "evidence oracle",
             "workflow activation v2",
             "dwm-dogfood-progress.svg",
             "assets/dwm-hero.svg",
@@ -3620,6 +3630,10 @@ def main() -> None:
             "docs/v86-keelplane-brand-spec.md",
             "docs/v87-brand-boundary-audit-spec.md",
             "docs/v88-roadmap-reconciliation-spec.md",
+            "docs/v89-command-safety-spec.md",
+            "docs/v90-workflow-activation-v2-spec.md",
+            "docs/v91-contract-tiering-spec.md",
+            "docs/v92-evidence-oracle-spec.md",
             "generated `out/` directories are verification evidence, not source of truth",
             "direct-agent superiority is not claimed",
             "process progress is not an upward benchmark claim",
@@ -3629,6 +3643,7 @@ def main() -> None:
             "next safe action is workflow design",
             "brand boundary audits preserve keelplane as the public brand",
             "roadmap reconciliation audits keep spec, roadmap, and release history aligned",
+            "evidence oracle checks must pass before future scoring or graph promotion",
         ],
     )
     require_terms(
@@ -3700,7 +3715,7 @@ def main() -> None:
             "`roadmap-reconciliation.md`",
             "public product brand: `keelplane`",
             "internal engine name: `dwm core`",
-            "latest reconciled version: `v91`",
+            "latest reconciled version: `v92`",
             "does not claim autonomous execution",
         ],
     )
@@ -3714,7 +3729,7 @@ def main() -> None:
             "`required_passed`: 4",
             "`decision`: `keep`",
             "`decision`: `roadmap_reconciled`",
-            "`latest_version`: `v91`",
+            "`latest_version`: `v92`",
             "does not execute queued commands",
         ],
     )
@@ -3766,7 +3781,7 @@ def main() -> None:
             "`fixture_count`: 4",
             "`required_passed`: 4",
             "`decision`: `keep`",
-            "`roadmap_latest_version`: `v91`",
+            "`roadmap_latest_version`: `v92`",
             "`command_safety_decision`: `keep`",
         ],
     )
@@ -3792,6 +3807,32 @@ def main() -> None:
             "`smoke`: pass",
             "`changed`: pass",
             "`full_default`: preserved by `python scripts/check_contract.py`",
+        ],
+    )
+    require_terms(
+        "docs/v92-evidence-oracle-spec.md",
+        [
+            "status: implemented read-only evidence oracle",
+            "`scripts/dwm_evidence_oracle.py`",
+            "`evidence-oracle.json`",
+            "`evidence-oracle.md`",
+            "`json_equals`",
+            "`json_hash_equals`",
+            "do not execute commands",
+            "do not publish benchmark claims",
+        ],
+    )
+    require_terms(
+        "docs/v92-decision.md",
+        [
+            "decision: keep",
+            "python scripts/dwm_evidence_oracle.py --manifest fixtures/v92/manifest.json --out out/evidence-oracles/v92-final",
+            "`suite_id`: `v92-evidence-oracle`",
+            "`fixture_count`: 4",
+            "`required_passed`: 4",
+            "`decision`: `keep`",
+            "source-hash drift blocks",
+            "missing artifacts block",
         ],
     )
     require_terms("docs/v0.5-plan-schema-evaluator-spec.md", V05_REQUIRED_TERMS)

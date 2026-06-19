@@ -1,0 +1,101 @@
+{
+  "assertions": [
+    {
+      "artifact": "roadmap",
+      "equals": "roadmap_reconciled",
+      "id": "roadmap-decision",
+      "path": "decision",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "roadmap",
+      "equals": "V92",
+      "id": "roadmap-latest-version",
+      "path": "policy.latest_version",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "roadmap",
+      "id": "roadmap-unblocked",
+      "path": "blocked_by",
+      "type": "json_empty"
+    },
+    {
+      "artifact": "command_safety",
+      "equals": "keep",
+      "id": "command-safety-keep",
+      "path": "decision",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "command_safety",
+      "equals": 4,
+      "id": "command-safety-required-passed",
+      "path": "required_passed",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "command_safety",
+      "equals": 0,
+      "id": "command-safety-failed-zero",
+      "path": "failed",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "activation",
+      "equals": "ready_for_next_workflow_design",
+      "id": "activation-decision",
+      "path": "decision",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "activation",
+      "equals": "V92",
+      "id": "activation-roadmap-latest",
+      "path": "inputs.roadmap_latest_version",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "activation",
+      "equals_hash_of": "roadmap",
+      "id": "activation-roadmap-hash",
+      "path": "source_hashes.roadmap_reconciliation",
+      "type": "json_hash_equals"
+    },
+    {
+      "artifact": "activation",
+      "equals_hash_of": "command_safety",
+      "id": "activation-command-safety-hash",
+      "path": "source_hashes.command_safety",
+      "type": "json_hash_equals"
+    },
+    {
+      "artifact": "activation",
+      "equals": false,
+      "id": "activation-does-not-execute",
+      "path": "execution_policy.executes_commands",
+      "type": "json_equals"
+    },
+    {
+      "artifact": "activation_md",
+      "contains": "Decision: `ready_for_next_workflow_design`",
+      "id": "activation-markdown-decision",
+      "type": "text_contains"
+    }
+  ],
+  "artifacts": {
+    "activation": {
+      "path": "out/workflow-activations/v90-canonical/workflow-activation.json"
+    },
+    "activation_md": {
+      "path": "out/workflow-activations/v90-canonical/workflow-activation.md"
+    },
+    "command_safety": {
+      "path": "out/command-safety/v89-final/summary.json"
+    },
+    "roadmap": {
+      "path": "out/roadmap-reconciliations/v88-canonical/roadmap-reconciliation.json"
+    }
+  },
+  "suite_id": "v92-canonical-evidence"
+}

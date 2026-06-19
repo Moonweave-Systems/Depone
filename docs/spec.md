@@ -1,6 +1,6 @@
 # Keelplane / DWM Core Spec
 
-Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, V89 command safety, V90 activation v2, V91 contract tiering, Last updated: 2026-06-19
+Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, V89 command safety, V90 activation v2, V91 contract tiering, V92 evidence oracle, Last updated: 2026-06-19
 
 ## Purpose
 
@@ -54,7 +54,7 @@ Positioning:
   planning, runner execution, session/worktree durability, review/repair,
   bounded fanout, HUD, install packaging, adapter registry, and release
   hardening.
-- V86-V91 brand, roadmap, command safety, activation, and contract tier gate:
+- V86-V92 brand, roadmap, command safety, activation, contract tier, and evidence oracle gates:
   make Keelplane the public product brand, preserve DWM Core and
   `dynamic-workflow-designer` compatibility, keep the spec, roadmap, and
   release history aligned through audit artifacts, prevent command planning from
@@ -214,13 +214,15 @@ destructive, networked, dependency-installing, secret-reading, external-message,
 database, production, or history-rewrite action occurs without a matching DWM
 gate and a safe default.
 
-### V86-V91: Brand, Roadmap, Command Safety, Activation, And Contract Tiers
+### V86-V92: Brand, Roadmap, Command Safety, Activation, Contract Tiers, And Evidence Oracle
 
-V86-V91 align the product surface after the control-plane became broader than a
+V86-V92 align the product surface after the control-plane became broader than a
 single skill, harden the command boundary that follows next-action selection,
 make next-workflow activation consume those later evidence gates, and split
-verification into practical tiers. The public product brand is Keelplane. DWM
-Core remains the internal deterministic engine. The compatibility skill name remains
+verification into practical tiers. V92 adds a read-only evidence oracle so later
+scores and graphs can be tied to specific artifact assertions instead of status
+strings alone. The public product brand is Keelplane. DWM Core remains the internal
+deterministic engine. The compatibility skill name remains
 `dynamic-workflow-designer`, and the repository slug remains `dwm` until a
 separate migration gate proves a rename will not break install surfaces.
 
@@ -244,6 +246,11 @@ can proceed.
 
 V91 contract tiering adds `smoke`, `changed`, and `full` verification paths
 while keeping full release verification as the publishing boundary.
+
+V92 evidence oracle verifies JSON fields, text evidence, artifact existence,
+and source-hash links across existing artifacts. It is read-only and does not
+execute queued commands, create worktrees, run live adapters, or publish
+benchmark claims.
 
 ### Harness Strategy
 

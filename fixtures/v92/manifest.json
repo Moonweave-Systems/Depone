@@ -1,0 +1,150 @@
+{
+  "fixtures": [
+    {
+      "assertions": [
+        {
+          "artifact": "roadmap",
+          "equals": "roadmap_reconciled",
+          "id": "roadmap-decision",
+          "path": "decision",
+          "type": "json_equals"
+        },
+        {
+          "artifact": "roadmap",
+          "equals": "V92",
+          "id": "roadmap-latest",
+          "path": "policy.latest_version",
+          "type": "json_equals"
+        },
+        {
+          "artifact": "roadmap",
+          "id": "roadmap-unblocked",
+          "path": "blocked_by",
+          "type": "json_empty"
+        },
+        {
+          "artifact": "activation",
+          "equals_hash_of": "roadmap",
+          "id": "activation-roadmap-hash",
+          "path": "source_hashes.roadmap_reconciliation",
+          "type": "json_hash_equals"
+        },
+        {
+          "artifact": "activation_md",
+          "contains": "Decision: `ready_for_next_workflow_design`",
+          "id": "activation-markdown-decision",
+          "type": "text_contains"
+        }
+      ],
+      "artifacts": {
+        "activation": {
+          "data": {
+            "decision": "ready_for_next_workflow_design",
+            "source_hashes": {
+              "roadmap_reconciliation": "6adde2a85d88f483865c2bd1d56f9bfcea740eae10e3c8c21243e8b1819eb677"
+            }
+          }
+        },
+        "activation_md": {
+          "text": "# Workflow Activation\n\n- Decision: `ready_for_next_workflow_design`\n"
+        },
+        "roadmap": {
+          "data": {
+            "blocked_by": [],
+            "decision": "roadmap_reconciled",
+            "policy": {
+              "latest_version": "V92"
+            }
+          }
+        }
+      },
+      "expected_decision": "evidence_verified",
+      "id": "verified-activation-evidence",
+      "required": true
+    },
+    {
+      "assertions": [
+        {
+          "artifact": "roadmap",
+          "equals": "roadmap_reconciled",
+          "id": "roadmap-decision",
+          "path": "decision",
+          "type": "json_equals"
+        }
+      ],
+      "artifacts": {
+        "roadmap": {
+          "data": {
+            "decision": "blocked"
+          }
+        }
+      },
+      "expected_blocked_codes": [
+        "ERR_EVIDENCE_ORACLE_JSON_MISMATCH"
+      ],
+      "expected_decision": "blocked",
+      "id": "blocked-json-mismatch",
+      "required": true
+    },
+    {
+      "assertions": [
+        {
+          "artifact": "activation",
+          "equals_hash_of": "roadmap",
+          "id": "activation-roadmap-hash",
+          "path": "source_hashes.roadmap_reconciliation",
+          "type": "json_hash_equals"
+        }
+      ],
+      "artifacts": {
+        "activation": {
+          "data": {
+            "source_hashes": {
+              "roadmap_reconciliation": "not-the-roadmap-hash"
+            }
+          }
+        },
+        "roadmap": {
+          "data": {
+            "decision": "roadmap_reconciled"
+          }
+        }
+      },
+      "expected_blocked_codes": [
+        "ERR_EVIDENCE_ORACLE_HASH_MISMATCH"
+      ],
+      "expected_decision": "blocked",
+      "id": "blocked-hash-drift",
+      "required": true
+    },
+    {
+      "assertions": [
+        {
+          "artifact": "missing",
+          "equals": "keep",
+          "id": "missing-decision",
+          "path": "decision",
+          "type": "json_equals"
+        }
+      ],
+      "artifacts": {
+        "missing": {
+          "path": "out/evidence-oracles/does-not-exist.json"
+        }
+      },
+      "expected_blocked_codes": [
+        "ERR_EVIDENCE_ORACLE_INPUT_MISSING"
+      ],
+      "expected_decision": "blocked",
+      "id": "blocked-missing-artifact",
+      "required": true
+    }
+  ],
+  "required_fixture_ids": [
+    "verified-activation-evidence",
+    "blocked-json-mismatch",
+    "blocked-hash-drift",
+    "blocked-missing-artifact"
+  ],
+  "suite_id": "v92-evidence-oracle"
+}

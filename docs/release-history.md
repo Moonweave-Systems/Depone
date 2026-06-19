@@ -151,6 +151,8 @@ promotion requires real release history.
 - V91: `docs/v91-contract-tiering-spec.md` added smoke, changed-surface, and
   full contract tiers while keeping full release verification as the publish
   boundary.
+- V92: `docs/v92-evidence-oracle-spec.md` added read-only artifact assertions
+  for JSON fields, text evidence, missing artifacts, and source-hash drift.
 
 ## Current Public Boundaries
 
@@ -170,3 +172,5 @@ promotion requires real release history.
   autonomous execution or renaming compatibility surfaces.
 - Roadmap reconciliation audits keep spec, roadmap, and release history aligned
   before the next product wave is selected.
+- Evidence oracle checks must pass before future scoring or graph promotion can
+  treat generated artifacts as support for a claim.

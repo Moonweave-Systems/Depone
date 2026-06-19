@@ -187,6 +187,9 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_command_safety.py --manifest fixtures/v89/manifest.json --out out/command-safety/v89-final",
     "python scripts/dwm_workflow_activation.py --manifest fixtures/v90/manifest.json --out out/workflow-activations/v90-final",
     "python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --brand-audit out/brand-boundary-audits/v87-canonical/brand-boundary-audit.json --roadmap-reconciliation out/roadmap-reconciliations/v88-canonical/roadmap-reconciliation.json --command-safety out/command-safety/v89-final/summary.json --out out/workflow-activations/v90-canonical",
+    "python scripts/dwm_evidence_oracle.py --self-test",
+    "python scripts/dwm_evidence_oracle.py --manifest fixtures/v92/manifest.json --out out/evidence-oracles/v92-final",
+    "python scripts/dwm_evidence_oracle.py verify --claims fixtures/v92/canonical-claims.json --out out/evidence-oracles/v92-canonical",
     "python scripts/dwm_daily_operator.py --self-test",
     "python scripts/dwm_daily_operator.py --manifest fixtures/v48/manifest.json --out out/daily-operator/v48-final",
     "python scripts/dwm_release_candidate.py --self-test",
@@ -403,6 +406,8 @@ BASE_REQUIRED_PATHS = [
     "docs/v90-workflow-activation-v2-spec.md",
     "docs/v91-decision.md",
     "docs/v91-contract-tiering-spec.md",
+    "docs/v92-decision.md",
+    "docs/v92-evidence-oracle-spec.md",
     "docs/command-reference.md",
     "docs/release-history.md",
     "packaging/dwm-benchmark-attempts.json",
@@ -474,6 +479,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_workflow_activation.py",
     "scripts/dwm_brand_boundary_audit.py",
     "scripts/dwm_roadmap_reconciliation.py",
+    "scripts/dwm_evidence_oracle.py",
     "scripts/dwm_daily_operator.py",
     "scripts/dwm_adapter_live_matrix.py",
     "fixtures/v49/manifest.json",
@@ -597,6 +603,10 @@ BASE_REQUIRED_PATHS = [
     "docs/v90-workflow-activation-v2-spec.md",
     "docs/v91-decision.md",
     "docs/v91-contract-tiering-spec.md",
+    "fixtures/v92/manifest.json",
+    "fixtures/v92/canonical-claims.json",
+    "docs/v92-decision.md",
+    "docs/v92-evidence-oracle-spec.md",
 ]
 
 

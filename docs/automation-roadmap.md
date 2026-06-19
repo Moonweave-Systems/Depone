@@ -1,6 +1,6 @@
 # Keelplane Automation Roadmap
 
-Status: V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented; V10 product CLI implemented; V11 operator guidance implemented; V12-V20 product roadmap implemented; V52-V87 product evidence, graph timing, activation, and brand boundary gates implemented; V88 roadmap reconciliation audit implemented; V89 command safety gate implemented; V90 activation v2 implemented; V91 contract tiering implemented
+Status: V3 entry runtime implemented; V7.5 frontier result review implemented; V8 frontier review ingestion implemented; V9 human gate resolution implemented; V10 product CLI implemented; V11 operator guidance implemented; V12-V20 product roadmap implemented; V52-V87 product evidence, graph timing, activation, and brand boundary gates implemented; V88 roadmap reconciliation audit implemented; V89 command safety gate implemented; V90 activation v2 implemented; V91 contract tiering implemented; V92 evidence oracle implemented
 Date: 2026-06-19
 
 ## Purpose
@@ -849,9 +849,9 @@ First canonical demo done means:
 - unsafe and non-owned output paths are blocked;
 - `fixtures/v51/manifest.json` passes with `decision: "keep"`.
 
-### V52-V91: Product Evidence And Contract Tiering
+### V52-V92: Product Evidence And Contract Tiering
 
-Status: implemented through V91.
+Status: implemented through V92.
 
 Purpose: move from a runnable demo into a product that can explain its current
 state, measure real dogfood evidence, gate graph claims, continue safely across
@@ -881,6 +881,8 @@ Implemented continuation:
   command safety evidence before reporting next-workflow readiness.
 - V91 contract tiering adds smoke, changed-surface, and full verification
   layers so iterative work is faster without weakening release approval.
+- V92 evidence oracle verifies artifact existence, JSON field claims, text
+  evidence, and source-hash links without executing commands.
 
 Next roadmap direction:
 

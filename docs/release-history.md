@@ -161,6 +161,8 @@ promotion requires real release history.
 - V95: `docs/v95-control-deck-score-history-spec.md` added internal readiness
   history and SVG rendering for Control Deck scores without creating a public
   benchmark graph.
+- V96: `docs/v96-metric-ladder-spec.md` added graph claim-level assessment for
+  process, operator-readiness, and public-benchmark metric levels.
 
 ## Current Public Boundaries
 
@@ -174,6 +176,8 @@ promotion requires real release history.
   blockers.
 - Control Deck score history is internal operator readiness history, not public
   benchmark evidence.
+- The Metric Ladder treats readiness history as a real operator metric, not a
+  public benchmark graph.
 - Multi-slice continuation is allowed only for source-only or fixture-only
   work before actual queued command execution.
 - Receipt work is allowed through dry-run evidence only; actual execution stays

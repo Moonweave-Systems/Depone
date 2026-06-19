@@ -199,6 +199,9 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_control_deck_score_history.py --self-test",
     "python scripts/dwm_control_deck_score_history.py --manifest fixtures/v95/manifest.json --out out/control-deck-score-history/v95-final",
     "python scripts/dwm_control_deck_score_history.py build --score out/control-deck-scores/v94-canonical --out out/control-deck-score-history/v95-canonical",
+    "python scripts/dwm_metric_ladder.py --self-test",
+    "python scripts/dwm_metric_ladder.py --manifest fixtures/v96/manifest.json --out out/metric-ladders/v96-final",
+    "python scripts/dwm_metric_ladder.py assess --history out/control-deck-score-history/v95-canonical/control-deck-score-history.json --graph-timing out/graph-timing/v78-canonical/graph-timing.json --out out/metric-ladders/v96-canonical",
     "python scripts/dwm_daily_operator.py --self-test",
     "python scripts/dwm_daily_operator.py --manifest fixtures/v48/manifest.json --out out/daily-operator/v48-final",
     "python scripts/dwm_release_candidate.py --self-test",
@@ -496,6 +499,7 @@ BASE_REQUIRED_PATHS = [
     "scripts/dwm_workflow_narrative.py",
     "scripts/dwm_control_deck_score.py",
     "scripts/dwm_control_deck_score_history.py",
+    "scripts/dwm_metric_ladder.py",
     "scripts/dwm_daily_operator.py",
     "scripts/dwm_adapter_live_matrix.py",
     "fixtures/v49/manifest.json",
@@ -632,6 +636,9 @@ BASE_REQUIRED_PATHS = [
     "fixtures/v95/manifest.json",
     "docs/v95-decision.md",
     "docs/v95-control-deck-score-history-spec.md",
+    "fixtures/v96/manifest.json",
+    "docs/v96-decision.md",
+    "docs/v96-metric-ladder-spec.md",
 ]
 
 

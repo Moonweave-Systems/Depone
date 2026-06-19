@@ -1,0 +1,117 @@
+{
+  "fixtures": [
+    {
+      "expected_decision": "metric_ladder_ready",
+      "expected_public_claim_allowed": false,
+      "graph_timing": {
+        "decision": "progress-only-visible"
+      },
+      "history": {
+        "claim_policy": {
+          "is_public_benchmark": false,
+          "is_upward_trend_claim": false,
+          "operator_readiness_only": true
+        },
+        "decision": "history_ready",
+        "entries": [
+          {
+            "label": "a",
+            "readiness_percent": 83
+          },
+          {
+            "label": "b",
+            "readiness_percent": 100
+          }
+        ],
+        "entry_count": 2,
+        "trend": {
+          "delta": 17,
+          "kind": "readiness_increased",
+          "public_claim_allowed": false
+        }
+      },
+      "id": "operator-readiness-ready",
+      "required": true
+    },
+    {
+      "expected_decision": "blocked",
+      "expected_public_claim_allowed": false,
+      "history": {
+        "claim_policy": {
+          "is_public_benchmark": true,
+          "is_upward_trend_claim": false,
+          "operator_readiness_only": true
+        },
+        "decision": "history_ready",
+        "entries": [
+          {
+            "label": "a",
+            "readiness_percent": 100
+          }
+        ],
+        "entry_count": 1,
+        "trend": {
+          "delta": 0,
+          "kind": "single_point",
+          "public_claim_allowed": false
+        }
+      },
+      "id": "history-public-overclaim-blocked",
+      "required": true
+    },
+    {
+      "expected_decision": "blocked",
+      "expected_public_claim_allowed": false,
+      "history": {
+        "claim_policy": {
+          "is_public_benchmark": false,
+          "is_upward_trend_claim": false,
+          "operator_readiness_only": true
+        },
+        "decision": "blocked",
+        "entries": [],
+        "entry_count": 0,
+        "trend": {
+          "delta": 0,
+          "kind": "single_point",
+          "public_claim_allowed": false
+        }
+      },
+      "id": "history-not-ready-blocked",
+      "required": true
+    },
+    {
+      "expected_decision": "metric_ladder_ready",
+      "expected_public_claim_allowed": true,
+      "graph_timing": {
+        "decision": "progress-only-visible"
+      },
+      "history": {
+        "claim_policy": {
+          "is_public_benchmark": false,
+          "is_upward_trend_claim": false,
+          "operator_readiness_only": true
+        },
+        "decision": "history_ready",
+        "entries": [
+          {
+            "label": "a",
+            "readiness_percent": 100
+          }
+        ],
+        "entry_count": 1,
+        "trend": {
+          "delta": 0,
+          "kind": "single_point",
+          "public_claim_allowed": false
+        }
+      },
+      "id": "promotion-ready-allows-public-claim",
+      "promotion": {
+        "status": "promotion-ready"
+      },
+      "required": true
+    }
+  ],
+  "suite_id": "v96-metric-ladder"
+}

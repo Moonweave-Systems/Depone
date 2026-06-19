@@ -172,6 +172,8 @@ promotion requires real release history.
   for the selected dogfood evidence wave.
 - V100: `docs/v100-promotion-evidence-spec.md` added source-only promotion
   evidence recording before any README graph publication review.
+- V101: `docs/v101-promotion-route-spec.md` added source-only routing from
+  promotion evidence to dogfood acquisition planning or a human gate.
 
 ## Current Public Boundaries
 

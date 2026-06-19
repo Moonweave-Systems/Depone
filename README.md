@@ -77,6 +77,7 @@ python scripts/dwm_benchmark_readiness.py assess --ladder out/metric-ladders/loc
 python scripts/dwm_wave_operator.py select --readiness out/benchmark-readiness/local/benchmark-readiness.json --activation out/workflow-activations/v90-canonical/workflow-activation.json --out out/wave-operators/local
 python scripts/dwm_wave_receipt.py record --wave out/wave-operators/local/wave-operator.json --acquisition out/dogfood-acquisitions/v61-final/summary.json --out out/wave-receipts/local
 python scripts/dwm_promotion_evidence.py record --receipt out/wave-receipts/local/wave-receipt.json --readiness out/benchmark-readiness/local/benchmark-readiness.json --out out/promotion-evidence/local
+python scripts/dwm_promotion_route.py route --evidence out/promotion-evidence/local/promotion-evidence.json --out out/promotion-routes/local
 ```
 
 The Control Deck may say things like `Chart: roadmap reconciled`, `Gate:
@@ -92,6 +93,8 @@ source-only product wave from readiness and activation evidence. Wave Receipt
 checks that the selected dogfood evidence wave has usable acquisition evidence.
 Promotion Evidence records whether those source artifacts can enter human
 review for README graph publication; it does not publish benchmark claims.
+Promotion Route turns that evidence into either the next dogfood acquisition
+command plan or a README publication human gate.
 
 Run the release contract before publishing changes:
 
@@ -126,6 +129,7 @@ python scripts/dwm.py commands --kind release
 | Wave Operator | Selects the next source-only product wave and keeps public benchmark publication behind human review. |
 | Wave Receipt | Verifies the selected dogfood evidence wave against acquisition evidence without publishing benchmark claims. |
 | Promotion Evidence | Records whether source evidence can enter human review while keeping README graph publication blocked by default. |
+| Promotion Route | Plans the next dogfood evidence command or stops at a README publication human gate without executing anything. |
 | Packaging | Validates repo-local install metadata, adapter registries, compatibility, and release evidence. |
 
 ## What Is Still Honest

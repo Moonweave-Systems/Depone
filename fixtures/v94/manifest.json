@@ -6,12 +6,12 @@
           "blocked_by": [],
           "decision": "ready_for_next_workflow_design",
           "inputs": {
-            "roadmap_latest_version": "V100"
+            "roadmap_latest_version": "V101"
           },
           "next_safe_action": "design_next_workflow",
           "source_hashes": {
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
-            "roadmap_reconciliation": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap_reconciliation": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           }
         },
         "command_safety": {
@@ -27,10 +27,10 @@
             "executes_commands": false
           },
           "source_hashes": {
-            "activation": "f3b641be1a110a54f72e4fa990495219ce9e28e0c7600990c87c81518e65a139",
+            "activation": "65b239bb44d5a0152821647f7b55bb7b5ba16283e45d5a2a51f10efed168c97f",
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
             "oracle": "7414d3b34ff1880206f0cc32f1378dcce59607e5093ac4e1a1a80867e53ad8de",
-            "roadmap": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           },
           "stages": [
             {
@@ -68,7 +68,7 @@
           "blocked_by": [],
           "decision": "roadmap_reconciled",
           "policy": {
-            "latest_version": "V100"
+            "latest_version": "V101"
           }
         }
       },
@@ -83,11 +83,11 @@
           "blocked_by": [],
           "decision": "ready_for_next_workflow_design",
           "inputs": {
-            "roadmap_latest_version": "V100"
+            "roadmap_latest_version": "V101"
           },
           "source_hashes": {
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
-            "roadmap_reconciliation": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap_reconciliation": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           }
         },
         "command_safety": {
@@ -110,7 +110,7 @@
             "activation": "3f1fd883eb2e34fe59c2a72315d05d40a8527ec5373c3fc45409373f955bb15c",
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
             "oracle": "7414d3b34ff1880206f0cc32f1378dcce59607e5093ac4e1a1a80867e53ad8de",
-            "roadmap": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           },
           "stages": [
             {
@@ -146,7 +146,7 @@
           "blocked_by": [],
           "decision": "roadmap_reconciled",
           "policy": {
-            "latest_version": "V100"
+            "latest_version": "V101"
           }
         }
       },
@@ -166,11 +166,11 @@
           "blocked_by": [],
           "decision": "ready_for_next_workflow_design",
           "inputs": {
-            "roadmap_latest_version": "V100"
+            "roadmap_latest_version": "V101"
           },
           "source_hashes": {
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
-            "roadmap_reconciliation": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap_reconciliation": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           }
         },
         "command_safety": {
@@ -189,7 +189,7 @@
             "activation": "stale-activation-hash",
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
             "oracle": "7414d3b34ff1880206f0cc32f1378dcce59607e5093ac4e1a1a80867e53ad8de",
-            "roadmap": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           },
           "stages": [
             {
@@ -227,7 +227,7 @@
           "blocked_by": [],
           "decision": "roadmap_reconciled",
           "policy": {
-            "latest_version": "V100"
+            "latest_version": "V101"
           }
         }
       },
@@ -244,12 +244,12 @@
           "blocked_by": [],
           "decision": "ready_for_next_workflow_design",
           "inputs": {
-            "roadmap_latest_version": "V100"
+            "roadmap_latest_version": "V101"
           },
           "next_safe_action": "design_next_workflow",
           "source_hashes": {
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
-            "roadmap_reconciliation": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap_reconciliation": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           }
         },
         "command_safety": {
@@ -265,10 +265,10 @@
             "executes_commands": false
           },
           "source_hashes": {
-            "activation": "f3b641be1a110a54f72e4fa990495219ce9e28e0c7600990c87c81518e65a139",
+            "activation": "65b239bb44d5a0152821647f7b55bb7b5ba16283e45d5a2a51f10efed168c97f",
             "command_safety": "698cd9875689fe329db21b71c23026165b03632f0be9727b25c440f298d93bd6",
             "oracle": "7414d3b34ff1880206f0cc32f1378dcce59607e5093ac4e1a1a80867e53ad8de",
-            "roadmap": "ea329dc7a70a37fcf5f357d908c01b40cf729314e1df1f6cb329032bda64515f"
+            "roadmap": "edbb98a430f371a99729eb4d8a47760ea4b244212f7d377f1808360b4afd7663"
           },
           "stages": [
             {
@@ -306,7 +306,7 @@
           "blocked_by": [],
           "decision": "roadmap_reconciled",
           "policy": {
-            "latest_version": "V100"
+            "latest_version": "V101"
           }
         }
       },

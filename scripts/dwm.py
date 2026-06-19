@@ -214,6 +214,9 @@ RELEASE_COMMANDS = [
     "python scripts/dwm_promotion_evidence.py --self-test",
     "python scripts/dwm_promotion_evidence.py --manifest fixtures/v100/manifest.json --out out/promotion-evidence/v100-final",
     "python scripts/dwm_promotion_evidence.py record --receipt out/wave-receipts/v99-canonical/wave-receipt.json --readiness out/benchmark-readiness/v97-canonical/benchmark-readiness.json --out out/promotion-evidence/v100-canonical",
+    "python scripts/dwm_promotion_route.py --self-test",
+    "python scripts/dwm_promotion_route.py --manifest fixtures/v101/manifest.json --out out/promotion-routes/v101-final",
+    "python scripts/dwm_promotion_route.py route --evidence out/promotion-evidence/v100-canonical/promotion-evidence.json --out out/promotion-routes/v101-canonical",
     "python scripts/dwm_daily_operator.py --self-test",
     "python scripts/dwm_daily_operator.py --manifest fixtures/v48/manifest.json --out out/daily-operator/v48-final",
     "python scripts/dwm_release_candidate.py --self-test",
@@ -667,6 +670,10 @@ BASE_REQUIRED_PATHS = [
     "fixtures/v100/manifest.json",
     "docs/v100-decision.md",
     "docs/v100-promotion-evidence-spec.md",
+    "scripts/dwm_promotion_route.py",
+    "fixtures/v101/manifest.json",
+    "docs/v101-decision.md",
+    "docs/v101-promotion-route-spec.md",
 ]
 
 

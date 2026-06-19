@@ -1,0 +1,62 @@
+{
+  "suite_id": "v101-promotion-route",
+  "fixtures": [
+    {
+      "id": "routes-to-dogfood-acquisition",
+      "task_id": "failing-test-fix",
+      "evidence": {
+        "tool": "dwm_promotion_evidence.py",
+        "decision": "promotion_evidence_recorded",
+        "promotion_ready_for_human_review": false,
+        "claim_policy": {
+          "promotion_evidence_is_public_benchmark": false,
+          "allows_readme_public_graph_without_review": false
+        }
+      },
+      "expected_decision": "route_ready",
+      "expected_command_present": true
+    },
+    {
+      "id": "promotion-ready-stops-at-human-gate",
+      "evidence": {
+        "tool": "dwm_promotion_evidence.py",
+        "decision": "promotion_evidence_recorded",
+        "promotion_ready_for_human_review": true,
+        "claim_policy": {
+          "promotion_evidence_is_public_benchmark": false,
+          "allows_readme_public_graph_without_review": false
+        }
+      },
+      "expected_decision": "human_gate_required",
+      "expected_command_present": false
+    },
+    {
+      "id": "blocked-evidence-blocks-route",
+      "evidence": {
+        "tool": "dwm_promotion_evidence.py",
+        "decision": "blocked",
+        "promotion_ready_for_human_review": false,
+        "claim_policy": {
+          "promotion_evidence_is_public_benchmark": false,
+          "allows_readme_public_graph_without_review": false
+        }
+      },
+      "expected_decision": "blocked",
+      "expected_command_present": false
+    },
+    {
+      "id": "overclaim-blocks-route",
+      "evidence": {
+        "tool": "dwm_promotion_evidence.py",
+        "decision": "promotion_evidence_recorded",
+        "promotion_ready_for_human_review": false,
+        "claim_policy": {
+          "promotion_evidence_is_public_benchmark": true,
+          "allows_readme_public_graph_without_review": false
+        }
+      },
+      "expected_decision": "blocked",
+      "expected_command_present": false
+    }
+  ]
+}

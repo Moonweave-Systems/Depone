@@ -1,6 +1,6 @@
 # Keelplane / DWM Core Spec
 
-Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, V89 command safety, V90 activation v2, V91 contract tiering, V92 evidence oracle, V93 workflow narrative, V94 control deck score, V95 score history, V96 metric ladder, V97 benchmark readiness, V98 wave operator, V99 wave receipt, V100 promotion evidence, Last updated: 2026-06-19
+Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, V89 command safety, V90 activation v2, V91 contract tiering, V92 evidence oracle, V93 workflow narrative, V94 control deck score, V95 score history, V96 metric ladder, V97 benchmark readiness, V98 wave operator, V99 wave receipt, V100 promotion evidence, V101 promotion route, Last updated: 2026-06-19
 
 ## Purpose
 
@@ -214,9 +214,9 @@ destructive, networked, dependency-installing, secret-reading, external-message,
 database, production, or history-rewrite action occurs without a matching DWM
 gate and a safe default.
 
-### V86-V100: Brand, Roadmap, Command Safety, Activation, Contract Tiers, Evidence Oracle, Narrative, Score, History, And Metrics
+### V86-V101: Brand, Roadmap, Command Safety, Activation, Contract Tiers, Evidence Oracle, Narrative, Score, History, And Metrics
 
-V86-V100 align the product surface after the control-plane became broader than a
+V86-V101 align the product surface after the control-plane became broader than a
 single skill, harden the command boundary that follows next-action selection,
 make next-workflow activation consume those later evidence gates, and split
 verification into practical tiers. V92 adds a read-only evidence oracle so later
@@ -234,7 +234,8 @@ Operator that selects the next source-only product wave from readiness and
 activation evidence. V99 adds a Wave Receipt that verifies the selected dogfood
 evidence wave has usable acquisition evidence. V100 adds Promotion Evidence so
 source artifacts can be recorded before any human review for README graph
-publication. The public product brand is Keelplane. DWM Core remains the internal
+publication. V101 adds Promotion Route so that evidence becomes either a
+dogfood acquisition command plan or a README publication human gate. The public product brand is Keelplane. DWM Core remains the internal
 deterministic engine. The compatibility skill name remains
 `dynamic-workflow-designer`, and the repository slug remains `dwm` until a
 separate migration gate proves a rename will not break install surfaces.
@@ -310,6 +311,12 @@ evidence. It records whether source evidence can enter human review for README
 graph publication while keeping public benchmark publication disabled by
 default. It does not execute commands, publish assets, or claim upward
 benchmark progress.
+
+V101 promotion route renders `promotion-route.json` and `promotion-route.md`
+from V100 promotion evidence. It plans the next dogfood acquisition command
+when promotion evidence is not ready, or emits a human gate when README graph
+publication can enter review. It does not execute commands, publish assets, or
+approve public benchmark publication.
 
 ### Harness Strategy
 

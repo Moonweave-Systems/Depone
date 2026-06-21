@@ -109,3 +109,15 @@ Rules:
 - Make deterministic inputs visible in the run record.
 - Cache completed phase outputs by phase id and input hash.
 - Rerun only invalidated phases after edits.
+
+## Reusable Templates
+
+When a design matches a pattern that already has a validated, parameterized
+runtime script, run that script instead of hand-coding a fresh one. See
+`templates/` and its README.
+
+- `templates/research-orchestration.workflow.mjs` — research/design questions:
+  Scope -> fan-out research -> barrier synthesis -> adversarial-verify-against-
+  source -> compose doc. Parameterized through `args` (question, sources, optional
+  angles); verify batches claims. Use for multi-angle research where claims must
+  be checked against real source/data before they enter the document.

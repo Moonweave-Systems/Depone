@@ -1,0 +1,47 @@
+{
+  "description": "Shared test vectors for the verdict-integrity pass. BOTH the model-agnostic Python core (scripts/keelplane_verdict_integrity.py) and the JS reference (scripts/verdict_integrity_check.cjs) run these, so the two implementations cannot silently diverge. The orchestration template (templates/research-orchestration.workflow.mjs) embeds the same logic and must match this contract. A verdict with no `verdict` key represents a missing/null verdict.",
+  "cases": [
+    {
+      "name": "core: hallucinated drop, evidence-less downgrade, conservative dedupe, uncovered",
+      "claims": [{ "id": "a" }, { "id": "b" }, { "id": "c" }, { "id": "d" }],
+      "raw_verdicts": [
+        { "claim_id": "a", "verdict": "confirmed", "evidence": { "locator": "f.py:10", "excerpt_or_value": "x" }, "reason": "ok" },
+        { "claim_id": "b", "verdict": "confirmed", "reason": "no evidence" },
+        { "claim_id": "c", "verdict": "confirmed", "evidence": { "locator": "f.py:20", "excerpt_or_value": "y" }, "reason": "c-ok" },
+        { "claim_id": "c", "verdict": "refuted", "reason": "c-bad" },
+        { "claim_id": "zzz", "verdict": "confirmed", "evidence": { "locator": "f.py:99", "excerpt_or_value": "z" }, "reason": "phantom" }
+      ],
+      "expect": { "confirmed": 1, "partial": 0, "refuted": 1, "unverified": 1, "uncovered": ["d"], "dropped": 1, "downgraded": 1 }
+    },
+    {
+      "name": "unknown/missing verdict normalizes to unverified (never vanishes)",
+      "claims": [{ "id": "a" }, { "id": "b" }, { "id": "e" }],
+      "raw_verdicts": [
+        { "claim_id": "a", "verdict": "supported", "reason": "weird" },
+        { "claim_id": "b", "reason": "missing verdict key" }
+      ],
+      "expect": { "confirmed": 0, "partial": 0, "refuted": 0, "unverified": 2, "uncovered": ["e"], "dropped": 0, "downgraded": 0 }
+    },
+    {
+      "name": "partially-supported: with evidence stays partial, without downgrades",
+      "claims": [{ "id": "a" }, { "id": "b" }],
+      "raw_verdicts": [
+        { "claim_id": "a", "verdict": "partially-supported", "evidence": { "locator": "p.md:3", "excerpt_or_value": "narrow" }, "reason": "narrower form holds" },
+        { "claim_id": "b", "verdict": "partially-supported", "reason": "no evidence" }
+      ],
+      "expect": { "confirmed": 0, "partial": 1, "refuted": 0, "unverified": 1, "uncovered": [], "dropped": 0, "downgraded": 1 }
+    },
+    {
+      "name": "empty: no claims, no verdicts",
+      "claims": [],
+      "raw_verdicts": [],
+      "expect": { "confirmed": 0, "partial": 0, "refuted": 0, "unverified": 0, "uncovered": [], "dropped": 0, "downgraded": 0 }
+    },
+    {
+      "name": "all uncovered: claims but no verdicts",
+      "claims": [{ "id": "a" }, { "id": "b" }],
+      "raw_verdicts": [],
+      "expect": { "confirmed": 0, "partial": 0, "refuted": 0, "unverified": 0, "uncovered": ["a", "b"], "dropped": 0, "downgraded": 0 }
+    }
+  ]
+}

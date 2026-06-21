@@ -371,6 +371,9 @@ if (droppedBatches) {
 // the draft (hallucinated); (2) downgrade evidence-less confirmations so "confirmed"
 // always means "checked against a cited source"; (3) dedupe to one verdict per
 // claim, keeping the most CONSERVATIVE on conflict (never over-claim).
+// CONTRACT: this logic mirrors scripts/keelplane_verdict_integrity.py (the
+// model-agnostic core) + scripts/verdict_integrity_check.cjs; all three are pinned to
+// the shared vectors in fixtures/verdict-integrity/cases.json. Keep them in sync.
 const rawVerdicts = batchResults.filter(Boolean).flatMap((r) => Array.isArray(r.verdicts) ? r.verdicts : [])
 const claimIds = new Set(claims.map((c) => c.id))
 const conservativeRank = { refuted: 3, unverified: 2, 'partially-supported': 1, confirmed: 0 }

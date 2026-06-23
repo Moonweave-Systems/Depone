@@ -1,0 +1,22 @@
+{
+  "schema_version": "v105.verify_wedge",
+  "allowed_touched_files": ["src/math_ops.py", "tests/test_math_ops.py"],
+  "forbidden_touched_files": ["README.md", "pyproject.toml"],
+  "required_evidence": [
+    "run-metadata.json",
+    "allowed-files.json",
+    "git-diff-name-only.txt",
+    "git-diff.patch",
+    "pytest.log"
+  ],
+  "required_commands": [
+    {
+      "name": "pytest",
+      "log_path": "pytest.log",
+      "exit_code_path": "pytest.exit-code.txt",
+      "expected_exit_code": 0
+    }
+  ],
+  "forbid_test_weakening": true,
+  "test_file_patterns": ["tests/"]
+}

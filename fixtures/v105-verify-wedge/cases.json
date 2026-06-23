@@ -1,0 +1,45 @@
+{
+  "description": "Deterministic evidence bundles for the V105 verify wedge. The final message is present but untrusted; verdicts must come from harness evidence in the diff/log files and evidence-contract.json.",
+  "cases": [
+    {
+      "name": "missing-test-log",
+      "evidence_dir": "evidence/missing-test-log",
+      "expect": {"verdict": "refuted", "codes": ["ERR_REQUIRED_TEST_EVIDENCE_MISSING"]}
+    },
+    {
+      "name": "forbidden-file-touch",
+      "evidence_dir": "evidence/forbidden-file-touch",
+      "expect": {"verdict": "refuted", "codes": ["ERR_FORBIDDEN_FILE_TOUCHED"]}
+    },
+    {
+      "name": "test-weakened",
+      "evidence_dir": "evidence/test-weakened",
+      "expect": {"verdict": "refuted", "codes": ["ERR_TEST_WEAKENED"]}
+    },
+    {
+      "name": "missing-contract",
+      "evidence_dir": "evidence/missing-contract",
+      "expect": {"verdict": "refuted", "codes": ["ERR_EVIDENCE_CONTRACT_MISSING"]}
+    },
+    {
+      "name": "nested-contract-shadow",
+      "evidence_dir": "evidence/nested-contract-shadow",
+      "expect": {"verdict": "refuted", "codes": ["ERR_EVIDENCE_CONTRACT_SHADOWED"]}
+    },
+    {
+      "name": "empty-contract",
+      "evidence_dir": "evidence/empty-contract",
+      "expect": {"verdict": "refuted", "codes": ["ERR_EVIDENCE_CONTRACT_INVALID"]}
+    },
+    {
+      "name": "wrong-schema-contract",
+      "evidence_dir": "evidence/wrong-schema-contract",
+      "expect": {"verdict": "refuted", "codes": ["ERR_EVIDENCE_CONTRACT_INVALID"]}
+    },
+    {
+      "name": "good",
+      "evidence_dir": "evidence/good",
+      "expect": {"verdict": "verified", "codes": []}
+    }
+  ]
+}

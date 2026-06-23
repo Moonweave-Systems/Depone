@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from keelplane.verify.adapters.base import EvidenceContext
+from keelplane.verify.evidence_contract import EvidenceContractEntry, validate_evidence_contract
 
 
 @dataclass
@@ -57,6 +58,7 @@ class VerificationReport:
     framework: str = "generic"
     run_id: str | None = None
     phases: list[PhaseVerdict] = field(default_factory=list)
+    evidence_contract: list[EvidenceContractEntry] = field(default_factory=list)
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
 
@@ -246,6 +248,7 @@ def run_verification(
     all_handoffs = check_handoff_integrity(plan, evidence)
     adv_checks = check_adversarial(plan, evidence)
     budget = check_budget_adherence(plan, evidence)
+    evidence_contract = validate_evidence_contract(evidence)
     handoffs_spec = plan.get("handoffs", [])
 
     any_refuted = False
@@ -287,6 +290,9 @@ def run_verification(
             budget=budget,
         ))
 
+    if evidence_contract:
+        any_refuted = True
+
     if any_refuted:
         overall: Literal["verified", "refuted", "insufficient-evidence"] = "refuted"
     elif any_insufficient:
@@ -299,5 +305,6 @@ def run_verification(
         framework=framework,
         run_id=evidence.run_id,
         phases=phase_verdicts,
+        evidence_contract=evidence_contract,
         verdict=overall,
     )

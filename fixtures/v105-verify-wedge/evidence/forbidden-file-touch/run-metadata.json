@@ -1,0 +1,5 @@
+{
+  "run_id": "v105-forbidden-file-touch",
+  "command": "python -m pytest -q",
+  "exit_code": 0
+}

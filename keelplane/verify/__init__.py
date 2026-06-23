@@ -68,6 +68,13 @@ def _self_test() -> None:
     tests = 0
     passed = 0
 
+    def _write_evidence_contract(path: Path) -> None:
+        contract = {
+            "schema_version": "v105.verify_wedge",
+            "required_evidence": ["run-metadata.json"],
+        }
+        (path / "evidence-contract.json").write_text(json.dumps(contract))
+
     def _create_evidence_dir(tmp: str, *, tamper: bool = False) -> dict:
         """Create a sample evidence dir. If tamper=True, corrupt the handoff hash."""
         d = Path(tmp) / "evidence"
@@ -85,6 +92,7 @@ def _self_test() -> None:
         # Run metadata
         meta = {"run_id": "test-run-001", "num_rounds": 3}
         (d / "run-metadata.json").write_text(json.dumps(meta))
+        _write_evidence_contract(d)
 
         # Plan that expects the handoff
         import hashlib
@@ -176,6 +184,7 @@ def _self_test() -> None:
         d = Path(tmp) / "evidence"
         d.mkdir(parents=True)
         (d / "run-metadata.json").write_text('{"run_id": "empty-run"}')
+        _write_evidence_contract(d)
         empty_plan = {
             "schema_version": "0.5",
             "plan_id": "empty-test",
@@ -215,6 +224,7 @@ def _self_test() -> None:
         (d / "reports").mkdir(parents=True, exist_ok=True)
         (d / "reports" / "analysis.md").write_text("analysis ok")
         (d / "run-metadata.json").write_text('{"run_id": "canon-test"}')
+        _write_evidence_contract(d)
         plan_canon_good = {
             "schema_version": "0.5",
             "plan_id": "canon-good",
@@ -251,6 +261,7 @@ def _self_test() -> None:
         (d / "gates" / "write").mkdir(parents=True, exist_ok=True)
         (d / "gates" / "write" / "approved").write_text("ok")
         (d / "run-metadata.json").write_text('{"run_id": "no-handoff-evidence"}')
+        _write_evidence_contract(d)
         plan_canon_desc = {
             "schema_version": "0.5",
             "plan_id": "canon-desc",
@@ -287,6 +298,7 @@ def _self_test() -> None:
         (d / "handoffs").mkdir(parents=True, exist_ok=True)
         (d / "handoffs" / "output.json").write_text("TAMPERED")
         (d / "run-metadata.json").write_text('{"run_id": "tamper-test"}')
+        _write_evidence_contract(d)
         plan_canon_tamper = {
             "schema_version": "0.5",
             "plan_id": "canon-tamper",

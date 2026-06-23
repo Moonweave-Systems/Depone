@@ -218,6 +218,12 @@ def _generate_synthetic_evidence(plan: dict[str, Any], evidence_dir: Path) -> No
     meta = {"run_id": "demo-run-001", "num_rounds": 2}
     (evidence_dir / "run-metadata.json").write_text(json.dumps(meta))
 
+    contract = {
+        "schema_version": "v105.verify_wedge",
+        "required_evidence": ["run-metadata.json"],
+    }
+    (evidence_dir / "evidence-contract.json").write_text(json.dumps(contract))
+
 
 def _self_test() -> None:
     """Run self-test."""

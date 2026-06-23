@@ -1,0 +1,5 @@
+{
+  "run_id": "v105-missing-test-log",
+  "command": "python -m pytest -q",
+  "exit_code": 0
+}

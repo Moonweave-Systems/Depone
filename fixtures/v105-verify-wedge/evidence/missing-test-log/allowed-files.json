@@ -1,0 +1,5 @@
+{
+  "allowed_touched_files": ["src/math_ops.py"],
+  "forbidden_touched_files": ["tests/test_math_ops.py", "README.md", "pyproject.toml"],
+  "test_file_patterns": ["tests/"]
+}

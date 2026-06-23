@@ -1,0 +1,4 @@
+{
+  "schema_version": "wrong",
+  "required_evidence": ["pytest.log"]
+}

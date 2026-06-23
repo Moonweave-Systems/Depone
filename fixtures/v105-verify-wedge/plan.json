@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.5",
+  "plan_id": "v105-verify-wedge",
+  "created_by": "keelplane",
+  "source_prompt": "V105 deterministic verify wedge proof",
+  "activation": {
+    "decision": "activate",
+    "matched_thresholds": ["downstream-consumer"],
+    "downgrade_target": null,
+    "reason": "fixture proof"
+  },
+  "objective": "refute false success using harness-captured evidence",
+  "surfaces": ["keelplane verify"],
+  "assumptions": ["evidence bundles are deterministic"],
+  "patterns": ["Sequential"],
+  "phases": [
+    {"id": "phase-1", "name": "Verify", "entry_criteria": [], "exit_criteria": []},
+    {"id": "phase-2", "name": "Review", "entry_criteria": [], "exit_criteria": []}
+  ],
+  "workers": [],
+  "handoffs": [],
+  "parallelism": {"shape": "none", "cap": 1, "barriers": [], "fan_in_rule": null},
+  "verification": [],
+  "risk_gates": [],
+  "budget": {"max_agents": 5, "max_rounds": 10, "max_retries": 2},
+  "resume": {"cached_outputs": [], "invalidation_rules": []},
+  "execution_path": {
+    "mode": "plugin",
+    "first_slice": {
+      "instruction": "",
+      "inputs": [],
+      "expected_output": "",
+      "completion_check": "",
+      "forbidden_actions": []
+    },
+    "consumer": "codex-agent"
+  }
+}

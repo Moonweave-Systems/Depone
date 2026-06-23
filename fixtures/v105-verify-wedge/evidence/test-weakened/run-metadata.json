@@ -1,0 +1,5 @@
+{
+  "run_id": "v105-test-weakened",
+  "command": "python -m pytest -q",
+  "exit_code": 0
+}

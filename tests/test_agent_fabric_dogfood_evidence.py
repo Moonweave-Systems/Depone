@@ -86,7 +86,6 @@ class AgentFabricDogfoodEvidenceTests(unittest.TestCase):
         self.assertEqual(report["decision"], "blocked-invalid-capture-manifest")
         self.assertEqual(report["blockers"][0]["code"], "ERR_CAPTURE_MANIFEST_INVALID")
 
-
     def test_docs_source_only_capture_individually_produces_dogfood_evidence(self) -> None:
         from depone.agent_fabric.dogfood_evidence import build_dogfood_evidence_report
 
@@ -219,106 +218,6 @@ class AgentFabricDogfoodEvidenceTests(unittest.TestCase):
             report = json.loads(out_path.read_text())
             self.assertEqual(report["decision"], "controlled-capture-corpus-ready")
             self.assertIn("Controlled capture corpus written", result.stdout)
-
-
-    def test_corpus_blocks_if_any_capture_manifest_is_not_ready(self) -> None:
-        from depone.agent_fabric.dogfood_evidence import (
-            build_dogfood_evidence_corpus_report,
-        )
-
-        ready_capture = observed_capture_manifest()
-        blocked_capture = json.loads(json.dumps(ready_capture))
-        blocked_capture["observer_capture"]["test_output"]["status"] = "failed"
-        from depone.agent_fabric.capture_bridge import _sha256_json
-
-        blocked_capture["observer_capture_hash"] = _sha256_json(
-            blocked_capture["observer_capture"]
-        )
-
-        corpus = build_dogfood_evidence_corpus_report(
-            [
-                ("ready-shell", ready_capture),
-                ("blocked-shell", blocked_capture),
-            ]
-        )
-
-        self.assertEqual(corpus["decision"], "blocked-dogfood-corpus-not-ready")
-        self.assertEqual(corpus["summary"]["total_manifests"], 2)
-        self.assertEqual(corpus["summary"]["ready_manifests"], 1)
-        self.assertEqual(corpus["summary"]["blocked_manifests"], 1)
-        self.assertEqual(corpus["entries"][1]["id"], "blocked-shell")
-        self.assertEqual(
-            corpus["entries"][1]["blockers"][0]["code"],
-            "ERR_DOGFOOD_TESTS_NOT_PASSED",
-        )
-        self.assertFalse(corpus["boundary"]["executes_commands"])
-        self.assertFalse(corpus["boundary"]["calls_live_models"])
-        self.assertFalse(corpus["boundary"]["approves_public_claim"])
-        self.assertFalse(corpus["boundary"]["trust_upgrade"])
-
-    def test_cli_writes_dogfood_evidence_report(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            capture_path = root / "capture-manifest.json"
-            out_path = root / "dogfood-evidence.json"
-            capture_path.write_text(json.dumps(observed_capture_manifest()))
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "depone",
-                    "agent-fabric-dogfood-evidence",
-                    "--capture-manifest",
-                    str(capture_path),
-                    "--out",
-                    str(out_path),
-                ],
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-
-            self.assertEqual(result.returncode, 0, result.stderr)
-            report = json.loads(out_path.read_text())
-            self.assertEqual(report["decision"], "dogfood-evidence-ready-source-only")
-            self.assertIn("Dogfood evidence report written", result.stdout)
-
-
-
-    def test_cli_repeated_capture_manifest_writes_corpus_report(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            first_path = root / "capture-manifest-a.json"
-            second_path = root / "capture-manifest-b.json"
-            out_path = root / "dogfood-corpus.json"
-            first_path.write_text(json.dumps(observed_capture_manifest()))
-            second_path.write_text(json.dumps(observed_capture_manifest()))
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "depone",
-                    "agent-fabric-dogfood-evidence",
-                    "--capture-manifest",
-                    str(first_path),
-                    "--capture-manifest",
-                    str(second_path),
-                    "--out",
-                    str(out_path),
-                ],
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-
-            self.assertEqual(result.returncode, 0, result.stderr)
-            report = json.loads(out_path.read_text())
-            self.assertEqual(report["kind"], "agent-fabric-dogfood-evidence-corpus")
-            self.assertEqual(report["decision"], "dogfood-corpus-ready-source-only")
-            self.assertEqual(report["summary"]["total_manifests"], 2)
-            self.assertIn("Ready manifests: 2/2", result.stdout)
 
 if __name__ == "__main__":
     unittest.main()

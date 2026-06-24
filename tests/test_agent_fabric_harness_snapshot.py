@@ -29,6 +29,12 @@ class AgentFabricHarnessSnapshotTests(unittest.TestCase):
         codex = snapshot["harnesses"][1]
         self.assertEqual(shell["tool_mapping_status_counts"]["exact"], 10)
         self.assertEqual(shell["tool_mapping_status_counts"]["approximated"], 0)
+        shell_mappings = {
+            entry["abstract_label"]: entry["concrete_name"]
+            for entry in shell["mappings"]
+        }
+        self.assertEqual(shell_mappings["search"], "rg/grep/find")
+        self.assertEqual(shell_mappings["inspect"], "ls/file/stat")
         self.assertIn("render", codex["approximated_tools"])
         self.assertIn("smoke", codex["approximated_tools"])
         self.assertEqual(codex["status"], "approximated")

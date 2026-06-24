@@ -116,7 +116,7 @@ TOOL_MAPPINGS: dict[str, dict[str, dict[str, str]]] = {
     },
     HARNESS_SHELL: {
         "read": {"tool_name": "cat/head/tail", "status": "exact", "notes": ""},
-        "search": {"tool_name": "grep/find", "status": "exact", "notes": ""},
+        "search": {"tool_name": "rg/grep/find", "status": "exact", "notes": ""},
         "inspect": {"tool_name": "ls/file/stat", "status": "exact", "notes": ""},
         "edit": {"tool_name": "sed/echo>", "status": "exact", "notes": ""},
         "write": {"tool_name": "echo>/tee", "status": "exact", "notes": ""},

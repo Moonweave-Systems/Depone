@@ -3982,7 +3982,7 @@ def main() -> None:
             "depone is the public product brand",
             "dwm core stands for",
             "codex skill name is `depone`",
-            "repository slug remains `dwm`",
+            "repository slug remains `keelplane`",
             "`dwm_*.py` file prefix",
             "do not claim autonomous execution",
         ],
@@ -4019,7 +4019,7 @@ def main() -> None:
             "public product brand: `depone`",
             "internal engine name: `dwm core`",
             "skill name: `depone`",
-            "repository slug remains `dwm`",
+            "repository slug remains `keelplane`",
             "does not claim autonomous execution",
         ],
     )

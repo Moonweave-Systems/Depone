@@ -26,9 +26,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Moonweave-Systems/depone"
-Repository = "https://github.com/Moonweave-Systems/depone"
-Documentation = "https://github.com/Moonweave-Systems/depone#readme"
+Homepage = "https://github.com/Moonweave-Systems/keelplane"
+Repository = "https://github.com/Moonweave-Systems/keelplane"
+Documentation = "https://github.com/Moonweave-Systems/keelplane#readme"
 
 [project.optional-dependencies]
 conductor = []

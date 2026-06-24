@@ -194,7 +194,7 @@ def audit_surfaces(surfaces: dict[str, str]) -> dict[str, Any]:
         "Depone is the public product brand",
         "DWM Core stands for",
         "Codex skill name is `depone`",
-        "repository slug remains `dwm`",
+        "repository slug remains `keelplane`",
         "Do not claim autonomous execution",
     ):
         if term.lower() not in lower(branding):
@@ -330,7 +330,7 @@ def good_surfaces() -> dict[str, str]:
         "SKILL.md": "---\nname: depone\ndescription: Depone skill entrypoint. Use when a user asks for dynamic workflows.\n---\n# Depone Skill Entrypoint\n",
         "agents/openai.yaml": 'interface:\n  display_name: "Depone"\n  default_prompt: "Use $depone to design a workflow."\n',
         "README.md": "# Depone\n\nDepone uses DWM Core and the skill is named `depone`.\n",
-        "docs/dwm-branding.md": "# Depone Branding\n\nDepone is the public product brand.\nDWM Core stands for Deterministic Workflow Machine.\nThe Codex skill name is `depone`.\nThe repository slug remains `dwm`.\nDo not claim autonomous execution.\n",
+        "docs/dwm-branding.md": "# Depone Branding\n\nDepone is the public product brand.\nDWM Core stands for Deterministic Workflow Machine.\nThe Codex skill name is `depone`.\nThe repository slug remains `keelplane`.\nDo not claim autonomous execution.\n",
         "docs/command-reference.md": "# Depone Command Reference\n",
         "docs/release-history.md": "# Depone Release History\n\n- V86: docs/v86-keelplane-brand-spec.md\n",
         "assets/dwm-hero.svg": "<svg><title>Depone</title><text>Powered by DWM Core</text></svg>\n",

@@ -8,9 +8,9 @@ engine name for the deterministic plan, packet, gate, evidence, review, and
 resume-state machinery behind Depone.
 
 The Codex skill name is `depone`. The `dwm_*.py` script prefix remains
-legacy/internal. The GitHub repository slug remains `dwm` and is intentionally
-deferred until a separate migration gate proves that changing commands,
-remotes, paths, or install surfaces will not break users.
+legacy/internal. The GitHub repository slug remains `keelplane` and is
+intentionally deferred until a separate migration gate proves that changing
+commands, remotes, paths, or install surfaces will not break users.
 
 ## Position
 
@@ -43,7 +43,7 @@ resumable runtime state without losing control of what has actually happened.
 - Use **DWM Core** for the internal deterministic workflow engine.
 - Use **Deterministic Workflow Machine** when expanding DWM Core in formal
   docs.
-- Use `dwm` for the GitHub repository slug until a dedicated migration gate
+- Use `keelplane` for the GitHub repository slug until a dedicated migration gate
   changes it.
 - Use `depone` for the Codex skill name and `created_by`
   contract values.

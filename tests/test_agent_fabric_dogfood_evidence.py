@@ -159,6 +159,42 @@ class AgentFabricDogfoodEvidenceTests(unittest.TestCase):
             self.assertEqual(report["decision"], "controlled-capture-corpus-ready")
             self.assertIn("Controlled capture corpus written", result.stdout)
 
+
+    def test_corpus_blocks_if_any_capture_manifest_is_not_ready(self) -> None:
+        from depone.agent_fabric.dogfood_evidence import (
+            build_dogfood_evidence_corpus_report,
+        )
+
+        ready_capture = observed_capture_manifest()
+        blocked_capture = json.loads(json.dumps(ready_capture))
+        blocked_capture["observer_capture"]["test_output"]["status"] = "failed"
+        from depone.agent_fabric.capture_bridge import _sha256_json
+
+        blocked_capture["observer_capture_hash"] = _sha256_json(
+            blocked_capture["observer_capture"]
+        )
+
+        corpus = build_dogfood_evidence_corpus_report(
+            [
+                ("ready-shell", ready_capture),
+                ("blocked-shell", blocked_capture),
+            ]
+        )
+
+        self.assertEqual(corpus["decision"], "blocked-dogfood-corpus-not-ready")
+        self.assertEqual(corpus["summary"]["total_manifests"], 2)
+        self.assertEqual(corpus["summary"]["ready_manifests"], 1)
+        self.assertEqual(corpus["summary"]["blocked_manifests"], 1)
+        self.assertEqual(corpus["entries"][1]["id"], "blocked-shell")
+        self.assertEqual(
+            corpus["entries"][1]["blockers"][0]["code"],
+            "ERR_DOGFOOD_TESTS_NOT_PASSED",
+        )
+        self.assertFalse(corpus["boundary"]["executes_commands"])
+        self.assertFalse(corpus["boundary"]["calls_live_models"])
+        self.assertFalse(corpus["boundary"]["approves_public_claim"])
+        self.assertFalse(corpus["boundary"]["trust_upgrade"])
+
     def test_cli_writes_dogfood_evidence_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -2285,6 +2285,8 @@ def require_changed_surface_commands_pass() -> None:
         [sys.executable, "scripts/dwm_roadmap_reconciliation.py", "audit", "--out", "out/roadmap-reconciliations/v88-canonical"],
         [sys.executable, "scripts/dwm_command_safety.py", "--self-test"],
         [sys.executable, "scripts/dwm_command_safety.py", "--manifest", "fixtures/v89/manifest.json", "--out", "out/command-safety/v89-final"],
+        [sys.executable, "-m", "depone", "agent-fabric-paired-run", "--self-test"],
+        [sys.executable, "-m", "depone", "agent-fabric-evidence-substrate", "--self-test"],
         [sys.executable, "scripts/dwm_workflow_activation.py", "--self-test"],
         [sys.executable, "scripts/dwm_workflow_activation.py", "--manifest", "fixtures/v90/manifest.json", "--out", "out/workflow-activations/v90-final"],
         [

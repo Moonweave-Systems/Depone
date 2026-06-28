@@ -1,6 +1,7 @@
 # V128 Consensus Evidence Substrate Spec
 
-Status: spec for the "next" milestone. Not yet implemented.
+Status: implemented as first stdlib-only derived evidence bundle. Decision
+recorded in `docs/v128-decision.md`.
 Date: 2026-06-24.
 
 Parent direction: `docs/v125-direction-check-roadmap.md` (Section 6.3, "next").

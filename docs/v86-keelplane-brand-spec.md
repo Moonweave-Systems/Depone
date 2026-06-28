@@ -13,7 +13,7 @@ made `depone` the installed Codex skill name.
 - Internal engine name: `DWM Core`.
 - Expanded internal name: `Deterministic Workflow Machine`.
 - Skill name: `depone`.
-- Repository slug: `dwm` until a dedicated migration gate changes it.
+- Repository slug: `keelplane` until a dedicated migration gate changes it.
 
 ## Rationale
 

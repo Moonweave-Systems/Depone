@@ -109,7 +109,7 @@ def prepare_out_dir(path: Path, audit_id: str, *, source: Path | str) -> None:
         if not sentinel.is_file() or sentinel.is_symlink():
             raise BrandBoundaryAuditError("ERR_BRAND_BOUNDARY_PATH_UNSAFE", "existing audit output is not audit-owned", path=path)
         try:
-            data = json.loads(sentinel.read_text())
+            data = json.loads(sentinel.read_text(encoding="utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise BrandBoundaryAuditError("ERR_BRAND_BOUNDARY_PATH_UNSAFE", "audit sentinel is invalid", path=sentinel) from exc
         if data.get("audit_id") != audit_id:
@@ -225,7 +225,7 @@ def audit_surfaces(surfaces: dict[str, str]) -> dict[str, Any]:
             "public_product_brand": "Depone",
             "internal_engine_name": "DWM Core",
             "skill_name": "depone",
-            "repository_slug": "dwm",
+            "repository_slug": "keelplane",
             "executes_commands": False,
         },
         "source_hashes": {"surfaces": canonical_hash(surfaces)},
@@ -268,7 +268,7 @@ def repo_surfaces() -> dict[str, str]:
     for label, path in DEFAULT_SURFACES.items():
         if not path.is_file() or path.is_symlink():
             raise BrandBoundaryAuditError("ERR_BRAND_BOUNDARY_SURFACE_MISSING", "brand boundary surface is missing or unsafe", path=path)
-        surfaces[label] = path.read_text()
+        surfaces[label] = path.read_text(encoding="utf-8")
     return surfaces
 
 

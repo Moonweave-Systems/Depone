@@ -10,8 +10,10 @@ from depone.cli import (
     agent_fabric_claim_gate,
     agent_fabric_controlled_capture,
     agent_fabric_dogfood_evidence,
+    agent_fabric_evidence_substrate,
     agent_fabric_harness_snapshot,
     agent_fabric_paired_evidence,
+    agent_fabric_paired_run,
     agent_fabric_smoke,
     demo,
     design,
@@ -283,6 +285,124 @@ def main() -> None:
         "--self-test", action="store_true", help="Run self-test and exit"
     )
 
+    # agent-fabric-paired-run
+    paired_run_parser = sub.add_parser(
+        "agent-fabric-paired-run",
+        help="Export V126 observer captures and runner receipts for paired runs",
+    )
+    paired_run_parser.add_argument("--repo", default=".", help="Observed repo path")
+    paired_run_parser.add_argument(
+        "--source-fixture-hash",
+        help="Expected source fixture hash for the observer capture",
+    )
+    paired_run_parser.add_argument(
+        "--out",
+        default="observer-capture.json",
+        help="Output path for observer capture JSON",
+    )
+    paired_run_parser.add_argument(
+        "--log",
+        default=None,
+        help="Output path for verification command log JSON",
+    )
+    paired_run_parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=120,
+        help="Verification command timeout",
+    )
+    paired_run_parser.add_argument(
+        "--runner-receipt-out",
+        default=None,
+        help="Optional output path for runner receipt JSON",
+    )
+    paired_run_parser.add_argument(
+        "--runner-kind",
+        default="manual",
+        choices=["codex-cli", "manual"],
+        help="Runner that performed the agent arm",
+    )
+    paired_run_parser.add_argument(
+        "--arm",
+        default="direct",
+        choices=["direct", "governed"],
+        help="Paired-run arm being observed",
+    )
+    paired_run_parser.add_argument("--task-id", default="manual-task")
+    paired_run_parser.add_argument(
+        "--runner-invocation",
+        action="append",
+        default=[],
+        help="Runner invocation token; repeat for each argv item",
+    )
+    paired_run_parser.add_argument("--transcript-path", default="")
+    paired_run_parser.add_argument(
+        "--runner-log",
+        default="",
+        help="Optional Codex runner stdout/stderr log JSON path",
+    )
+    paired_run_parser.add_argument(
+        "--codex-prompt",
+        default=None,
+        help="Run codex exec with this prompt before observer verification",
+    )
+    paired_run_parser.add_argument(
+        "--codex-prompt-file",
+        default=None,
+        help="Read codex exec prompt from this UTF-8 file",
+    )
+    paired_run_parser.add_argument(
+        "--codex-sandbox",
+        default="workspace-write",
+        choices=["read-only", "workspace-write", "danger-full-access"],
+        help="Sandbox mode passed to codex exec",
+    )
+    paired_run_parser.add_argument(
+        "--report-out",
+        default=None,
+        help="Write a paired-run report from existing direct/governed artifacts",
+    )
+    paired_run_parser.add_argument("--direct-runner", default="")
+    paired_run_parser.add_argument("--direct-observer", default="")
+    paired_run_parser.add_argument("--governed-runner", default="")
+    paired_run_parser.add_argument("--governed-observer", default="")
+    paired_run_parser.add_argument("--runner-exit-code", type=int, default=0)
+    paired_run_parser.add_argument("--started-at", default="")
+    paired_run_parser.add_argument("--ended-at", default="")
+    paired_run_parser.add_argument("--human-intervened", action="store_true")
+    paired_run_parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+    paired_run_parser.add_argument(
+        "verification_command",
+        nargs=argparse.REMAINDER,
+        help="Verification command to run after --",
+    )
+
+    # agent-fabric-evidence-substrate
+    evidence_substrate_parser = sub.add_parser(
+        "agent-fabric-evidence-substrate",
+        help="Export V128 in-toto/DSSE and OTel GenAI evidence bundle",
+    )
+    evidence_substrate_parser.add_argument(
+        "--capture-manifest",
+        default="",
+        help="Input Agent Fabric capture manifest JSON",
+    )
+    evidence_substrate_parser.add_argument(
+        "--runner-receipt",
+        default="",
+        help="Optional V126 runner receipt JSON for OTel runner attributes",
+    )
+    evidence_substrate_parser.add_argument(
+        "--out",
+        default="evidence-substrate-bundle.json",
+        help="Output evidence substrate bundle JSON",
+    )
+    evidence_substrate_parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
         "agent-fabric-claim-gate",
@@ -345,6 +465,10 @@ def main() -> None:
         agent_fabric_dogfood_evidence.run(args)
     elif args.command == "agent-fabric-paired-evidence":
         agent_fabric_paired_evidence.run(args)
+    elif args.command == "agent-fabric-paired-run":
+        agent_fabric_paired_run.run(args)
+    elif args.command == "agent-fabric-evidence-substrate":
+        agent_fabric_evidence_substrate.run(args)
     elif args.command == "agent-fabric-claim-gate":
         agent_fabric_claim_gate.run(args)
     elif args.command == "demo":

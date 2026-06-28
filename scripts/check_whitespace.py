@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-SKIP_DIRS = {".git", ".omx", "__pycache__", "out"}
+SKIP_DIRS = {".git", ".mypy_cache", ".omx", ".pytest_cache", ".venv", "__pycache__", "node_modules", "out", "venv"}
 TEXT_SUFFIXES = {
     ".json",
     ".md",
@@ -31,7 +31,10 @@ def main() -> int:
     for path in sorted(root.rglob("*")):
         if not path.is_file() or not should_check(path.relative_to(root)):
             continue
-        text = path.read_text(errors="replace")
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except PermissionError:
+            continue
         for number, line in enumerate(text.splitlines(), 1):
             if line.rstrip(" \t") != line:
                 problems.append(f"{path.relative_to(root)}:{number}: trailing whitespace")

@@ -171,12 +171,14 @@ def _self_test() -> None:
     from pathlib import Path
 
     capture = json.loads(
-        Path("depone/fixtures/agent_fabric/capture_manifest_shell.json").read_text()
+        Path("depone/fixtures/agent_fabric/capture_manifest_shell.json").read_text(
+            encoding="utf-8"
+        )
     )
     docs_capture = json.loads(
         Path(
             "depone/fixtures/agent_fabric/capture_manifest_docs_source_only.json"
-        ).read_text()
+        ).read_text(encoding="utf-8")
     )
     report = build_dogfood_evidence_report(capture)
     if report["decision"] != READY_DECISION:

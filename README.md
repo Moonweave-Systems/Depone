@@ -42,7 +42,7 @@ they install no additional runtime dependencies.
 
 ## What Exists Today
 Depone ships the stdlib-only CLI, a strict plan validator, a Conductor YAML
-emitter, a generic evidence adapter, and the 4-check verification engine.
+emitter, a generic evidence adapter, and the bounded verification engine.
 
 Run model: a `slice` is one atomic worker task, a `wave` is a gated group of
 one or more slices, and a `run` is one or more waves verified by receipts and
@@ -55,7 +55,7 @@ evidence gates.
 | `depone design` | Decompose a broad objective into a structured workflow plan |
 | `depone validate` | Validate a plan.json against the schema v0.5 |
 | `depone compile` | Translate a plan into a target framework format (Conductor YAML) |
-| `depone verify` | Verify execution evidence against a plan (4-check engine) |
+| `depone verify` | Verify execution evidence against a plan |
 | `depone validate-contracts` | Validate Agent Fabric contracts and fixtures |
 | `depone agent-fabric-smoke` | Export the source-only Agent Fabric lifecycle smoke summary |
 | `depone agent-fabric-harness-snapshot` | Export source-only harness capability snapshots |
@@ -63,12 +63,12 @@ evidence gates.
 | `depone agent-fabric-claim-gate` | Gate public Agent Fabric claims on paired evidence |
 | `depone demo` | Run a complete design → compile → verify cycle |
 
-### Verify: 4-Check Engine
+### Verify: Deterministic Checks Plus Advisory Signal
 
 1. **Gate Compliance** — Were declared risk_gates respected? (write, network, approval gates)
 2. **Handoff Integrity** — Do declared handoff artifacts exist with matching SHA-256 hashes?
-3. **Adversarial Check** — Can claims be refuted against ground truth?
-4. **Budget Adherence** — Did execution stay within max_agents, max_rounds, and budget limits?
+3. **Budget Adherence** — Did execution stay within max_agents, max_rounds, and budget limits?
+4. **Ground-Truth Presence Signal** — Advisory only; a present file is not proof that a claim is supported.
 
 ## Normal Loop
 
@@ -95,7 +95,7 @@ depone design "audit all API routes" --out plan.json
 - **compile**: translate plans into target framework formats (Conductor YAML
   first; LangGraph Python later).
 - **verify**: consume raw execution evidence from any framework, check it
-  against the plan, produce hash-signed verification reports.
+  against the plan, and produce content-addressed verification reports.
 
 ## Safety Model
 
@@ -154,7 +154,7 @@ All CLI commands include built-in `--self-test`:
 python3 -m depone design --self-test              # 4/4 passed
 python3 -m depone compile --self-test             # conductor 4/4, agent_fabric 6/6 passed
 python3 -m depone validate --self-test            # 4/4 passed
-python3 -m depone verify --self-test              # 7/7 passed
+python3 -m depone verify --self-test              # 12/12 passed
 python3 -m depone validate-contracts --self-test  # 22/22 passed
 python3 -m depone agent-fabric-smoke --self-test # source-only smoke export passed
 python3 -m depone agent-fabric-harness-snapshot --self-test # harness snapshot export passed

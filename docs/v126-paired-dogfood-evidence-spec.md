@@ -1,9 +1,17 @@
 # V126 Real Paired Dogfood Evidence Spec
 
-Status: spec for the next real milestone. Not yet implemented.
+Status: active implementation. First real paired run captured; broader V126
+evidence path still bounded.
 Date: 2026-06-24.
 
 Parent direction: `docs/v125-direction-check-roadmap.md` (Section 6.1, "now").
+
+North star: Depone should become the governance and evidence layer for
+increasingly automated agent-team work. The product direction is not "less
+automation"; it is more automation with explicit ownership, receipts, gates,
+and falsifiable evidence at every step. V126 is the first measured rung on that
+ladder: prove that one direct-vs-governed agent-team run can be executed,
+captured, and compared honestly before expanding the automation surface.
 
 ## 1. Research and prior art
 
@@ -38,9 +46,20 @@ a real coding task, runs it once directly and once through an Agent Fabric
 profile, and emits a real paired dogfood evidence report. It closes the gap
 between "the plumbing exists" and "a real run has been verified."
 
+Codex is the first runner target because it is the local agent surface available
+to this repository. "Connect Codex as an agent" means only this: provide a
+minimal, opt-in runner adapter that can launch or guide a Codex CLI run in an
+isolated worktree, capture its transcript/exit status/diff, and hand that
+evidence to Depone's observer. It is not a new Agent OS, scheduler, background
+service, or trust upgrade.
+
 This requires zero change to the core boundary. Depone Core still does not call a
 model. A human or a native harness runs the agent; Depone observes the resulting
 repository state and runs the declared verification command.
+
+This boundary is a staging rule, not the end state. Later milestones may automate
+more of the agent-team loop, but only when the prior rung has produced real
+evidence that the automation can be observed, bounded, and evaluated.
 
 Non-goals:
 
@@ -50,6 +69,10 @@ Non-goals:
 - No model calls from Depone Core; no provider routing; no API keys.
 - No new Agent Fabric profile, role, or compiler milestone (those are frozen per
   V125 Section 6.5).
+- No new source-only control-plane layer. Any new code must make the real
+  direct-vs-governed run easier to execute, capture, or verify.
+- No persistent Codex daemon, MCP/LSP manager, remote session broker, or
+  autonomous command loop.
 - No automatic public-claim approval. The paired-evidence decision may at most
   reach `paired-evidence-ready-source-only` and still requires a human gate.
 
@@ -60,9 +83,9 @@ real localized task (one ownership region, declared verification command)
   |
   v
 ARM A: direct run            ARM B: governed run
-  human/harness runs the     human/harness runs the task through one Agent
-  task directly under a      Fabric profile (e.g. feature-pipeline or
-  native harness             direct-small-fix) under the same harness
+  Codex/human harness runs   same Codex/human harness runs the task with one
+  the task directly in an    Agent Fabric packet (e.g. feature-pipeline or
+  isolated worktree          direct-small-fix) in a second isolated worktree
   |                            |
   v                            v
 Depone observer step (deterministic, no model):
@@ -90,18 +113,22 @@ paired delta record (direct vs governed): escaped-defect, review-precision,
 The observer step is the load-bearing new piece. Today `observer_capture` is
 hand-authored in fixtures; V126 makes Depone generate it by observing real repo
 state and running the declared command, so the A1 evidence is genuinely observed,
-not asserted.
+not asserted. The Codex adapter is subordinate to this observer: if it cannot
+produce transcript, diff, command receipt, and exit metadata, the run is blocked
+instead of treated as evidence.
 
 ## 4. Execution model
 
 1. Define one real task in a small task descriptor: `task_id`, ownership region
-   (`allowed_touched_files`), the exact verification command, and the acceptance
-   claim with a falsifier. A real Depone maintenance task is a good first choice
-   (for example a localized bug fix or a docs/code consistency fix), so the run
-   is genuinely useful work, not a toy.
+   (`allowed_touched_files`), the exact verification command, the runner target
+   (`codex-cli` first), and the acceptance claim with a falsifier. A real Depone
+   maintenance task is a good first choice (for example a localized bug fix or a
+   docs/code consistency fix), so the run is genuinely useful work, not a toy.
 2. Run ARM A (direct) and ARM B (governed) in isolated worktrees so the two arms
-   do not contaminate each other. The agent execution is performed by the harness
-   or the human, not by Depone Core.
+   do not contaminate each other. The agent execution is performed by the
+   opt-in runner adapter or the human, not by Depone Core. The governed arm
+   receives a generated implementation packet and allowed-file boundary; the
+   direct arm receives only the task brief and the same verification command.
 3. For each arm, run the Depone observer step to produce an `observer_capture`
    that conforms to `capture_bridge.REQUIRED_OBSERVER_FIELDS`
    (`observed_by`, `source_fixture_hash`, `diff_summary`, `touched_files`,
@@ -111,9 +138,12 @@ not asserted.
    (`validate_capture_manifest` must return no errors). Tamper, stale source
    hash, and out-of-ownership touched files must fail closed, exactly as the
    existing capture-bridge self-test asserts.
-5. Build the dogfood evidence report per arm and the paired evidence report.
-6. Emit a paired delta record comparing the two arms on observable metrics only.
-7. Replace the inline-fabricated dogfood input in the paired-evidence self-test
+5. Store the runner receipt per arm: runner kind, command or manual invocation
+   reference, transcript path, start/end timestamps, exit code, touched files,
+   and whether a human intervened.
+6. Build the dogfood evidence report per arm and the paired evidence report.
+7. Emit a paired delta record comparing the two arms on observable metrics only.
+8. Replace the inline-fabricated dogfood input in the paired-evidence self-test
    with the captured fixture from the governed arm, so the self-test exercises a
    real observed capture rather than a synthetic dict.
 
@@ -126,6 +156,15 @@ not asserted.
   inspection. It does not run arbitrary commands from the agent transcript, does
   not install dependencies, does not access the network, and does not message
   externally. Any such need stops with a blocked decision and a safe default.
+- The Codex runner adapter is opt-in and local. It may run only the declared
+  agent invocation for the selected arm, and its output is evidence input, not a
+  self-verifying result. Missing transcript, missing diff, missing command
+  receipt, or uncontrolled workspace writes block the run.
+- On Windows, `codex exec --sandbox workspace-write` may fail before shell or
+  patch execution with a sandbox helper access error. A diagnostic fallback to
+  `danger-full-access` is allowed only for an already-isolated throwaway
+  worktree, and the runner receipt must record the exact sandbox mode. Such a
+  fallback does not increase assurance or approve any public claim.
 - Assurance stays bounded: a real local observation reaches A1-local-observed.
   Worktree isolation may support A2 only when the observer runs outside the
   agent's writable space; otherwise the report stays A1. No agent may upgrade
@@ -138,6 +177,9 @@ Required cases (extend `depone/fixtures/agent_fabric/` and the dogfood manifest)
 
 - one real captured governed-arm manifest that validates as A1 and yields
   `dogfood-evidence-ready-source-only`;
+- one direct-arm receipt and one governed-arm receipt for the same `task_id`,
+  both tied to isolated worktrees and the same verification command;
+- a missing or incomplete Codex runner transcript must block the paired report;
 - the same manifest tampered (observer_capture mutated) must yield
   `observer_capture_hash mismatch` and block;
 - a stale `source_fixture_hash` must block;
@@ -149,16 +191,40 @@ Required cases (extend `depone/fixtures/agent_fabric/` and the dogfood manifest)
 
 ## 7. Implementation plan
 
+- Phase 0: stabilize the runway before adding V126 code. Park or remove
+  unrelated source-only V124 operating-system work unless it is explicitly being
+  finished, remove generated package metadata such as `depone.egg-info/`, and
+  restore changed live-runner fixtures to a portable local Python command
+  (`python` / `sys.executable`, not a platform-specific `python3`) so the changed
+  contract tier can run on Windows. Any README or brand-slug edits must be
+  resolved before V126 capture work, because they currently affect contract
+  checks without making the paired run easier to execute.
 - Phase 1: add the observer step (deterministic git inspection + declared-command
   runner producing `observer_capture`). New code lives under `depone/` package
   with stdlib only; it does not call a model.
-- Phase 2: add the task descriptor and the two-arm capture driver; reuse
+- Phase 2: add the minimal Codex runner receipt shape and task descriptor. The
+  adapter is opt-in, local, stdlib-only, and exists only to produce evidence for
+  the two-arm run.
+- Phase 3: add the two-arm capture driver; reuse
   `dwm_live_proof.py` comparison shape and `dwm_dogfood_pair.py` receipt/gate
   validation rather than inventing a parallel path.
-- Phase 3: capture one real task end to end, store the governed-arm manifest as a
+- Phase 4: capture one real task end to end, store the governed-arm manifest as a
   tracked fixture, and rewire the paired-evidence self-test to consume it.
-- Phase 4: write `docs/v126-decision.md` recording the captured `task_id`, the
+- Phase 5: write `docs/v126-decision.md` recording the captured `task_id`, the
   observed deltas, and the explicit non-superiority statement.
+
+Immediate next step: do Phase 0 first. The first productive implementation PR is
+not another control-plane spec; it is a clean V126 runway plus the smallest
+observer/runner receipt skeleton that can make one real Codex paired run
+observable.
+
+Current smoke status: the local Codex CLI path is usable via the current user's
+`npm` shim rather than the stale system shim. A toy direct-vs-governed smoke can
+produce runner receipts and observer captures for both arms, with the governed
+arm requiring the isolated-worktree `danger-full-access` diagnostic fallback on
+this Windows host. This is runner-path evidence only; V126 is not done until the
+same path is run on a real Depone maintenance task and converted into dogfood /
+paired evidence fixtures.
 
 Done means: a real, hash-bound A1 capture from an actual run exists; the paired
 evidence report reaches ready-source-only from that real capture; the
@@ -169,5 +235,5 @@ Required verification:
 
 - `python scripts/check_contract.py --tier changed`
 - the new observer and capture-driver self-tests
-- `PYTHONPATH=. python3 -m depone agent-fabric-paired-evidence --self-test`
+- `python -m depone agent-fabric-paired-evidence --self-test`
 - `python scripts/check_release_text.py .` and `python scripts/check_whitespace.py .`

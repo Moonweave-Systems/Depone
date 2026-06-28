@@ -108,22 +108,21 @@ def _self_test() -> None:
     from pathlib import Path
 
     from depone.agent_fabric.adapter_smoke import build_adapter_smoke_report
+    from depone.agent_fabric.dogfood_evidence import build_dogfood_evidence_report
     from depone.agent_fabric.harness_snapshot import build_harness_snapshot
 
     fixture = json.loads(
-        Path("depone/fixtures/agent_fabric/reference_adapter_shell.json").read_text()
+        Path("depone/fixtures/agent_fabric/reference_adapter_shell.json").read_text(
+            encoding="utf-8"
+        )
     )
     smoke = build_adapter_smoke_report(fixture, build_harness_snapshot(["shell"]))
-    dogfood = {
-        "kind": "agent-fabric-dogfood-evidence",
-        "decision": READY_DOGFOOD_DECISION,
-        "evidence_type": "paired-dogfood",
-        "boundary": {
-            "executes_commands": False,
-            "calls_live_models": False,
-            "approves_public_claim": False,
-        },
-    }
+    capture = json.loads(
+        Path(
+            "depone/fixtures/agent_fabric/capture_manifest_v126_governed_utf8.json"
+        ).read_text(encoding="utf-8")
+    )
+    dogfood = build_dogfood_evidence_report(capture)
     report = build_paired_evidence_report(smoke, dogfood)
     if report["decision"] != READY_DECISION:
         raise AssertionError("expected ready paired source-only evidence")

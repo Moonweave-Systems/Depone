@@ -12,7 +12,7 @@ public DWM naming while enforcing the single current skill identity.
 - Public product brand: `Depone`.
 - Internal engine name: `DWM Core`.
 - Skill name: `depone`.
-- Repository slug remains `dwm`.
+- Repository slug remains `keelplane`.
 - Existing CLI commands and artifact paths are not renamed in V87.
 
 ## Audit Rules

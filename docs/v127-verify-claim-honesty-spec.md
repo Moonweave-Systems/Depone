@@ -1,6 +1,6 @@
 # V127 Verify-Claim Honesty Spec
 
-Status: spec for the next real milestone. Not yet implemented.
+Status: implemented. Decision recorded in `docs/v127-decision.md`.
 Date: 2026-06-24.
 
 Parent direction: `docs/v125-direction-check-roadmap.md` (Section 6.1-6.2, "now").

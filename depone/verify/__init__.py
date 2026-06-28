@@ -650,7 +650,27 @@ def _self_test() -> None:
                 f"  [FAIL] Test {tests}: expected fail, got {report.verdict}/{report.decision}"
             )
 
-    # Test 10: unknown evaluator -> unsupported-evaluator -> inconclusive.
+    # Test 10: declared evaluator deterministically supports -> pass.
+    tests += 1
+    with tempfile.TemporaryDirectory() as tmp:
+        plan = _claim_plan(
+            {
+                "claim_or_output": "ground truth says approved",
+                "ground_truth": "gt.md",
+                "evaluator": "ground-truth-contains",
+                "expected": "approved",
+            }
+        )
+        report = run_verification(plan, _claim_evidence(tmp, gt_content="approved"))
+        if report.verdict == "verified" and report.decision == "pass":
+            passed += 1
+            print(f"  [PASS] Test {tests}: evaluator supports claim -> pass")
+        else:
+            print(
+                f"  [FAIL] Test {tests}: expected pass, got {report.verdict}/{report.decision}"
+            )
+
+    # Test 11: unknown evaluator -> unsupported-evaluator -> inconclusive.
     tests += 1
     with tempfile.TemporaryDirectory() as tmp:
         plan = _claim_plan(
@@ -667,6 +687,38 @@ def _self_test() -> None:
         else:
             print(
                 f"  [FAIL] Test {tests}: expected inconclusive, got {report.verdict}/{report.decision}"
+            )
+
+    # Test 12: max_agents is counted from invocation records, not filenames.
+    tests += 1
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp) / "evidence"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "agent-one.txt").write_text("filename should not count", encoding="utf-8")
+        (d / "agent-two.txt").write_text("filename should not count", encoding="utf-8")
+        (d / "run-metadata.json").write_text(
+            json.dumps(
+                {
+                    "run_id": "budget-v127",
+                    "num_rounds": 1,
+                    "invocations": [{"agent": "runner"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        _write_evidence_contract(d)
+        plan = _claim_plan({})
+        plan["verification"] = []
+        plan["budget"] = {"max_agents": 1}
+        report = run_verification(plan, generic.read_evidence(str(d)))
+        if report.verdict == "verified" and report.phases[0].budget.within_limits:
+            passed += 1
+            print(
+                f"  [PASS] Test {tests}: budget counts invocation records, not filenames"
+            )
+        else:
+            print(
+                f"  [FAIL] Test {tests}: expected budget pass from one invocation, got {report.verdict}"
             )
 
     print(f"\nSelf-test: {passed}/{tests} passed")

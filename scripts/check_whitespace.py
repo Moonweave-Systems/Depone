@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-SKIP_DIRS = {".git", ".mypy_cache", ".omx", ".pytest_cache", ".venv", "__pycache__", "node_modules", "out", "venv"}
+SKIP_DIRS = {".git", ".mypy_cache", ".omx", ".pytest_cache", ".venv", "__pycache__", "node_modules", "out", "venv", "build", ".eggs"}
 TEXT_SUFFIXES = {
     ".json",
     ".md",
@@ -20,7 +20,7 @@ TEXT_NAMES = {"LICENSE", "SKILL.md", "README.md"}
 
 
 def should_check(path: Path) -> bool:
-    if any(part in SKIP_DIRS for part in path.parts):
+    if any(part in SKIP_DIRS or part.endswith(".egg-info") for part in path.parts):
         return False
     return path.suffix in TEXT_SUFFIXES or path.name in TEXT_NAMES
 

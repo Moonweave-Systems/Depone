@@ -198,6 +198,11 @@ def run_verification_command(
         stdout = exc.stdout if isinstance(exc.stdout, str) else ""
         stderr = exc.stderr if isinstance(exc.stderr, str) else ""
         status = "error"
+    except FileNotFoundError as exc:
+        exit_code = 127
+        stdout = ""
+        stderr = f"command not found: {exc.filename or command[0]}"
+        status = "error"
     ended_at = now_utc()
     _write_command_log(
         log_path,
@@ -512,7 +517,7 @@ def _self_test() -> None:
         capture = build_observer_capture(
             repo,
             source_fixture_hash="fixture-hash",
-            verification_command=["python", "--version"],
+            verification_command=[sys.executable, "--version"],
             log_path=root / "verification.log",
         )
         if capture["test_output"]["status"] != "passed":

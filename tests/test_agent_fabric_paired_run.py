@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 import json
@@ -48,7 +49,7 @@ class AgentFabricPairedRunTests(unittest.TestCase):
             capture = build_observer_capture(
                 repo,
                 source_fixture_hash="fixture-hash",
-                verification_command=["python", "--version"],
+                verification_command=[sys.executable, "--version"],
                 log_path=root / "verification.log",
             )
 

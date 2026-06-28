@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_DIRS = {".git", ".pytest_cache", ".ruff_cache", "__pycache__", "out"}
+SKIP_DIRS = {".git", ".pytest_cache", ".ruff_cache", "__pycache__", "out", "build", ".eggs", ".venv", "venv"}
 SECRET_PATTERN = re.compile(
     r"(?i)['\"]?(api[_-]?key|secret|token|password)['\"]?\s*[:=]\s*['\"]?[^'\"\s]{8,}|"
     r"-----BEGIN (RSA|OPENSSH) PRIVATE KEY-----"
@@ -41,7 +41,10 @@ def iter_text_files(root: Path) -> list[tuple[Path, str]]:
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.relative_to(root).parts):
+        if any(
+            part in SKIP_DIRS or part.endswith(".egg-info")
+            for part in path.relative_to(root).parts
+        ):
             continue
         text = read_text_file(path)
         if text is not None:

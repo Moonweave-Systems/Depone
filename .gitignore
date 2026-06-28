@@ -5,5 +5,7 @@ __pycache__/
 *.pyc
 out/
 .omo/
-keelplane.egg-info/
+*.egg-info/
+build/
+.eggs/
 uv.lock

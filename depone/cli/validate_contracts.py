@@ -34,7 +34,9 @@ from depone.contract import (
     validate_self_test,
 )
 
-PARKED_FIXTURE_NAMES = {"agent_operating_system_spec.json"}
+# Fixture basenames to skip during validation (none currently; the V124 Agent
+# OS draft was removed). Kept as a hook for any future parked fixtures.
+PARKED_FIXTURE_NAMES: set[str] = set()
 
 
 def run(args: argparse.Namespace) -> None:

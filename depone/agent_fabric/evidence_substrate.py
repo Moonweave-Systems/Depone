@@ -163,10 +163,15 @@ def resolve_present_artifact_digests(
 
 
 def _blocked_verdict(reason: str, *, signing_status: str | None = None) -> dict[str, Any]:
+    # Carry predicate_type / predicate_recognized on every verdict so consumers
+    # can read them unconditionally; a payload blocked before its statement is
+    # parsed has no known predicate, hence None / False.
     verdict: dict[str, Any] = {
         "decision": "blocked",
         "subject_results": [],
         "reasons": [reason],
+        "predicate_type": None,
+        "predicate_recognized": False,
     }
     if signing_status is not None:
         verdict["signing_status"] = signing_status

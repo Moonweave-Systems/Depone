@@ -129,6 +129,10 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
         )
 
         self.assertEqual(verdict["decision"], "blocked")
+        # Verdicts blocked before a statement is parsed still carry the predicate
+        # keys, so consumers can read them unconditionally.
+        self.assertIsNone(verdict["predicate_type"])
+        self.assertFalse(verdict["predicate_recognized"])
 
     def test_otel_structural_errors_do_not_upgrade_to_pass(self) -> None:
         bundle = self._bundle()

@@ -16,4 +16,4 @@ _SCRIPTS = _REPO_ROOT / "scripts"
 if _SCRIPTS.is_dir() and str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-__version__ = "104.0.0"
+__version__ = "0.1.0"

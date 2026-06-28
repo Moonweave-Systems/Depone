@@ -38,8 +38,7 @@ depone verify plan.json --evidence ./evidence/ --out report.json --operator-view
 python3 -m pip install .
 ```
 
-No external dependencies required — the core uses Python stdlib only. PyPI
-publishing is not active yet; install from the checkout for now.
+No external dependencies required. PyPI is not active; install from checkout.
 
 ## What Exists Today
 Depone ships the stdlib-only CLI, a strict plan validator, a Conductor YAML
@@ -58,6 +57,7 @@ evidence gates.
 | `depone verify` | Verify execution evidence against a plan |
 | `depone validate-contracts` | Validate Agent Fabric contracts and fixtures |
 | `depone mcp` | Serve the same evidence/verify capabilities over MCP stdio |
+| `depone agent-fabric-observe` | Capture a runner sandbox from a separate observer-owned directory; still A1 |
 | `depone agent-fabric-smoke` | Export the source-only Agent Fabric lifecycle smoke summary |
 | `depone agent-fabric-harness-snapshot` | Export source-only harness capability snapshots |
 | `depone agent-fabric-adapter-smoke` | Export source-only adapter smoke reports |

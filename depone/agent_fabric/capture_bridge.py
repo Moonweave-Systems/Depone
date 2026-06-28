@@ -36,7 +36,7 @@ VALID_TEST_STATUSES = frozenset({"not-run", "passed", "failed", "error"})
 
 
 def _canonical_json(data: Any) -> str:
-    return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(data, sort_keys=True, separators=(",", ":"))
 
 
 def _sha256_json(data: Any) -> str:

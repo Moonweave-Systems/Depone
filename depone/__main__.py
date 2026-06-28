@@ -13,6 +13,7 @@ from depone.cli import (
     agent_fabric_evidence_ingest,
     agent_fabric_evidence_substrate,
     agent_fabric_harness_snapshot,
+    agent_fabric_observe,
     agent_fabric_paired_evidence,
     agent_fabric_paired_run,
     agent_fabric_smoke,
@@ -390,6 +391,48 @@ def main() -> None:
         help="Verification command to run after --",
     )
 
+    # agent-fabric-observe
+    observe_parser = sub.add_parser(
+        "agent-fabric-observe",
+        help="Run a separated observer-owned capture over a runner sandbox",
+    )
+    observe_parser.add_argument(
+        "--runner-sandbox",
+        required=False,
+        default="",
+        help="Runner worktree/sandbox to observe read-only",
+    )
+    observe_parser.add_argument(
+        "--source-fixture-hash",
+        required=False,
+        default="",
+        help="Expected source fixture hash for the observer capture",
+    )
+    observe_parser.add_argument(
+        "--out",
+        default="observer-capture.json",
+        help="Observer-owned output path for observer-capture.json",
+    )
+    observe_parser.add_argument(
+        "--log",
+        default="verify-log.json",
+        help="Observer-owned verification command log path",
+    )
+    observe_parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=120,
+        help="Verification command timeout",
+    )
+    observe_parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+    observe_parser.add_argument(
+        "verification_command",
+        nargs=argparse.REMAINDER,
+        help="Observer-chosen verification command to run after --",
+    )
+
     # agent-fabric-evidence-substrate
     evidence_substrate_parser = sub.add_parser(
         "agent-fabric-evidence-substrate",
@@ -517,6 +560,8 @@ def main() -> None:
         agent_fabric_paired_evidence.run(args)
     elif args.command == "agent-fabric-paired-run":
         agent_fabric_paired_run.run(args)
+    elif args.command == "agent-fabric-observe":
+        agent_fabric_observe.run(args)
     elif args.command == "agent-fabric-evidence-substrate":
         agent_fabric_evidence_substrate.run(args)
     elif args.command == "agent-fabric-evidence-ingest":

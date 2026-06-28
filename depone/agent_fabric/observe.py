@@ -44,6 +44,21 @@ def _separation_error(message: str) -> PairedRunError:
     return PairedRunError("ERR_OBSERVER_NOT_SEPARATED", message)
 
 
+def enforce_path_outside_runner_sandbox(
+    *,
+    runner_sandbox: Path,
+    path: Path,
+    label: str,
+) -> Path:
+    """Fail closed unless a named observer-owned path is outside the runner."""
+
+    runner = runner_sandbox.expanduser().resolve(strict=False)
+    target = path.expanduser().resolve(strict=False)
+    if _is_inside_or_equal(target, runner):
+        raise _separation_error(f"{label} must be outside --runner-sandbox")
+    return target
+
+
 def enforce_observer_separation(
     *,
     runner_sandbox: Path,

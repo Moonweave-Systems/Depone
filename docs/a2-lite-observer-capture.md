@@ -22,5 +22,18 @@ assurance value, and manifests built from this capture remain
 This path records better observer architecture; it does not claim superiority
 from one run, and n=1 remains n=1.
 
+## Observer-Held HMAC Seal
+
+`depone agent-fabric-observe --seal-key-file <path>` can write
+`observer-capture.seal.json` beside the capture. The seal is HMAC-SHA256 over
+the canonical capture bytes and uses an observer-held symmetric key that must
+live outside the runner sandbox when supplied as a file. It provides keyed
+integrity and authenticity to a holder of that key, and detects forgery by a
+party without the key.
+
+This is not a public signature, not A3 signing, and not forge-proof against a
+same-uid runner that can read the key. Its strength depends on key custody.
+Assurance remains `A1-local-observed`.
+
 Full A2 privilege isolation through a distinct uid or container boundary, and
 A3 signing, remain deferred.

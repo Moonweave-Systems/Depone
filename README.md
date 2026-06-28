@@ -57,7 +57,7 @@ evidence gates.
 | `depone verify` | Verify execution evidence against a plan |
 | `depone validate-contracts` | Validate Agent Fabric contracts and fixtures |
 | `depone mcp` | Serve the same evidence/verify capabilities over MCP stdio |
-| `depone agent-fabric-observe` | Capture a runner sandbox from a separate observer-owned directory; still A1 |
+| `depone agent-fabric-observe` | Capture and optionally HMAC-seal observer evidence; still A1 |
 | `depone agent-fabric-smoke` | Export the source-only Agent Fabric lifecycle smoke summary |
 | `depone agent-fabric-harness-snapshot` | Export source-only harness capability snapshots |
 | `depone agent-fabric-adapter-smoke` | Export source-only adapter smoke reports |

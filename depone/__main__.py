@@ -16,7 +16,9 @@ from depone.cli import (
     agent_fabric_observe,
     agent_fabric_paired_evidence,
     agent_fabric_paired_run,
+    agent_fabric_seal,
     agent_fabric_smoke,
+    agent_fabric_verify_seal,
     demo,
     design,
     validate,
@@ -425,12 +427,55 @@ def main() -> None:
         help="Verification command timeout",
     )
     observe_parser.add_argument(
+        "--seal-key-file",
+        default="",
+        help="Optional observer-held HMAC key file outside the runner sandbox",
+    )
+    observe_parser.add_argument(
+        "--seal-key-id",
+        default="",
+        help="Optional non-secret observer HMAC key label",
+    )
+    observe_parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
     )
     observe_parser.add_argument(
         "verification_command",
         nargs=argparse.REMAINDER,
         help="Observer-chosen verification command to run after --",
+    )
+
+    # agent-fabric-seal
+    seal_parser = sub.add_parser(
+        "agent-fabric-seal",
+        help="Write an observer-held HMAC seal for a capture",
+    )
+    seal_parser.add_argument("--capture", default="", help="Observer capture JSON")
+    seal_parser.add_argument("--seal-key-file", default="", help="Raw HMAC key file")
+    seal_parser.add_argument(
+        "--seal-key-id",
+        default="",
+        help="Non-secret key label to embed in the seal",
+    )
+    seal_parser.add_argument("--out", default="", help="Output seal JSON path")
+    seal_parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+
+    # agent-fabric-verify-seal
+    verify_seal_parser = sub.add_parser(
+        "agent-fabric-verify-seal",
+        help="Verify an observer-held HMAC seal for a capture",
+    )
+    verify_seal_parser.add_argument("--capture", default="", help="Observer capture JSON")
+    verify_seal_parser.add_argument("--seal", default="", help="Observer seal JSON")
+    verify_seal_parser.add_argument(
+        "--seal-key-file",
+        default="",
+        help="Raw HMAC key file",
+    )
+    verify_seal_parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
     )
 
     # agent-fabric-evidence-substrate
@@ -562,6 +607,10 @@ def main() -> None:
         agent_fabric_paired_run.run(args)
     elif args.command == "agent-fabric-observe":
         agent_fabric_observe.run(args)
+    elif args.command == "agent-fabric-seal":
+        agent_fabric_seal.run(args)
+    elif args.command == "agent-fabric-verify-seal":
+        agent_fabric_verify_seal.run(args)
     elif args.command == "agent-fabric-evidence-substrate":
         agent_fabric_evidence_substrate.run(args)
     elif args.command == "agent-fabric-evidence-ingest":

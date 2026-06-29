@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from dataclasses import asdict
@@ -110,6 +111,7 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
     observer_dir = out_dir / "observer-owned"
     out_dir.mkdir(parents=True, exist_ok=True)
     observer_dir.mkdir(parents=True, exist_ok=True)
+    _restrict_observer_dir(observer_dir)
 
     source_fixture = _read_json(source_fixture_path)
     source_fixture_hash = canonical_hash(source_fixture)
@@ -302,6 +304,21 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def _restrict_observer_dir(observer_dir: Path) -> None:
+    """Tighten the observer-owned dir so a different-uid runner cannot write it.
+
+    A2 requires the runner cannot write the observer output. In the field the dir
+    was auto-created group-writable by the operator's umask, which made the probe
+    fail closed to A1 until a manual chmod. The tool now hardens its own dir to
+    0700 so A2 is reachable without that manual step. A no-op on platforms
+    without POSIX modes (e.g. native Windows), where capture stays A1 anyway.
+    """
+    try:
+        os.chmod(observer_dir, 0o700)
+    except (OSError, NotImplementedError):
+        pass
+
+
 def _write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -369,6 +386,15 @@ def _self_test() -> None:
             raise AssertionError(f"same-uid run must stay A1: {payload['boundary']}")
         if payload["boundary"]["privilege_isolated"] is not False:
             raise AssertionError("same-uid run must not claim privilege isolation")
+        # The tool must harden its own observer dir so A2 needs no manual chmod:
+        # the auto-created dir must not be writable by a different uid.
+        if hasattr(os, "getuid"):
+            observer_dir = Path(str(payload["out"])) / "observer-owned"
+            mode = observer_dir.stat().st_mode & 0o777
+            if mode & 0o022:
+                raise AssertionError(
+                    f"observer dir must not be group/other writable, got {oct(mode)}"
+                )
         summary_path = Path(str(payload["out"])) / "evidence-run-summary.json"
         if not summary_path.is_file():
             raise AssertionError("expected evidence-run summary")

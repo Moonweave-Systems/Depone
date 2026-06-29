@@ -1,10 +1,30 @@
 from __future__ import annotations
 
+import argparse
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from depone.cli.evidence_run import _launch_runner_user
+from depone._resources import resource_text
+from depone.cli.evidence_run import _launch_runner_user, run_evidence_loop
+
+
+def _run_git(repo: Path, args: list[str]) -> None:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(result.stderr.strip() or result.stdout.strip())
 
 
 class EvidenceRunUidLaunchTests(unittest.TestCase):
@@ -66,6 +86,86 @@ class EvidenceRunUidLaunchTests(unittest.TestCase):
                         user="deponerun",
                         shell_command="exit 17",
                     )
+
+    def test_evidence_run_uses_observer_launched_uid_receipt_for_a2(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="depone-uid-launch-") as temp_text:
+            root = Path(temp_text)
+            runner = root / "runner-sandbox"
+            runner.mkdir()
+            _run_git(runner, ["init"])
+            _run_git(runner, ["config", "user.email", "observer@example.invalid"])
+            _run_git(runner, ["config", "user.name", "Observer Test"])
+            (runner / "sample.txt").write_text("before\n", encoding="utf-8")
+            _run_git(runner, ["add", "sample.txt"])
+            _run_git(runner, ["commit", "-m", "seed"])
+            (runner / "sample.txt").write_text("after\n", encoding="utf-8")
+
+            source_fixture = root / "reference_adapter_shell.json"
+            source_fixture.write_text(
+                resource_text("fixtures/agent_fabric/reference_adapter_shell.json"),
+                encoding="utf-8",
+            )
+            launch_receipt = {
+                "runtime": "posix-sudo",
+                "user": "deponerun",
+                "uid": 4242,
+                "observed_uid": 4242,
+                "command": "printf after",
+                "cwd": str(runner),
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "",
+                "invocation": ["sudo", "-u", "deponerun", "bash", "-lc", "printf after"],
+            }
+            args = argparse.Namespace(
+                runner_sandbox=str(runner),
+                source_fixture=str(source_fixture),
+                out=str(root / "evidence-run"),
+                allow_touched_file=["sample.txt"],
+                verify_plan="",
+                verify_evidence="",
+                verify_adapter="generic",
+                operator_view_out="",
+                timeout_seconds=120,
+                runner_uid=None,
+                runner_user="deponerun",
+                runner_command="printf after",
+                runner_container_id="",
+                runner_container_image="",
+                runner_container_command="",
+                runner_container_hold_seconds=600,
+                verification_command=[
+                    sys.executable,
+                    "-c",
+                    "from pathlib import Path; assert Path('sample.txt').exists()",
+                ],
+                json=False,
+            )
+
+            with patch(
+                "depone.cli.evidence_run._launch_runner_user",
+                return_value=launch_receipt,
+            ):
+                payload = run_evidence_loop(args)
+
+            manifest = json.loads(
+                (root / "evidence-run" / "capture-manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(payload["boundary"]["observer_assurance"], "A2-isolated-observed")
+        self.assertTrue(payload["boundary"]["privilege_isolated"])
+        self.assertEqual(
+            manifest["isolation"]["model"],
+            "uid-boundary-observer-launched-unwritable-observer-dir",
+        )
+        self.assertIs(manifest["isolation"]["observer_launched"], True)
+        self.assertEqual(manifest["isolation"]["runner_uid"], 4242)
+        self.assertEqual(
+            manifest["observer_capture"]["runner_uid_launch"],
+            launch_receipt,
+        )
 
 
 if __name__ == "__main__":

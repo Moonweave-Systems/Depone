@@ -10,9 +10,11 @@ from typing import Any
 
 from depone._resources import resource_text
 from depone.agent_fabric.capture_bridge import (
+    ASSURANCE_A2,
     build_capture_manifest,
     validate_capture_manifest,
 )
+from depone.agent_fabric.isolation import probe_isolation_facts
 from depone.agent_fabric.claim_gate import canonical_hash
 from depone.agent_fabric.evidence_substrate import (
     DIGEST_MODE_CANONICAL_JSON,
@@ -124,10 +126,21 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
     observer_capture_hash = write_observer_capture(observer_path, capture)
 
     allowed_touched_files = list(getattr(args, "allow_touched_file", []) or [])
+    # Isolation facts are observer-attested: the observer supplies the uid it
+    # launched the runner under, and probe_isolation_facts measures whether its
+    # own output dir is writable by a different uid. A2 is reached only when both
+    # hold. Omitting --runner-uid (or a same-uid host) keeps the manifest at A1.
+    runner_uid_arg = getattr(args, "runner_uid", None)
+    isolation_facts = (
+        probe_isolation_facts(observer_dir, runner_uid=int(runner_uid_arg))
+        if runner_uid_arg is not None
+        else None
+    )
     capture_manifest = build_capture_manifest(
         source_fixture,
         observer_capture=capture,
         allowed_touched_files=allowed_touched_files,
+        isolation=isolation_facts,
     )
     capture_errors = validate_capture_manifest(capture_manifest)
     capture_manifest_path = out_dir / "capture-manifest.json"
@@ -216,8 +229,14 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
         "verify": verify_payload,
         "boundary": {
             "observer_assurance": capture_manifest.get("assurance"),
-            "privilege_isolated": False,
-            "note": "A1 local observed evidence; not A2 privilege isolation.",
+            "privilege_isolated": capture_manifest.get("assurance") == ASSURANCE_A2,
+            "isolation": capture_manifest.get("isolation"),
+            "note": (
+                "A2 isolated observed: runner ran under a different uid and could "
+                "not write the observer output."
+                if capture_manifest.get("assurance") == ASSURANCE_A2
+                else "A1 local observed evidence; not A2 privilege isolation."
+            ),
         },
     }
     _write_json(out_dir / "evidence-run-summary.json", payload)
@@ -334,6 +353,7 @@ def _self_test() -> None:
             verify_adapter="generic",
             operator_view_out="",
             timeout_seconds=120,
+            runner_uid=None,
             verification_command=[
                 sys.executable,
                 "-c",
@@ -344,6 +364,11 @@ def _self_test() -> None:
         payload = run_evidence_loop(args)
         if payload["decision"] != "pass":
             raise AssertionError(f"expected evidence-run pass: {payload}")
+        # Same-uid host (no --runner-uid): must stay honestly at A1, never A2.
+        if payload["boundary"]["observer_assurance"] != "A1-local-observed":
+            raise AssertionError(f"same-uid run must stay A1: {payload['boundary']}")
+        if payload["boundary"]["privilege_isolated"] is not False:
+            raise AssertionError("same-uid run must not claim privilege isolation")
         summary_path = Path(str(payload["out"])) / "evidence-run-summary.json"
         if not summary_path.is_file():
             raise AssertionError("expected evidence-run summary")

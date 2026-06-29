@@ -199,6 +199,16 @@ def _add_evidence_run_args(parser: argparse.ArgumentParser) -> None:
         help="Reference adapter/source fixture JSON to hash-bind",
     )
     parser.add_argument(
+        "--runner-uid",
+        type=int,
+        default=None,
+        help=(
+            "OS uid the runner/agent ran under, when the observer launched it "
+            "isolated (different user/container). Enables A2 only if the "
+            "observer output dir is not writable by that uid; omit for A1."
+        ),
+    )
+    parser.add_argument(
         "--out",
         default="evidence-run",
         help="Output directory for all evidence-run artifacts",

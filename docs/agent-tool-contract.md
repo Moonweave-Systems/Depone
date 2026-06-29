@@ -23,6 +23,7 @@ Core official surface:
 | `depone observe --json` | Capture observer-owned evidence for a runner sandbox. |
 | `depone evidence-substrate --json` | Emit in-toto/DSSE and OTel GenAI-shaped evidence. |
 | `depone evidence-ingest --json` | Verify untrusted external evidence subject digests. |
+| `depone run --json` | Native runner-facing alias for the existing evidence loop. |
 | `depone mcp` | Serve evidence tools over MCP stdio. |
 | `depone demo --json` | Run the offline design, compile, verify demo. |
 
@@ -30,10 +31,16 @@ Convenience wrapper:
 
 | Command | Purpose |
 | --- | --- |
+| `depone run --json` | Native-runner alias for the existing evidence loop; behavior-compatible with `evidence-run`. |
 | `depone evidence-run --json` | Run the common observe, substrate, ingest, and verify loop in one command. |
 
 The older `agent-fabric-*` commands remain callable for compatibility but are
 not the preferred agent-facing surface.
+
+`depone run` is an evidence-native command surface, not a promise that Depone
+executes or schedules agent teams. It preserves the same fail-closed evidence
+semantics as `evidence-run`; compatibility callers may continue using
+`python -m depone evidence-run --runner-sandbox ...`.
 
 ## Machine Contract
 
@@ -85,7 +92,7 @@ executed work stay separate.
 python -m depone doctor --json
 python -m depone design "audit all API routes" --surface . --out plan.json --json
 python -m depone validate plan.json --json
-python -m depone evidence-run --runner-sandbox ./runner-worktree \
+python -m depone run --runner-sandbox ./runner-worktree \
   --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json \
   --out ../observer/evidence-run --allow-touched-file sample.txt \
   --verify-plan plan.json --verify-evidence ./evidence \

@@ -850,6 +850,13 @@ def main() -> None:
     )
     _add_evidence_run_args(evidence_run_parser)
 
+    # run (native runner alias)
+    run_parser = sub.add_parser(
+        "run",
+        help="Compatibility alias for evidence-run",
+    )
+    _add_evidence_run_args(run_parser)
+
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
         "agent-fabric-claim-gate",
@@ -936,7 +943,7 @@ def main() -> None:
             agent_fabric_evidence_ingest.run(args)
         elif args.command in ("agent-fabric-evidence-chain", "evidence-chain"):
             agent_fabric_evidence_chain.run(args)
-        elif args.command == "evidence-run":
+        elif args.command in ("evidence-run", "run"):
             evidence_run.run(args)
         elif args.command == "agent-fabric-claim-gate":
             agent_fabric_claim_gate.run(args)

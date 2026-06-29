@@ -22,6 +22,7 @@ python -m depone observe --runner-sandbox ./runner-worktree --source-fixture-has
 python -m depone evidence-substrate --capture-manifest capture-manifest.json --out evidence-bundle.json --json
 python -m depone evidence-ingest --dsse evidence-bundle.json:dsse_envelope --artifact depone-capture-manifest=capture-manifest.json:json --out ingest-verdict.json --json
 python -m depone evidence-chain --capture capture-0.json --capture capture-1.json --out evidence-chain-verdict.json --json
+python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
 python -m depone mcp
 python -m depone demo --out out/depone-quickstart --json
 ```
@@ -29,8 +30,13 @@ python -m depone demo --out out/depone-quickstart --json
 Convenience wrapper for the full local evidence loop:
 
 ```bash
+python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --verify-plan plan.json --verify-evidence ./evidence --json -- python -m unittest
 python -m depone evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --verify-plan plan.json --verify-evidence ./evidence --json -- python -m unittest
 ```
+
+`run` is the native-runner entrypoint name for the existing evidence loop. It is
+kept behavior-compatible with `evidence-run` and does not add a team scheduler,
+agent execution engine, or higher assurance claim by itself.
 
 Exit codes: `0` pass/success, `1` fail/blocked/refuted, `2`
 inconclusive/insufficient evidence, `3` usage/config/input error, and `4`

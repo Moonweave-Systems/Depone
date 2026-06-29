@@ -38,12 +38,17 @@ depone verify plan.json --evidence ./evidence/ --out report.json --operator-view
 Agent-session evidence loop:
 
 ```bash
-depone evidence-run --runner-sandbox ./runner-worktree \
+depone run --runner-sandbox ./runner-worktree \
   --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json \
   --out ../observer/evidence-run --allow-touched-file sample.txt \
   --verify-plan plan.json --verify-evidence ./evidence \
   --json -- python -m unittest
 ```
+
+`depone run` is the small native runner-facing entrypoint for the same
+evidence loop as `depone evidence-run`. It does not add a scheduler or execute
+agents by itself; it preserves the existing observe -> substrate -> ingest ->
+verify boundary.
 
 ## What Exists Today
 Depone ships the stdlib-only CLI, a strict plan validator, a Conductor YAML
@@ -81,6 +86,7 @@ flowchart LR
 | `depone evidence-ingest` | Verify external evidence subject digests as untrusted input |
 | `depone evidence-chain` | Verify an ordered append-only capture manifest chain |
 | `depone evidence-run` | Run the common observe -> substrate -> ingest -> verify loop |
+| `depone run` | Native-runner convenience alias for `evidence-run`; not a scheduler |
 | `depone mcp` | Serve the same evidence/verify capabilities over MCP stdio |
 | `depone demo` | Run a complete design -> compile -> verify cycle |
 
@@ -96,7 +102,7 @@ sequenceDiagram
     participant D as Depone
     participant O as Observer-owned output
     A->>R: perform task
-    A->>D: depone evidence-run --json
+    A->>D: depone run --json
     D->>R: run verifier command
     D->>O: observer-capture.json
     D->>O: capture-manifest.json
@@ -112,7 +118,9 @@ sequenceDiagram
 > It does not execute agents. It makes runs from other frameworks trustworthy.
 
 `design` makes safe workflow contracts, `compile` emits target artifacts, and
-`verify` checks execution evidence against the plan.
+`verify` checks execution evidence against the plan. `run` is the evidence-native
+entrypoint for the existing local evidence loop: a compatibility alias over
+`evidence-run`, not a general-purpose agent-team scheduler.
 
 ## Safety Model
 
@@ -126,7 +134,7 @@ production deployment, and history rewrite require explicit gates.
 ```mermaid
 flowchart TD
     A["Agent-safe CLI"] --> B["Evidence substrate"]
-    B --> C["evidence-run wrapper"]
+    B --> C["depone run / evidence-run wrapper"]
     C --> D["Session receipt adapters"]
     D --> E["Operator signing policy"]
     E --> F["A2 isolation path"]
@@ -163,7 +171,8 @@ Legacy diagnostics: `python scripts/dwm_demo.py run --out out/demo/quickstart`, 
 ## Quality
 
 Core CLI commands include built-in `--self-test`, including `verify`,
-`observe`, `evidence-substrate`, `evidence-ingest`, `evidence-run`, and `demo`.
+`observe`, `evidence-substrate`, `evidence-ingest`, `run`/`evidence-run`, and
+`demo`.
 
 ```bash
 python scripts/check_contract.py --tier changed

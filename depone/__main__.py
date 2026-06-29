@@ -245,6 +245,27 @@ def _add_evidence_run_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--sign-private-key",
+        default="",
+        help=(
+            "Ed25519 private key PEM for optional operator-key DSSE signing of "
+            "the evidence bundle."
+        ),
+    )
+    parser.add_argument(
+        "--sign-key-id",
+        default="",
+        help="Non-secret key label to embed in the optional evidence-run signature.",
+    )
+    parser.add_argument(
+        "--sign-public-key",
+        default="",
+        help=(
+            "Optional Ed25519 public key PEM used to verify the signed bundle "
+            "immediately after evidence-run signs it."
+        ),
+    )
+    parser.add_argument(
         "--out",
         default="evidence-run",
         help="Output directory for all evidence-run artifacts",

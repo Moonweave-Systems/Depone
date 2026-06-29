@@ -6,10 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from depone.agent_fabric.sign import DsseSigningError, sign_dsse_envelope
+from depone.agent_fabric.sign import DsseSigningError, sign_evidence_bundle
 from depone.agent_fabric.sign import _self_test as sign_self_test
-
-SIGNING_STATUS = "signed-ed25519-operator-key"
 
 
 def run(args: argparse.Namespace) -> None:
@@ -31,27 +29,11 @@ def run(args: argparse.Namespace) -> None:
 
     try:
         bundle = _read_json(Path(bundle_path))
-        envelope = bundle.get("dsse_envelope")
-        if not isinstance(envelope, dict):
-            raise DsseSigningError("ERR_DSSE_SIGN_FAILED", "bundle missing dsse_envelope")
-        signed_bundle = dict(bundle)
-        signed_bundle["dsse_envelope"] = sign_dsse_envelope(
-            envelope,
+        signed_bundle = sign_evidence_bundle(
+            bundle,
             private_key_path,
             key_id=key_id,
         )
-        signed_bundle["signing_status"] = SIGNING_STATUS
-        signed_bundle["signature_boundary"] = {
-            "scheme": "DSSE-Ed25519-openssl-cli",
-            "operator_key": True,
-            "public_verifiable": True,
-            "keyless_identity": False,
-            "transparency_logged": False,
-            "note": (
-                "Trust is rooted in the operator-held key and distributed public "
-                "key; this is not Fulcio keyless identity or Rekor logging."
-            ),
-        }
         out_abs = Path(out_path).expanduser().resolve(strict=False)
         out_abs.parent.mkdir(parents=True, exist_ok=True)
         out_abs.write_text(

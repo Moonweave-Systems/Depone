@@ -22,6 +22,7 @@ from depone.agent_fabric.evidence_substrate import build_evidence_bundle
 
 ERR_OPENSSL_UNAVAILABLE = "ERR_OPENSSL_UNAVAILABLE"
 ERR_DSSE_SIGN_FAILED = "ERR_DSSE_SIGN_FAILED"
+SIGNING_STATUS_OPERATOR_KEY = "signed-ed25519-operator-key"
 
 
 class DsseSigningError(Exception):
@@ -111,6 +112,36 @@ def sign_dsse_envelope(
         }
     ]
     return signed
+
+
+def sign_evidence_bundle(
+    bundle: dict[str, Any],
+    private_key_path: str,
+    *,
+    key_id: str,
+) -> dict[str, Any]:
+    envelope = bundle.get("dsse_envelope")
+    if not isinstance(envelope, dict):
+        raise DsseSigningError(ERR_DSSE_SIGN_FAILED, "bundle missing dsse_envelope")
+    signed_bundle = dict(bundle)
+    signed_bundle["dsse_envelope"] = sign_dsse_envelope(
+        envelope,
+        private_key_path,
+        key_id=key_id,
+    )
+    signed_bundle["signing_status"] = SIGNING_STATUS_OPERATOR_KEY
+    signed_bundle["signature_boundary"] = {
+        "scheme": "DSSE-Ed25519-openssl-cli",
+        "operator_key": True,
+        "public_verifiable": True,
+        "keyless_identity": False,
+        "transparency_logged": False,
+        "note": (
+            "Trust is rooted in the operator-held key and distributed public "
+            "key; this is not Fulcio keyless identity or Rekor logging."
+        ),
+    }
+    return signed_bundle
 
 
 def verify_dsse_envelope(envelope: dict[str, Any], public_key_path: str) -> bool:

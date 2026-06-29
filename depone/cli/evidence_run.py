@@ -34,6 +34,11 @@ from depone.agent_fabric.observe import (
     write_observer_capture,
 )
 from depone.agent_fabric.paired_run import PairedRunError
+from depone.agent_fabric.sign import (
+    DsseSigningError,
+    sign_evidence_bundle,
+    verify_signed_bundle,
+)
 from depone.cli._response import (
     EXIT_FAILED,
     EXIT_INCONCLUSIVE,
@@ -112,6 +117,13 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
     verify_evidence = str(getattr(args, "verify_evidence", "") or "")
     if bool(verify_plan) != bool(verify_evidence):
         raise ValueError("--verify-plan and --verify-evidence must be provided together")
+    sign_private_key = str(getattr(args, "sign_private_key", "") or "")
+    sign_key_id = str(getattr(args, "sign_key_id", "") or "")
+    sign_public_key = str(getattr(args, "sign_public_key", "") or "")
+    if bool(sign_private_key) != bool(sign_key_id):
+        raise ValueError("--sign-private-key and --sign-key-id must be provided together")
+    if sign_public_key and not sign_private_key:
+        raise ValueError("--sign-public-key requires --sign-private-key")
 
     out_dir = Path(str(getattr(args, "out", "evidence-run")))
     observer_dir = out_dir / "observer-owned"
@@ -196,6 +208,13 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
     )
     bundle_path = out_dir / "evidence-bundle.json"
     _write_json(bundle_path, bundle)
+    signed_bundle_payload = _maybe_write_signed_bundle(
+        out_dir,
+        bundle,
+        private_key_path=sign_private_key,
+        key_id=sign_key_id,
+        public_key_path=sign_public_key,
+    )
 
     ingest_verdict = ingest_external_evidence(
         bundle["dsse_envelope"],
@@ -263,6 +282,7 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
             "error_count": len(substrate_errors),
             "errors": substrate_errors,
         },
+        "signed_evidence_bundle": signed_bundle_payload,
         "evidence_ingest": {
             "decision": ingest_verdict.get("decision"),
             "out": str(ingest_path),
@@ -427,6 +447,46 @@ def _launch_runner_container(
     }
 
 
+def _maybe_write_signed_bundle(
+    out_dir: Path,
+    bundle: dict[str, Any],
+    *,
+    private_key_path: str,
+    key_id: str,
+    public_key_path: str,
+) -> dict[str, Any]:
+    if not private_key_path:
+        return {
+            "decision": "skipped",
+            "out": None,
+            "signing_status": bundle.get("signing_status"),
+            "verified": None,
+            "public_key": None,
+        }
+    try:
+        signed_bundle = sign_evidence_bundle(
+            bundle,
+            private_key_path,
+            key_id=key_id,
+        )
+    except DsseSigningError as exc:
+        raise ValueError(exc.message) from exc
+    signed_path = out_dir / "signed-evidence-bundle.json"
+    _write_json(signed_path, signed_bundle)
+    verified = None
+    if public_key_path:
+        verified = verify_signed_bundle(signed_bundle, public_key_path)
+        if verified is not True:
+            raise ValueError("signed evidence bundle did not verify with --sign-public-key")
+    return {
+        "decision": "pass",
+        "out": str(signed_path),
+        "signing_status": signed_bundle.get("signing_status"),
+        "verified": verified,
+        "public_key": public_key_path or None,
+    }
+
+
 def _cleanup_runner_container(container_id: str) -> None:
     docker = shutil.which("docker")
     if docker is None:
@@ -498,6 +558,9 @@ def _self_test() -> None:
             runner_container_image="",
             runner_container_command="",
             runner_container_hold_seconds=600,
+            sign_private_key="",
+            sign_key_id="",
+            sign_public_key="",
             verification_command=[
                 sys.executable,
                 "-c",

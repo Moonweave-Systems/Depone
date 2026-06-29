@@ -1,0 +1,8 @@
+# Normalize all text to LF in the repo and on checkout. The contract hashes
+# working-tree files (e.g. SKILL.md), so a CRLF working tree silently diverges
+# from the LF-committed content and breaks fixtures on a fresh clone.
+* text=auto eol=lf
+
+# Binary fixtures must be byte-stable across clones: never apply line-ending
+# normalization, or raw-bytes SHA-256 subject bindings break on checkout.
+*.bin binary

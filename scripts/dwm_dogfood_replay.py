@@ -58,9 +58,9 @@ class DogfoodReplayError(ValueError):
 
 
 def now_utc() -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -148,7 +148,12 @@ def git_status_text() -> str:
 
 
 def run_shell_command(command: str) -> dict[str, Any]:
-    completed = subprocess.run(shlex.split(command), cwd=ROOT, check=False, text=True, capture_output=True)
+    argv = shlex.split(command)
+    # "python" is a portable token for the interpreter running the contract;
+    # map it to sys.executable so replay works where only python3 exists.
+    if argv and argv[0] in ("python", "python3"):
+        argv[0] = sys.executable
+    completed = subprocess.run(argv, cwd=ROOT, check=False, text=True, capture_output=True)
     return {
         "command": command,
         "returncode": completed.returncode,

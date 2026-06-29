@@ -68,9 +68,9 @@ class ReadmeGraphVisibilityError(ValueError):
 
 
 def now_utc() -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -147,7 +147,7 @@ def read_sentinel(path: Path) -> dict[str, Any] | None:
     if not sentinel.is_file() or sentinel.is_symlink():
         return None
     try:
-        data = json.loads(sentinel.read_text())
+        data = json.loads(sentinel.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return None
     return data if isinstance(data, dict) else None
@@ -290,7 +290,7 @@ def run_audit(readme_path: Path, timing_path: Path, out_dir: Path) -> dict[str, 
     out_dir = resolve_out(out_dir)
     prepare_out_dir(out_dir, out_dir.name, source=readme_path)
     timing = read_json(timing_path)
-    audit = audit_readme_text(readme_path.read_text(), timing, readme_path=readme_path, timing_path=timing_path, visibility_id=out_dir.name)
+    audit = audit_readme_text(readme_path.read_text(encoding="utf-8"), timing, readme_path=readme_path, timing_path=timing_path, visibility_id=out_dir.name)
     write_audit(out_dir, audit)
     return audit
 

@@ -52,16 +52,24 @@ PACKET_REL = "packets/001-first-slice.packet.json"
 ALLOWED_MODES = {"dry-run", "codex-fixture"}
 ALLOWED_FIXTURE_COMMANDS = {
     (
-        "python",
+        sys.executable,
         "-c",
         "import sys; print('401 Invalid authentication credentials', file=sys.stderr); sys.exit(1)",
     ),
     (
-        "python",
+        sys.executable,
         "-c",
         "import sys; prompt=sys.stdin.read(); print('codex fixture ok'); print(len(prompt))",
     ),
 }
+
+
+def _normalize_interpreter(argv: list[str]) -> list[str]:
+    """Map a leading ``python``/``python3`` to the running interpreter so the
+    fixture commands work on hosts that only ship ``python3``."""
+    if argv and argv[0] in ("python", "python3"):
+        return [sys.executable, *argv[1:]]
+    return list(argv)
 
 
 class RunnerError(ValueError):
@@ -91,7 +99,7 @@ class RunnerError(ValueError):
 
 
 def now_utc() -> str:
-    return dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -289,6 +297,10 @@ def ensure_worktree(session_id: str, source_head: str) -> Path:
         if probe.returncode != 0:
             raise RunnerError("ERR_SESSION_WORKTREE_INVALID", "existing worktree path is not a git worktree", path=path)
         return path
+    # Drop registrations whose working directory was removed (e.g. the gitignored
+    # out/ tree was cleaned) so a re-run does not hit "missing but already
+    # registered worktree". prune only removes entries whose dir is gone.
+    subprocess.run(["git", "worktree", "prune"], cwd=ROOT, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result = subprocess.run(
         ["git", "worktree", "add", "--detach", str(path), source_head],
         cwd=ROOT,
@@ -457,6 +469,7 @@ def load_trusted_context(v1_run: Path) -> dict[str, Any]:
 
 
 def run_fixture_command(argv: list[str], prompt: str) -> subprocess.CompletedProcess[str]:
+    argv = _normalize_interpreter(argv)
     if tuple(argv) not in ALLOWED_FIXTURE_COMMANDS:
         raise RunnerError("ERR_RUNNER_BACKEND_UNAVAILABLE", "fixture command is not allowlisted")
     try:

@@ -27,7 +27,7 @@
         "blocked_by": [],
         "decision": "roadmap_reconciled",
         "policy": {
-          "latest_version": "V106"
+          "latest_version": "V128"
         }
       },
       "run_status": {
@@ -68,7 +68,7 @@
         "blocked_by": [],
         "decision": "roadmap_reconciled",
         "policy": {
-          "latest_version": "V106"
+          "latest_version": "V128"
         }
       },
       "run_status": {
@@ -142,7 +142,7 @@
         "blocked_by": [],
         "decision": "roadmap_reconciled",
         "policy": {
-          "latest_version": "V106"
+          "latest_version": "V128"
         }
       },
       "run_status": {
@@ -161,3 +161,4 @@
   ],
   "suite_id": "v90-workflow-activation-v2"
 }
+

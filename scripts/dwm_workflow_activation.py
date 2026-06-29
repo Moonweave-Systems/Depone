@@ -22,6 +22,7 @@ from compile_workflow import canonical_hash, read_json, write_json_atomic, write
 TOOL = "dwm_workflow_activation.py"
 ACTIVATION_VERSION = "90.0.0"
 ACTIVATION_ROOT = ROOT / "out" / "workflow-activations"
+LATEST_ROADMAP_VERSION = "V128"
 DEFAULT_AUDIT = ROOT / "out" / "installed-surface-audits" / "v84-canonical" / "installed-surface-audit.json"
 DEFAULT_RECEIPT = ROOT / "out" / "runner-receipt-dry-runs" / "v83-canonical" / "runner-receipt.json"
 DEFAULT_STATUS = ROOT / "out" / "v9" / "v32-semantic-dogfood" / "status.json"
@@ -53,9 +54,9 @@ class WorkflowActivationError(ValueError):
 
 
 def now_utc() -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -186,7 +187,7 @@ def collect_blockers(
         if roadmap_reconciliation.get("blocked_by"):
             blockers.append({"code": "ERR_WORKFLOW_ACTIVATION_ROADMAP_BLOCKED", "message": "roadmap reconciliation contains blockers"})
         latest_version = (roadmap_reconciliation.get("policy") or {}).get("latest_version")
-        if latest_version != "V106":
+        if latest_version != LATEST_ROADMAP_VERSION:
             blockers.append({"code": "ERR_WORKFLOW_ACTIVATION_ROADMAP_VERSION_STALE", "message": "roadmap reconciliation latest version is stale", "latest_version": latest_version})
     if command_safety is not None:
         if command_safety.get("decision") != "keep":
@@ -400,7 +401,7 @@ def ready_brand_audit() -> dict[str, Any]:
 
 
 def ready_roadmap_reconciliation() -> dict[str, Any]:
-    return {"decision": "roadmap_reconciled", "blocked_by": [], "policy": {"latest_version": "V106"}}
+    return {"decision": "roadmap_reconciled", "blocked_by": [], "policy": {"latest_version": LATEST_ROADMAP_VERSION}}
 
 
 def ready_command_safety() -> dict[str, Any]:

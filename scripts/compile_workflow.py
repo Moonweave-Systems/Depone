@@ -162,7 +162,7 @@ class CompileError(ValueError):
 
 
 def now_utc() -> str:
-    return dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def canonical_json_text(data: Any) -> str:
@@ -218,7 +218,7 @@ def safe_resume_source_plan_path(value: str) -> Path:
 
 def read_json(path: Path) -> dict[str, Any]:
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise CompileError("ERR_PLAN_INVALID", f"cannot read JSON: {exc}", path=path) from exc
     if not isinstance(data, dict):

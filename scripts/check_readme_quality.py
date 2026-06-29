@@ -74,7 +74,7 @@ def check_text(text: str, *, max_lines: int = MAX_LINES, root: Path = ROOT) -> N
 def check_readme(path: Path = README) -> None:
     if not path.is_file() or path.is_symlink():
         raise ReadmeQualityError(f"README is missing or unsafe: {path}")
-    check_text(path.read_text(), root=path.resolve(strict=False).parent)
+    check_text(path.read_text(encoding="utf-8"), root=path.resolve(strict=False).parent)
 
 
 def self_test() -> None:

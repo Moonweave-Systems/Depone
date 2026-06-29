@@ -57,9 +57,9 @@ class AdapterSmokeError(ValueError):
 
 
 def now_utc() -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -227,14 +227,14 @@ def blocked_fixture_status(kind: str, fixture: dict[str, Any]) -> dict[str, Any]
             run_smoke(
                 SMOKE_ROOT / "fixture-unknown-task",
                 smoke_id="fixture-unknown-task",
-                adapter_command="python",
+                adapter_command="python3",
                 task_id=str(fixture["task_id"]),
             )
         elif kind == "stale-template":
             run_smoke(
                 SMOKE_ROOT / "fixture-stale-template",
                 smoke_id="fixture-stale-template",
-                adapter_command="python",
+                adapter_command="python3",
                 task_id=str(fixture["task_id"]),
                 expected_template_hash=str(fixture["expected_template_hash"]),
             )

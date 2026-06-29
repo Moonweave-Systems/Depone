@@ -56,9 +56,9 @@ class LiveReceiptError(ValueError):
 
 
 def now_utc() -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -118,9 +118,12 @@ def prepare_out_dir(path: Path, receipt_id: str, *, source: Path) -> None:
         if not path.is_dir():
             raise LiveReceiptError("ERR_LIVE_RECEIPT_PATH_UNSAFE", "live receipt output is not a directory", path=path)
         sentinel = read_sentinel(path)
-        if sentinel is None or sentinel.get("receipt_id") != receipt_id:
+        if sentinel is None and not any(path.iterdir()):
+            path.rmdir()
+        elif sentinel is None or sentinel.get("receipt_id") != receipt_id:
             raise LiveReceiptError("ERR_LIVE_RECEIPT_PATH_UNSAFE", "existing live receipt output is not receipt-owned", path=path)
-        shutil.rmtree(path)
+        else:
+            shutil.rmtree(path)
     RECEIPT_ROOT.mkdir(parents=True, exist_ok=True)
     path.mkdir(parents=True)
     write_json_atomic(
@@ -219,7 +222,7 @@ def ingest_receipt(
     return status
 
 
-def make_preflight_dir(base_name: str, *, adapter_command: str = "python", task_id: str = "failing-test-fix") -> Path:
+def make_preflight_dir(base_name: str, *, adapter_command: str = "python3", task_id: str = "failing-test-fix") -> Path:
     plan_dir = resolve_plan_out(ATTEMPT_PLAN_ROOT / f"{base_name}-plan")
     plan_live_attempt(plan_dir, plan_id=plan_dir.name, adapter_command=adapter_command, task_id=task_id)
     preflight_dir = resolve_preflight_out(RUNNER_PREFLIGHT_ROOT / f"{base_name}-preflight")
@@ -330,6 +333,11 @@ def self_test() -> None:
     RECEIPT_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="dwm-live-receipt-self-test-", dir=RECEIPT_ROOT) as tmp:
         summary = evaluate_manifest(ROOT / "fixtures" / "v30" / "manifest.json", Path(tmp) / "live-receipt-self-test")
+        empty_dir = Path(tmp) / "empty-receipt"
+        empty_dir.mkdir()
+        prepare_out_dir(empty_dir, "empty-receipt", source=Path(tmp) / "source")
+        if read_sentinel(empty_dir) is None:
+            raise LiveReceiptError("ERR_LIVE_RECEIPT_FIXTURE_FAILED", "empty receipt dir was not initialized")
     if summary["decision"] != "keep":
         raise LiveReceiptError("ERR_LIVE_RECEIPT_FIXTURE_FAILED", "live receipt self-test manifest did not keep")
     print("dwm_live_receipt self-test: pass")

@@ -13,8 +13,8 @@ Decision: keep.
 Canonical audit:
 
 - `decision`: `roadmap_reconciled`
-- `latest_version`: `V106`
-- `public_product_brand`: `Keelplane`
+- `latest_version`: `v128`
+- `public_product_brand`: `Depone`
 - `internal_engine_name`: `DWM Core`
 
 This does not execute queued commands, run live adapters, publish benchmark

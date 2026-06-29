@@ -54,9 +54,9 @@ class AdapterLiveMatrixError(ValueError):
 
 
 def now_utc() -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def rel(path: Path) -> str:
@@ -278,7 +278,7 @@ def blocked_fixture_status(kind: str, fixture: dict[str, Any], suite_dir: Path) 
                 raise AdapterLiveMatrixError("ERR_ADAPTER_LIVE_MATRIX_FIXTURE_FAILED", f"expected {fixture.get('expected_error')}, got {error}")
             return {"status": "blocked", "error": {"code": error}}
         elif kind == "not-registered":
-            status = build_matrix(suite_dir / f"{kind}-blocked", targets=[{"id": "opencode", "command": "python"}], source=Path("fixture"))
+            status = build_matrix(suite_dir / f"{kind}-blocked", targets=[{"id": "opencode", "command": "python3"}], source=Path("fixture"))
             error = status["adapters"][0]["blocked_by"][0]
             if fixture.get("expected_error") != error:
                 raise AdapterLiveMatrixError("ERR_ADAPTER_LIVE_MATRIX_FIXTURE_FAILED", f"expected {fixture.get('expected_error')}, got {error}")
@@ -299,7 +299,7 @@ def run_fixture(fixture: dict[str, Any], suite_dir: Path) -> dict[str, Any]:
         if kind == "live-matrix":
             status = build_matrix(
                 suite_dir / fixture_id,
-                targets=[{"id": "codex", "command": "python", "version_args": ["--version"]}],
+                targets=[{"id": "codex", "command": "python3", "version_args": ["--version"]}],
                 source=Path("fixture"),
             )
         elif kind in {"unsafe-command", "missing-command", "not-registered"}:

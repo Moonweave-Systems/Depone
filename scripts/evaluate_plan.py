@@ -19,7 +19,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "0.5"
-CREATED_BY = "keelplane"
+CREATED_BY = "depone"
 METRICS = [
     "activation_discipline",
     "executable_artifact",
@@ -191,7 +191,7 @@ class EvaluationError(ValueError):
 
 def read_json(path: Path) -> dict[str, Any]:
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise EvaluationError(f"{path} is not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
@@ -225,7 +225,7 @@ def require_keys(data: dict[str, Any], keys: list[str], where: str) -> None:
 
 
 def canonical_patterns() -> set[str]:
-    text = (ROOT / "references" / "workflow-patterns.md").read_text()
+    text = (ROOT / "references" / "workflow-patterns.md").read_text(encoding="utf-8")
     return {
         line.removeprefix("## ").strip()
         for line in text.splitlines()
@@ -656,9 +656,14 @@ def validate_verification(plan: dict[str, Any], activated: bool) -> None:
     verification = plan["verification"]
     require(isinstance(verification, list), "verification must be a list")
     require(verification or not activated, "activated plans need verification")
+    required_keys = {"claim_or_output", "falsifier", "evidence_required"}
+    optional_keys = {"ground_truth", "evaluator", "expected", "required"}
     for item in verification:
         require(isinstance(item, dict), "verification item must be an object")
-        require_keys(item, ["claim_or_output", "falsifier", "evidence_required"], "verification")
+        missing = sorted(required_keys - set(item))
+        require(not missing, f"verification missing keys: {missing}")
+        extra = sorted(set(item) - required_keys - optional_keys)
+        require(not extra, f"verification contains unexpected keys: {extra}")
         require(non_empty_string(item["claim_or_output"]), "claim_or_output is empty")
         require(non_empty_string(item["falsifier"]), "falsifier is empty")
         require(non_empty_list(item["evidence_required"]), "evidence_required is empty")
@@ -781,7 +786,7 @@ def validate_budget_resume_execution(plan: dict[str, Any], activated: bool, expe
         require(not unexpected_repo_inputs, f"non-repo first_slice.inputs contains repo-only inputs: {unexpected_repo_inputs}")
     if not activated:
         target = plan["activation"]["downgrade_target"]
-        expected_instruction = f"Use {target} instead of keelplane for this request."
+        expected_instruction = f"Use {target} instead of depone for this request."
         require(
             first_slice["instruction"] == expected_instruction,
             "downgrade first_slice.instruction must route to the downgrade target",
@@ -1152,7 +1157,7 @@ def load_baseline(
     name = entry["name"]
     source_path = ROOT / entry["source_path"]
     require(source_path.exists(), f"baseline source not found: {entry['source_path']}")
-    source_text = source_path.read_text()
+    source_text = source_path.read_text(encoding="utf-8")
     fixture_records = entry.get("fixture_records")
     require(isinstance(fixture_records, dict), f"baseline {name} must use fixture_records")
     require(fixture_id in fixture_records, f"baseline {name} missing fixture record for {fixture_id}")
@@ -1188,8 +1193,8 @@ def validate_raw_output(
     prompt_text: str,
     skill_hash: str,
 ) -> str:
-    raw_text = raw_path.read_text()
-    plan_text = plan_path.read_text()
+    raw_text = raw_path.read_text(encoding="utf-8")
+    plan_text = plan_path.read_text(encoding="utf-8")
     require(raw_text != plan_text, f"{fixture_id} raw output duplicates parsed plan")
     raw = read_json(raw_path)
     require_keys(
@@ -1361,7 +1366,7 @@ def average(scores: dict[str, int], metrics: list[str]) -> float:
 
 def validate_decision_doc(summary: dict[str, Any], decision_path: Path | None = None) -> None:
     decision_path = ROOT / "docs" / "v0.5-decision.md" if decision_path is None else decision_path
-    raw_text = decision_path.read_text()
+    raw_text = decision_path.read_text(encoding="utf-8")
     text = " ".join(raw_text.lower().split())
     clauses = [
         " ".join(clause.split())
@@ -1480,7 +1485,7 @@ def evaluate_fixture(
     prompt_path = ROOT / fixture["prompt_path"]
     raw_path = ROOT / fixture["raw_output"]
     consumer_path = ROOT / fixture["consumer_report"]
-    prompt_text = prompt_path.read_text().strip()
+    prompt_text = prompt_path.read_text(encoding="utf-8").strip()
     plan = read_json(plan_path)
     require(plan.get("plan_id") == fixture_id, f"{fixture_id} candidate plan_id must match manifest id")
     validate_plan(plan, expected)
@@ -1778,7 +1783,7 @@ def valid_plan_fixture(decision: str = "activate") -> dict[str, Any]:
                 "instruction": (
                     "Inspect the prompt and list required inputs."
                     if decision == "activate"
-                    else "Use direct-codex instead of keelplane for this request."
+                    else "Use direct-codex instead of depone for this request."
                 ),
                 "inputs": ["original prompt", "repository path"],
                 "expected_output": "input ledger",
@@ -2266,7 +2271,7 @@ def self_test() -> None:
     changed_repo_hash_plan["surfaces"][0]["locator"] = "different/repo/path"
     if packet_hashes(repo_hash_plan)["repository surfaces"] == packet_hashes(changed_repo_hash_plan)["repository surfaces"]:
         raise EvaluationError("self-test failed: repository packet hash ignored repo locator")
-    raw_with_extra = json.loads(tmp_raw.read_text())
+    raw_with_extra = json.loads(tmp_raw.read_text(encoding="utf-8"))
     raw_with_extra["unexpected_raw_field"] = True
     write_json(tmp_raw, raw_with_extra)
     try:
@@ -2372,7 +2377,7 @@ def self_test() -> None:
     bad_downgrade = json.loads(json.dumps(downgrade))
     bad_downgrade["activation"]["downgrade_target"] = "workflow-router"
     bad_downgrade["execution_path"]["first_slice"]["instruction"] = (
-        "Use workflow-router instead of keelplane, then hand the user a simple-plan checklist."
+        "Use workflow-router instead of depone, then hand the user a simple-plan checklist."
     )
     try:
         validate_plan(bad_downgrade, {"activation": "downgrade", "downgrade_target": "workflow-router"})

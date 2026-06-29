@@ -1,7 +1,7 @@
 # V104: Keelplane Product Direction — Workflow Designer + Cross-Platform Verifier
 
-Status: Draft (v2)  
-Date: 2026-06-22  
+Status: Draft (v2)
+Date: 2026-06-22
 
 ## Why V104
 
@@ -23,7 +23,7 @@ execution engine. Build the design + verification layer above existing ones.**
 - **compile**: translate plans into target framework formats (Conductor YAML
   first; LangGraph Python later).
 - **verify**: consume raw execution evidence from any framework, check it
-  against the plan, produce hash-signed verification reports.
+  against the plan, produce content-addressed verification reports.
 
 ## User & Workflow
 
@@ -134,7 +134,7 @@ Dependencies specific to a target are imported only when that target is used.
 
 ### Output: `verification-report.json`
 
-The verification performs four checks, in order:
+The verification performs three deterministic checks plus one advisory signal:
 
 ### 3.1 Gate Compliance Check
 
@@ -161,19 +161,25 @@ For each `handoff` in the plan:
 
 If any handoff is missing or hash-mismatched → **FAIL**.
 
-### 3.3 Adversarial Check (Against Ground Truth)
+### 3.3 Claim Evaluation And Advisory Ground-Truth Signal
 
-For each `verification.claim_or_output` in the plan, an independent verifier
-reads the actual source/data/artifact and tries to *refute* the claim.
+For each `verification.claim_or_output` in the plan, a claim is supported only
+when a declared deterministic evaluator succeeds against current evidence. A
+ground-truth file path that merely exists is an advisory signal, not proof that
+the claim is supported.
 
-The existing pattern from `references/workflow-patterns.md` applies directly:
+The existing pattern from `references/workflow-patterns.md` remains the target
+discipline:
 
 > The verifier must be independent of the producer. The verifier tries to refute
 > the finding, not rubber-stamp it. Verify against GROUND TRUTH, not the
 > producer's claims: read the actual source, data, or artifact and cite it.
 > Default to refuted/flagged when the ground truth does not support the claim.
 
-If any claim is refuted → **FAIL**.
+If a required claim is deterministically refuted -> **FAIL**. If a required
+claim has no evaluator, a stale snapshot, or an unsupported evaluator ->
+**INCONCLUSIVE**. The advisory ground-truth presence signal never upgrades a
+claim to pass.
 
 ### 3.4 Budget Adherence Check
 
@@ -189,8 +195,10 @@ If any limit exceeded → **FAIL**.
 
 ### Verdict
 
-All four checks pass → `"verified"`. Any fail → `"refuted"` with specific
-evidence citations.
+All deterministic checks pass and all required claims are supported ->
+`"verified"` / `decision: "pass"`. Any deterministic refutation ->
+`"refuted"` / `decision: "fail"`. Missing or unsupported claim evidence ->
+`"insufficient-evidence"` / `decision: "inconclusive"`.
 
 ### Evidence Protocol Data Model
 
@@ -480,8 +488,8 @@ No community forms around a tool nobody can install. Sequence:
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Conductor adds verification features | Medium | Move fast (6 months). Keelplane's adversarial verification against GROUND TRUTH is deeper than any built-in check. |
+| Conductor adds verification features | Medium | Move fast. Keelplane's independent evidence plane remains useful when it can show artifact-bound checks outside the executor. |
 | LangGraph adds signed receipts | Medium | If they do before V104.2 ships, pivot to workflow-design-only. |
-| Nobody needs evidence verification | Low | EU AI Act (Aug 2026) and Colorado AI Act (Jun 2026) create regulatory demand. But enterprise sales cycle is slow. |
+| Nobody needs evidence verification | Medium | 2026 demand is mainly procurement- and diligence-driven. GPAI obligations are already in force, while EU AI Act high-risk timelines shifted later and Colorado's first AI Act path was repealed/replaced toward 2027. |
 | 102→1 consolidation breaks something | Medium | Wrap-first strategy: existing scripts and tests keep passing during migration. |
 | Conductor ecosystem doesn't grow | Low | Conductor is Microsoft-backed, 267 stars in 2 months. If it stalls, pivot to LangGraph adapter first. |

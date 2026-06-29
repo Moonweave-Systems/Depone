@@ -1,13 +1,33 @@
-# Keelplane — Agent Context
+# Depone — Agent Context
 
-Keelplane (engine: **DWM Core**, the Deterministic Workflow Machine) is a
+Depone (engine: **DWM Core**, the Deterministic Workflow Machine) is a
 control-plane for large AI-native work: workflow design, packet compilation,
 bounded runner gates, review/repair evidence, and scoring artifacts. The tooling
 is pure-stdlib Python under `scripts/` plus one `.cjs` reference implementation.
-The installed skill is `keelplane`; the entry doc is `SKILL.md`.
+The installed skill is `depone`; the entry doc is `SKILL.md`.
 
 This file exists so a cloud agent that clones the repo with no other context
 knows how to work here. Keep it short and current.
+
+## Current direction (read first)
+
+`docs/v125-direction-check-roadmap.md` is the current product-direction source of
+truth. Bottom line: Depone should be the independent evidence and control plane
+for increasingly automated agent-team work. Keep the non-executing design+verify
+plane, but move by executed evidence, not by adding source-only control layers.
+
+Current state:
+
+- V126 captured a real Codex direct-vs-governed run and promoted the governed
+  arm into an observed A1 capture fixture.
+- V127 made claim evaluation honest: required unevaluated claims are
+  `inconclusive`, not `pass`; "hash-signed" wording was corrected.
+- V128 emits the first stdlib-only in-toto/DSSE plus OTel GenAI evidence bundle.
+
+Next work: harden the V128 ingest path and run another real dogfood loop through
+the installed `depone` command. Do not revive the V124 Agent OS draft as a
+product milestone now; it is a source-only meta layer and remains parked unless
+it directly helps capture, ingest, verify, or trust real evidence.
 
 ## Verify after any change
 

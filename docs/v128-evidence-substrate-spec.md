@@ -95,7 +95,7 @@ capture manifest (A1, hash-bound)            paired/dogfood evidence report
    OTel GenAI span set as a verifier input, so Depone can verify evidence
    captured by any harness, not only its own capture step. Ingest re-hashes
    present subject artifacts from disk and treats a present digest mismatch as
-   `blocked`, an absent subject artifact as `inconclusive`, and full digest
+   `blocked`, an absent subject artifact as `blocked`, and full digest
    agreement across at least one verified subject as `pass`. External in-toto
    subjects use raw file-byte SHA-256 by default; Depone-native JSON subjects can
    opt into canonical JSON hashing through `--artifact name=path:json`.
@@ -131,11 +131,11 @@ capture manifest (A1, hash-bound)            paired/dogfood evidence report
 - an ingested external in-toto statement whose digest does not match a present
   artifact yields `blocked`, not `pass`;
 - an ingested external in-toto statement whose subject artifact is absent from
-  disk yields `inconclusive`;
+  disk yields `blocked`;
 - a malformed DSSE envelope or one that claims unverifiable signatures yields
   `blocked` without raising out of the ingest wrapper.
 - a real, third-party SLSA in-toto Statement fixture with absent subject bytes
-  yields `inconclusive` rather than predicate-based blocking;
+  yields `blocked` without interpreting the foreign predicate semantics;
 - a SLSA-shaped fixture whose subject digest is derived from committed artifact
   raw bytes yields `pass` while keeping the foreign predicate opaque.
 

@@ -38,8 +38,9 @@ Boundary:
 - A3 remains deferred to a later Sigstore/Rekor signing milestone.
 - External statement ingest is `blocked` on a present digest mismatch, malformed
   DSSE, wrong statement types, or unverifiable claimed signatures.
-- External statement ingest is `inconclusive` when a subject artifact is absent
-  from disk or there are no subjects to verify.
+- External statement ingest is `blocked` when a subject artifact is absent
+  from disk, so missing evidence cannot soften a stale or mismatched subject claim.
+  Statements with no subjects to verify remain `inconclusive`.
 - Foreign predicates are accepted for subject-binding checks and reported as
   `predicate_recognized: false`; Depone does not interpret SLSA predicate
   semantics or raise assurance from them in V128.

@@ -2608,10 +2608,10 @@ def require_agent_surface_contract_pass() -> None:
             text=True,
             check=False,
         )
-        if missing_completed.returncode != 2:
-            raise SystemExit("evidence-ingest missing artifact did not exit 2")
-        if json.loads(missing_completed.stdout).get("decision") != "inconclusive":
-            raise SystemExit("evidence-ingest missing artifact was not inconclusive")
+        if missing_completed.returncode != 1:
+            raise SystemExit("evidence-ingest missing artifact did not exit 1")
+        if json.loads(missing_completed.stdout).get("decision") != "blocked":
+            raise SystemExit("evidence-ingest missing artifact was not blocked")
 
         tampered_path = temp / "tampered.json"
         tampered_path.write_text('{"tampered": true}\n', encoding="utf-8")

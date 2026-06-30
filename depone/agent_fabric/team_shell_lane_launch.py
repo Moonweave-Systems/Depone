@@ -12,6 +12,9 @@ from typing import Any
 
 TEAM_SHELL_LANE_LAUNCH_KIND = "depone-team-shell-lane-launch"
 TEAM_SHELL_LANE_LAUNCH_SCHEMA_VERSION = "0.1"
+AGENT_OPERATING_CONTRACT_PATH = Path("packaging/depone-agent-operating-contract.json")
+ROLE_REGISTRY_PATH = Path("packaging/dwm-roles.json")
+DEFAULT_AGENT_ROLE_ID = "operator"
 PROHIBITED_EXECUTABLES = frozenset({"codex", "claude", "claude-code", "opencode"})
 
 
@@ -31,10 +34,18 @@ def run_shell_lane_command(
     cwd: Path,
     transcript_path: Path,
     timeout_seconds: int = 120,
+    agent_role_id: str = DEFAULT_AGENT_ROLE_ID,
+    agent_contract_path: Path | None = None,
+    role_registry_path: Path | None = None,
 ) -> dict[str, object]:
     """Run one allowlisted argv command and return a hash-bound receipt."""
 
     argv = _resolve_allowlisted_argv(allowlist, command_id)
+    agent_contract = _resolve_agent_contract(
+        agent_role_id=agent_role_id,
+        contract_path=agent_contract_path or AGENT_OPERATING_CONTRACT_PATH,
+        role_registry_path=role_registry_path or ROLE_REGISTRY_PATH,
+    )
     _validate_timeout(timeout_seconds)
     resolved_cwd = _resolve_cwd(cwd)
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,6 +86,8 @@ def run_shell_lane_command(
         "transcript_path": transcript_path.as_posix(),
         "transcript_sha256": _sha256_bytes(transcript_path.read_bytes()),
         "allowlist_sha256": _canonical_hash(allowlist),
+        "agent_contract_hash": agent_contract["resolved_contract_hash"],
+        "agent_contract": agent_contract,
         "boundary": {
             "uses_shell": False,
             "uses_argv_allowlist": True,
@@ -84,6 +97,126 @@ def run_shell_lane_command(
             "raises_assurance": False,
             "allows_arbitrary_shell_string": False,
         },
+    }
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _read_json_object(path: Path, *, code: str, label: str) -> dict[str, object]:
+    resolved = path if path.is_absolute() else _repo_root() / path
+    try:
+        value = json.loads(resolved.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise TeamShellLaneLaunchError(code, str(exc)) from exc
+    except json.JSONDecodeError as exc:
+        raise TeamShellLaneLaunchError(code, str(exc)) from exc
+    if not isinstance(value, dict):
+        raise TeamShellLaneLaunchError(code, f"{label} must be a JSON object")
+    return value
+
+
+def _require_string(value: object, *, code: str, message: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise TeamShellLaneLaunchError(code, message)
+    return value
+
+
+def _resolve_agent_contract(
+    *,
+    agent_role_id: str,
+    contract_path: Path,
+    role_registry_path: Path,
+) -> dict[str, object]:
+    role_id = _require_string(
+        agent_role_id,
+        code="ERR_TEAM_SHELL_LANE_AGENT_ROLE_INVALID",
+        message="agent_role_id must be a non-empty V22 role id",
+    )
+    contract = _read_json_object(
+        contract_path,
+        code="ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+        label="agent operating contract",
+    )
+    contract_id = _require_string(
+        contract.get("contract_id"),
+        code="ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+        message="agent operating contract contract_id is required",
+    )
+    contract_version = _require_string(
+        contract.get("contract_version"),
+        code="ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+        message="agent operating contract contract_version is required",
+    )
+    clauses = contract.get("clauses")
+    if not isinstance(clauses, list) or not clauses:
+        raise TeamShellLaneLaunchError(
+            "ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+            "agent operating contract clauses must be a non-empty list",
+        )
+    clause_ids: list[str] = []
+    for clause in clauses:
+        if not isinstance(clause, dict):
+            raise TeamShellLaneLaunchError(
+                "ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+                "agent operating contract clauses must be objects",
+            )
+        clause_ids.append(
+            _require_string(
+                clause.get("id"),
+                code="ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+                message="agent operating contract clause id is required",
+            )
+        )
+        _require_string(
+            clause.get("level"),
+            code="ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+            message="agent operating contract clause level is required",
+        )
+        _require_string(
+            clause.get("validation_note"),
+            code="ERR_TEAM_SHELL_LANE_AGENT_CONTRACT_INVALID",
+            message="agent operating contract clause validation_note is required",
+        )
+
+    registry = _read_json_object(
+        role_registry_path,
+        code="ERR_TEAM_SHELL_LANE_ROLE_REGISTRY_INVALID",
+        label="V22 role registry",
+    )
+    roles = registry.get("roles")
+    if not isinstance(roles, list) or not roles:
+        raise TeamShellLaneLaunchError(
+            "ERR_TEAM_SHELL_LANE_ROLE_REGISTRY_INVALID",
+            "V22 role registry roles must be a non-empty list",
+        )
+    selected_role: dict[str, object] | None = None
+    for role in roles:
+        if isinstance(role, dict) and role.get("id") == role_id:
+            selected_role = role
+            break
+    if selected_role is None:
+        raise TeamShellLaneLaunchError(
+            "ERR_TEAM_SHELL_LANE_AGENT_ROLE_INVALID",
+            "agent_role_id is not present in the V22 role registry",
+        )
+
+    resolved_contract = {
+        "common_contract": contract,
+        "v22_role": selected_role,
+    }
+    return {
+        "schema_version": "0.1",
+        "contract_path": contract_path.as_posix(),
+        "contract_id": contract_id,
+        "contract_version": contract_version,
+        "common_contract_hash": _canonical_hash(contract),
+        "clause_ids": clause_ids,
+        "role_registry_path": role_registry_path.as_posix(),
+        "role_id": role_id,
+        "role_hash": _canonical_hash(selected_role),
+        "resolved_contract_hash": _canonical_hash(resolved_contract),
     }
 
 
@@ -210,6 +343,8 @@ def _self_test() -> None:
         )
         assert receipt["decision"] == "pass"
         assert receipt["exit_code"] == 0
+        assert isinstance(receipt["agent_contract_hash"], str)
+        assert receipt["agent_contract"]["role_id"] == DEFAULT_AGENT_ROLE_ID
         assert receipt["boundary"]["uses_shell"] is False
         assert receipt["boundary"]["allows_arbitrary_shell_string"] is False
         assert receipt["boundary"]["raises_assurance"] is False

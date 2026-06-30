@@ -59,6 +59,7 @@ def run(args: argparse.Namespace) -> None:
             cwd=Path(str(getattr(args, "cwd", "") or ".")),
             transcript_path=Path(transcript_arg),
             timeout_seconds=int(getattr(args, "timeout_seconds", 120)),
+            agent_role_id=str(getattr(args, "agent_role_id", "") or "operator"),
         )
         write_receipt(Path(out_arg), receipt)
     except TeamShellLaneLaunchError as exc:

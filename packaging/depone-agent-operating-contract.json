@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1",
+  "contract_id": "depone-agent-operating-contract",
+  "contract_version": "0.1.0",
+  "assurance_level": "A1",
+  "summary": "Common non-executing engineering clauses for Depone agent-team lane receipts.",
+  "clauses": [
+    {
+      "id": "common.planned_vs_executed",
+      "level": "must",
+      "text": "Keep planned work and executed work separate; do not present an unrun step as done.",
+      "validation_note": "Receipts must record concrete command or evidence facts instead of intent-only claims."
+    },
+    {
+      "id": "common.evidence_first",
+      "level": "must",
+      "text": "Treat artifacts, hashes, transcripts, and source files as the source of truth.",
+      "validation_note": "Receipts must include hashes for committed evidence they reference."
+    },
+    {
+      "id": "common.no_assurance_upgrade",
+      "level": "must",
+      "text": "Local shell evidence does not raise assurance or claim container isolation.",
+      "validation_note": "Boundary fields must keep raises_assurance false and avoid A2/container claims."
+    },
+    {
+      "id": "common.stdlib_only",
+      "level": "must",
+      "text": "Depone command and verification surfaces remain Python standard-library only.",
+      "validation_note": "Contract validation must not require third-party packages."
+    },
+    {
+      "id": "common.fail_closed",
+      "level": "must",
+      "text": "Missing or invalid contract and role bindings fail before emitting a passing receipt.",
+      "validation_note": "Launch commands must reject unknown V22 role ids and malformed contract JSON."
+    }
+  ]
+}

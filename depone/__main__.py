@@ -460,6 +460,11 @@ def _add_team_shell_lane_launch_args(parser: argparse.ArgumentParser) -> None:
         help="Command timeout in seconds",
     )
     parser.add_argument(
+        "--agent-role-id",
+        default="operator",
+        help="Existing V22 role id to bind into the lane receipt agent contract",
+    )
+    parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
     )
     _add_json_arg(parser)

@@ -250,6 +250,17 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         self.assertEqual(verdict["blocked_lane_count"], 1)
         self.assertEqual(verdict["errors"], [])
 
+    def test_blocked_lane_allows_planned_missing_worktree_receipt(self) -> None:
+        ledger = build_sample_team_ledger("missing-evidence")
+        ledger["lanes"][0]["verification_state"] = "blocked"
+        ledger["lanes"][0]["blocked_reason"] = "lane evidence has not been captured"
+        ledger["lanes"][0]["worktree_receipt"] = "missing-evidence/worktree-receipt.json"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked-explicit")
+        self.assertEqual(verdict["errors"], [])
+
 
     def test_invalid_adapter_and_verification_choices_block(self) -> None:
         for field, value in (

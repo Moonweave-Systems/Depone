@@ -63,7 +63,8 @@ def build_team_dry_run(plan: dict[str, Any], *, out_dir: Path) -> dict[str, Any]
             VALID_ADAPTER_KINDS,
             "team_adapter_kind",
         )
-        evidence_dir = _evidence_dir(out_dir_text, lane_id)
+        evidence_dir = _evidence_dir(lane_id)
+        receipt_path = f"{evidence_dir}/worktree-receipt.json"
         planned_worktree = _planned_worktree(lane, out_dir_text, lane_id)
         touched_files = _repo_relative_list(lane.get("touched_files"), "touched_files")
         blocked_reason = (
@@ -82,6 +83,7 @@ def build_team_dry_run(plan: dict[str, Any], *, out_dir: Path) -> dict[str, Any]
             "verification_state": "blocked",
             "blocked_reason": blocked_reason,
             "verification_artifacts": [],
+            "worktree_receipt": receipt_path,
         }
         if touched_files:
             ledger_lane["touched_files"] = touched_files
@@ -109,7 +111,7 @@ def build_team_dry_run(plan: dict[str, Any], *, out_dir: Path) -> dict[str, Any]
                         f"--worktree {_shell_quote(planned_worktree)} "
                         f"--base-commit {_shell_quote(base_commit)} "
                         f"--evidence-dir {_shell_quote(evidence_dir)} "
-                        f"--out {_shell_quote(f'{evidence_dir}/worktree-receipt.json')} --json"
+                        f"--out {_shell_quote(_artifact_path(out_dir_text, receipt_path))} --json"
                     ),
                 ],
             }
@@ -176,10 +178,8 @@ def _choice(value: object, valid: frozenset[str], field: str) -> str:
     )
 
 
-def _evidence_dir(out_dir_text: str, lane_id: str) -> str:
-    if out_dir_text:
-        return _normalize_relative_path(Path(out_dir_text) / lane_id, "evidence_dir")
-    return _normalize_relative_path(Path("out/team-dry-run") / lane_id, "evidence_dir")
+def _evidence_dir(lane_id: str) -> str:
+    return _normalize_relative_path(Path(lane_id), "evidence_dir")
 
 
 def _planned_worktree(lane: dict[str, Any], out_dir_text: str, lane_id: str) -> str:
@@ -189,6 +189,10 @@ def _planned_worktree(lane: dict[str, Any], out_dir_text: str, lane_id: str) -> 
     if out_dir_text:
         return _normalize_relative_path(Path(out_dir_text) / "worktrees" / lane_id, "planned_worktree")
     return _normalize_relative_path(Path("worktrees") / lane_id, "planned_worktree")
+
+
+def _artifact_path(out_dir_text: str, relative_path: str) -> str:
+    return _normalize_relative_path(Path(out_dir_text) / relative_path, "artifact path")
 
 
 def _repo_relative_list(value: object, field: str) -> list[str]:

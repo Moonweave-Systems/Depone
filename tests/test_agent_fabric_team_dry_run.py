@@ -54,11 +54,19 @@ class AgentFabricTeamDryRunTests(unittest.TestCase):
             [lane["planned_worktree"] for lane in dry_run["lanes"]],
             ["out/team-dry-run/worktrees/lane-1", "worktrees/tests"],
         )
+        self.assertEqual(
+            [lane["evidence_dir"] for lane in ledger["lanes"]],
+            ["lane-1", "tests"],
+        )
+        self.assertEqual(
+            [lane["worktree_receipt"] for lane in ledger["lanes"]],
+            ["lane-1/worktree-receipt.json", "tests/worktree-receipt.json"],
+        )
         self.assertTrue(
             all(lane["verification_state"] == "blocked" for lane in ledger["lanes"])
         )
 
-        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root / "out" / "team-dry-run")
 
         self.assertEqual(verdict["decision"], "blocked-explicit")
         self.assertEqual(verdict["errors"], [])
@@ -91,7 +99,8 @@ class AgentFabricTeamDryRunTests(unittest.TestCase):
         commands = dry_run["next_commands"][1]["commands"]
         self.assertIn("'worktrees/docs copy'", commands[0])
         self.assertIn("--worktree 'worktrees/docs copy'", commands[1])
-        self.assertIn("--evidence-dir 'out/team-dry-run/docs copy'", commands[1])
+        self.assertIn("--evidence-dir 'docs copy'", commands[1])
+        self.assertIn("--out 'out/team-dry-run/docs copy/worktree-receipt.json'", commands[1])
 
     def test_cli_writes_dry_run_artifacts(self) -> None:
         plan_path = self.root / "team-plan.json"

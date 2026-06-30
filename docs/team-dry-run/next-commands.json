@@ -2,14 +2,14 @@
   {
     "commands": [
       "git worktree add docs/team-dry-run/worktrees/lane-1 b0416e69c6ac7f155db66af8cbff3edacd4350d3",
-      "python3 -m depone worktree-lane-receipt --worktree docs/team-dry-run/worktrees/lane-1 --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs/team-dry-run/lane-1 --out docs/team-dry-run/lane-1/worktree-receipt.json --json"
+      "python3 -m depone worktree-lane-receipt --worktree docs/team-dry-run/worktrees/lane-1 --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir lane-1 --out docs/team-dry-run/lane-1/worktree-receipt.json --json"
     ],
     "lane_id": "lane-1"
   },
   {
     "commands": [
       "git worktree add worktrees/docs-artifacts b0416e69c6ac7f155db66af8cbff3edacd4350d3",
-      "python3 -m depone worktree-lane-receipt --worktree worktrees/docs-artifacts --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs/team-dry-run/docs-artifacts --out docs/team-dry-run/docs-artifacts/worktree-receipt.json --json"
+      "python3 -m depone worktree-lane-receipt --worktree worktrees/docs-artifacts --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs-artifacts --out docs/team-dry-run/docs-artifacts/worktree-receipt.json --json"
     ],
     "lane_id": "docs-artifacts"
   }

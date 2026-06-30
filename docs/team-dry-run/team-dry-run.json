@@ -10,14 +10,14 @@
   "lanes": [
     {
       "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
-      "evidence_dir": "docs/team-dry-run/lane-1",
+      "evidence_dir": "lane-1",
       "lane_id": "lane-1",
       "objective": "Implement the bounded team-dry-run CLI and planner",
       "planned_worktree": "docs/team-dry-run/worktrees/lane-1"
     },
     {
       "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
-      "evidence_dir": "docs/team-dry-run/docs-artifacts",
+      "evidence_dir": "docs-artifacts",
       "lane_id": "docs-artifacts",
       "objective": "Document the dry-run contract and regenerate committed artifacts",
       "planned_worktree": "worktrees/docs-artifacts"
@@ -28,14 +28,14 @@
     {
       "commands": [
         "git worktree add docs/team-dry-run/worktrees/lane-1 b0416e69c6ac7f155db66af8cbff3edacd4350d3",
-        "python3 -m depone worktree-lane-receipt --worktree docs/team-dry-run/worktrees/lane-1 --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs/team-dry-run/lane-1 --out docs/team-dry-run/lane-1/worktree-receipt.json --json"
+        "python3 -m depone worktree-lane-receipt --worktree docs/team-dry-run/worktrees/lane-1 --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir lane-1 --out docs/team-dry-run/lane-1/worktree-receipt.json --json"
       ],
       "lane_id": "lane-1"
     },
     {
       "commands": [
         "git worktree add worktrees/docs-artifacts b0416e69c6ac7f155db66af8cbff3edacd4350d3",
-        "python3 -m depone worktree-lane-receipt --worktree worktrees/docs-artifacts --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs/team-dry-run/docs-artifacts --out docs/team-dry-run/docs-artifacts/worktree-receipt.json --json"
+        "python3 -m depone worktree-lane-receipt --worktree worktrees/docs-artifacts --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs-artifacts --out docs/team-dry-run/docs-artifacts/worktree-receipt.json --json"
       ],
       "lane_id": "docs-artifacts"
     }
@@ -50,7 +50,7 @@
         "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
         "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
         "env_kind": "local",
-        "evidence_dir": "docs/team-dry-run/lane-1",
+        "evidence_dir": "lane-1",
         "lane_id": "lane-1",
         "objective": "Implement the bounded team-dry-run CLI and planner",
         "runner_adapter_kind": "codex",
@@ -63,13 +63,14 @@
           "tests/test_agent_fabric_team_dry_run.py"
         ],
         "verification_artifacts": [],
-        "verification_state": "blocked"
+        "verification_state": "blocked",
+        "worktree_receipt": "lane-1/worktree-receipt.json"
       },
       {
         "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
         "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
         "env_kind": "local",
-        "evidence_dir": "docs/team-dry-run/docs-artifacts",
+        "evidence_dir": "docs-artifacts",
         "lane_id": "docs-artifacts",
         "objective": "Document the dry-run contract and regenerate committed artifacts",
         "runner_adapter_kind": "codex",
@@ -81,7 +82,8 @@
           "docs/team-dry-run/team-plan.json"
         ],
         "verification_artifacts": [],
-        "verification_state": "blocked"
+        "verification_state": "blocked",
+        "worktree_receipt": "docs-artifacts/worktree-receipt.json"
       }
     ],
     "leader_id": "codex-leader",
@@ -109,7 +111,7 @@
         "decision": "blocked",
         "env_kind": "local",
         "errors": [],
-        "evidence_dir": "docs/team-dry-run/lane-1",
+        "evidence_dir": "lane-1",
         "evidence_dir_exists": false,
         "evidence_next": {
           "blocking_reason_count": null,
@@ -147,14 +149,14 @@
           "dirty": null,
           "dirty_file_count": null,
           "head_commit": null,
-          "path": null
+          "path": "lane-1/worktree-receipt.json"
         }
       },
       {
         "decision": "blocked",
         "env_kind": "local",
         "errors": [],
-        "evidence_dir": "docs/team-dry-run/docs-artifacts",
+        "evidence_dir": "docs-artifacts",
         "evidence_dir_exists": false,
         "evidence_next": {
           "blocking_reason_count": null,
@@ -191,7 +193,7 @@
           "dirty": null,
           "dirty_file_count": null,
           "head_commit": null,
-          "path": null
+          "path": "docs-artifacts/worktree-receipt.json"
         }
       }
     ],
@@ -206,7 +208,7 @@
     "passed_lane_count": 0,
     "schema_version": "0.1",
     "source_hashes": {
-      "team_ledger": "4fa9296c4538763e35fe707cbe1da771828d6249f87be8dcc284f10ffe77c93b"
+      "team_ledger": "f98ee0049f9bfb8ce882e12d6830057d7aae9813e8e6baed463669b2ea252791"
     }
   }
 }

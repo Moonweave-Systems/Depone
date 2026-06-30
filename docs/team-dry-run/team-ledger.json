@@ -6,7 +6,7 @@
       "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
       "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
       "env_kind": "local",
-      "evidence_dir": "docs/team-dry-run/lane-1",
+      "evidence_dir": "lane-1",
       "lane_id": "lane-1",
       "objective": "Implement the bounded team-dry-run CLI and planner",
       "runner_adapter_kind": "codex",
@@ -19,13 +19,14 @@
         "tests/test_agent_fabric_team_dry_run.py"
       ],
       "verification_artifacts": [],
-      "verification_state": "blocked"
+      "verification_state": "blocked",
+      "worktree_receipt": "lane-1/worktree-receipt.json"
     },
     {
       "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
       "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
       "env_kind": "local",
-      "evidence_dir": "docs/team-dry-run/docs-artifacts",
+      "evidence_dir": "docs-artifacts",
       "lane_id": "docs-artifacts",
       "objective": "Document the dry-run contract and regenerate committed artifacts",
       "runner_adapter_kind": "codex",
@@ -37,7 +38,8 @@
         "docs/team-dry-run/team-plan.json"
       ],
       "verification_artifacts": [],
-      "verification_state": "blocked"
+      "verification_state": "blocked",
+      "worktree_receipt": "docs-artifacts/worktree-receipt.json"
     }
   ],
   "leader_id": "codex-leader",

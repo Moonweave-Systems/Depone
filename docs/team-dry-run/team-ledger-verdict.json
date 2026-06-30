@@ -17,7 +17,7 @@
       "decision": "blocked",
       "env_kind": "local",
       "errors": [],
-      "evidence_dir": "docs/team-dry-run/lane-1",
+      "evidence_dir": "lane-1",
       "evidence_dir_exists": false,
       "evidence_next": {
         "blocking_reason_count": null,
@@ -55,14 +55,14 @@
         "dirty": null,
         "dirty_file_count": null,
         "head_commit": null,
-        "path": null
+        "path": "lane-1/worktree-receipt.json"
       }
     },
     {
       "decision": "blocked",
       "env_kind": "local",
       "errors": [],
-      "evidence_dir": "docs/team-dry-run/docs-artifacts",
+      "evidence_dir": "docs-artifacts",
       "evidence_dir_exists": false,
       "evidence_next": {
         "blocking_reason_count": null,
@@ -99,7 +99,7 @@
         "dirty": null,
         "dirty_file_count": null,
         "head_commit": null,
-        "path": null
+        "path": "docs-artifacts/worktree-receipt.json"
       }
     }
   ],
@@ -114,6 +114,6 @@
   "passed_lane_count": 0,
   "schema_version": "0.1",
   "source_hashes": {
-    "team_ledger": "4fa9296c4538763e35fe707cbe1da771828d6249f87be8dcc284f10ffe77c93b"
+    "team_ledger": "f98ee0049f9bfb8ce882e12d6830057d7aae9813e8e6baed463669b2ea252791"
   }
 }

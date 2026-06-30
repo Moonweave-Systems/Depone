@@ -95,6 +95,43 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             {result["status"] for result in verdict["subject_results"]},
         )
 
+    def test_cli_blocks_when_subject_artifact_is_absent(self) -> None:
+        bundle = self._bundle()
+        with tempfile.TemporaryDirectory() as temp_dir_text:
+            temp_dir = Path(temp_dir_text)
+            dsse_path = temp_dir / "dsse.json"
+            verdict_path = temp_dir / "verdict.json"
+            dsse_path.write_text(
+                json.dumps(bundle["dsse_envelope"], indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "depone",
+                    "evidence-ingest",
+                    "--dsse",
+                    str(dsse_path),
+                    "--artifact",
+                    f"source_fixture={self._artifact_paths()['source_fixture']}:json",
+                    "--out",
+                    str(verdict_path),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "missing",
+            {item["status"] for item in verdict["subject_results"]},
+        )
+
     def test_blocked_when_present_artifact_hash_mismatches(self) -> None:
         bundle = self._bundle()
         artifact_paths = self._artifact_paths()

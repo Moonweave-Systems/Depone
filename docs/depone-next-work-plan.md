@@ -1,8 +1,8 @@
 # Depone Next Work Plan
 
-Status: native-team-runtime progress note refreshed through Wave 3 draft PR
+Status: native-team-runtime progress note refreshed after PR #51 merge
 Date: 2026-06-30
-Base: `origin/main` at `1e3da69` (`Add team worktree preparation receipt`)
+Base: `origin/main` at `7d28e02` (`Add shell lane launch receipt (#51)`)
 
 ## Purpose
 
@@ -217,17 +217,16 @@ does not prove provider runtime isolation or provision cloud workers.
 
 ## Recommended Immediate Next Step
 
-Finish the contract-hash slice before adding another launcher: keep the
-`packaging/depone-agent-operating-contract.json` contract minimal,
-revalidate the committed shell-lane receipt's `agent_contract_hash`, and only
-then implement a minimal local lane launcher preflight.
+Start Wave 4 with Codex local capability detection. The contract-hash slice
+landed in PR #51: `packaging/depone-agent-operating-contract.json` is minimal,
+the committed shell-lane receipt records `agent_contract_hash`, and
+`scripts/check_contract.py --tier changed` revalidates those facts.
 
-This is the best next step now that PR artifacts, local worktree receipts,
-planning-only team dry-run artifacts, and observed cloud lane artifacts exist.
-Keep it narrow: validate planned per-lane worktree paths, run explicit
-preflight checks, emit a non-executing preflight artifact, and stop before
-background worker execution or worktree creation. The goal is to remove one more
-manual handoff without pretending that Depone already owns full team scheduling.
+The next PR must stay narrower than a launcher. It should detect whether a local
+Codex adapter can be launched safely and emit a blocked/pass capability receipt.
+Missing binary, missing auth/config, unsupported repo state, denied
+sandbox/approval mode, or unobservable instruction state must return a blocked
+artifact, not a human gate and not a best-effort launch.
 
 The executable planning basis is now:
 
@@ -247,21 +246,18 @@ worktrees with an explicit `--create-worktree` flag. It writes
 agents, execute lane commands, delete worktrees, call live models, or raise
 assurance.
 
-Wave 3 now has a draft implementation slice in PR #51:
+Wave 3 is merged in PR #51:
 `team-shell-lane-launch` runs exactly one shell adapter command selected by
 `command_id` from an explicit argv allowlist and writes a hash-bound command
 receipt plus transcript fixture under `docs/team-shell-lane-launch/`. It is
 shell-only A1-style evidence: no Codex, Claude Code, OpenCode, OMX, live model,
 team worker, scheduler, assurance upgrade, or A2/container claim.
 
-Do not start Wave 4 until Wave 3 is merged and reviewed. The next implementation
-rung after PR #51 lands is Wave 4's first real coding adapter, one PR per
-adapter, starting with Codex local capability detection and blocked-safe launch
-receipt behavior. Missing binary, missing auth, or missing config must return a
-blocked artifact, not a best-effort launch.
+Wave 4 starts with the first real coding-adapter surface, one PR per adapter,
+starting with Codex local capability detection. Capability detection is not a
+launch: it records whether the environment is ready and blocks honestly when it
+is not.
 
-Before launching a real coding adapter, add the smallest contract-hash slice from
-`docs/depone-agent-team-system-operating-contract.md`: machine-readable common
-engineering clauses, V22 role binding on lane receipts, and fixture validation
-that the recorded contract hash matches the committed contract JSON. This keeps
-adapter prompts thin while making the role/contract surface auditable.
+The latest handoff document for this next slice is
+`docs/depone-latest-next-work.md`. The task-by-task implementation plan is
+`docs/superpowers/plans/2026-06-30-codex-local-capability-detection.md`.

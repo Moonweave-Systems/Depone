@@ -321,15 +321,10 @@ can emit and revalidate them.
 
 ## 10. Implementation Order
 
-### Now: finish Wave 3
+### Done: Wave 3 shell lane plus contract hash binding
 
-Merge and review PR #51, the single-lane shell launch receipt. This gives the
-first non-model command launch receipt and transcript fixture.
-
-### Next: contract hash slice
-
-Before real Codex/Claude launch, add the minimal contract surface needed for
-adapter receipts:
+PR #51 merged the single-lane shell launch receipt and the minimal contract
+surface needed for adapter receipts:
 
 - define the common engineering contract as machine-readable JSON;
 - bind existing V22 role ids to a lane receipt field;
@@ -344,7 +339,7 @@ V22 base role `worker` and records the contract facts in `receipt.json` as
 This makes later Codex/Claude adapter launches auditable without making the
 system prompt huge.
 
-### Then: Codex local capability detection
+### Now: Codex local capability detection
 
 Add one PR that detects Codex local readiness and emits blocked/pass capability
 artifacts. It should not launch a coding task until capability detection is

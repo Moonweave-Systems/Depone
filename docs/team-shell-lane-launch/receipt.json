@@ -1,4 +1,12 @@
 {
+  "agent_contract": {
+    "contract_id": "depone-agent-operating-contract.common-engineering.v0.1",
+    "path": "docs/team-shell-lane-launch/agent-operating-contract.json",
+    "sha256": "842eeff250fb0f9233ef8d02122d17bebdc0ecd0eb23eb5f1601b2e2f986c8fe",
+    "v22_role_id": "worker",
+    "version": "0.1"
+  },
+  "agent_contract_hash": "842eeff250fb0f9233ef8d02122d17bebdc0ecd0eb23eb5f1601b2e2f986c8fe",
   "allowlist_sha256": "25ef8465868514beaa13d3dcfde07b8e7c0691c4f8590d4d879485ba73e0045f",
   "argv": [
     "python3",

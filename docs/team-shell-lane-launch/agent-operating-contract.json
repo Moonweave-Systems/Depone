@@ -1,0 +1,51 @@
+{
+  "schema_version": "0.1",
+  "kind": "depone-agent-operating-contract",
+  "contract_id": "depone-agent-operating-contract.common-engineering.v0.1",
+  "version": "0.1",
+  "status": "minimal-shell-lane-binding",
+  "v22_role_binding": {
+    "source": "docs/depone-agent-team-system-operating-contract.md#5-role-system",
+    "allowed_base_role_ids": [
+      "planner",
+      "explorer",
+      "worker",
+      "reviewer",
+      "verifier",
+      "operator"
+    ],
+    "lane_role_id": "worker"
+  },
+  "clauses": [
+    {
+      "id": "common.discovery-before-edits",
+      "level": "default",
+      "text": "Read the task packet, current branch state, nearby docs, and relevant code before editing.",
+      "validation_note": "Receipt consumers can require reviewable task and source context evidence when the adapter exposes it."
+    },
+    {
+      "id": "common.bounded-implementation",
+      "level": "default",
+      "text": "Keep one lane to one packet and one ownership boundary with minimal reversible diffs.",
+      "validation_note": "Receipt consumers can compare changed-file facts, lane id, and packet ownership."
+    },
+    {
+      "id": "common.verification-discipline",
+      "level": "hard",
+      "text": "Report exact verification commands and exact pass/fail output, or record why verification cannot run.",
+      "validation_note": "Receipt consumers should fail closed when required verification evidence is absent."
+    },
+    {
+      "id": "common.safety-boundaries",
+      "level": "hard",
+      "text": "No destructive git commands, secrets, production systems, paid cloud resources, arbitrary shell strings, worker launch, or assurance upgrade unless the packet grants that authority and the receipt records it.",
+      "validation_note": "Shell-lane launch receipts must keep shell=false, argv allowlists, launches_agents=false, calls_live_models=false, and raises_assurance=false."
+    },
+    {
+      "id": "common.review-repair-separation",
+      "level": "hard",
+      "text": "Reviewer lanes find bugs, regressions, missing tests, and overclaims; they do not repair their own findings without a separate repair packet.",
+      "validation_note": "Team receipts should identify reviewer/verifier roles separately from worker repair packets."
+    }
+  ]
+}

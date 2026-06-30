@@ -217,7 +217,10 @@ does not prove provider runtime isolation or provision cloud workers.
 
 ## Recommended Immediate Next Step
 
-Implement a minimal local lane launcher preflight.
+Finish the contract-hash slice before adding another launcher: keep the
+`docs/team-shell-lane-launch/agent-operating-contract.json` contract minimal,
+revalidate the committed shell-lane receipt's `agent_contract_hash`, and only
+then implement a minimal local lane launcher preflight.
 
 This is the best next step now that PR artifacts, local worktree receipts,
 planning-only team dry-run artifacts, and observed cloud lane artifacts exist.

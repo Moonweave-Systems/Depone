@@ -336,6 +336,11 @@ adapter receipts:
 - hash the resolved contract and store the hash in the shell lane fixture;
 - validate that committed fixture hash matches the contract JSON.
 
+For the current shell-lane fixture, the minimal machine-readable contract lives
+under `docs/team-shell-lane-launch/agent-operating-contract.json`. It binds the
+receipt to V22 base role `worker` and records the contract SHA-256 in
+`receipt.json` as both `agent_contract_hash` and `agent_contract.sha256`.
+
 This makes later Codex/Claude adapter launches auditable without making the
 system prompt huge.
 

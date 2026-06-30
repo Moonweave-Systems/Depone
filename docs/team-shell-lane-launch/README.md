@@ -8,8 +8,12 @@ argv list with `subprocess.run(..., shell=False)`. The adapter does not accept o
 concatenate arbitrary shell command strings. `receipt.json` records the resolved
 `cwd`, argv, exit code, stdout/stderr SHA-256 hashes, transcript path/hash, `agent_contract_hash`, and `agent_contract` facts;
 `transcript.json` contains the captured stdout/stderr text.
+`agent-operating-contract.json` is the minimal machine-readable agent operating
+contract bound to this shell lane receipt. The committed `receipt.json` records
+`agent_contract_hash` plus `agent_contract` facts: contract path, contract id,
+version, SHA-256, and V22 `worker` role binding.
 
-Contract terms: `subprocess.run(..., shell=False)`; does not accept or concatenate arbitrary shell command strings; does not launch Codex, Claude, OpenCode; does not raise assurance; does not claim A2/container isolation; binds a V22 role id; records `agent_contract_hash` from `packaging/depone-agent-operating-contract.json`.
+Contract terms: `subprocess.run(..., shell=False)`; does not accept or concatenate arbitrary shell command strings; does not launch Codex, Claude, OpenCode; does not raise assurance; does not claim A2/container isolation; records `agent_contract_hash`; validates V22 role binding.
 
 Regenerate the fixture with:
 
@@ -27,7 +31,10 @@ python3 -m depone team-shell-lane-launch \
 Generated files:
 
 - `allowlist.json` — explicit argv allowlist for this fixture.
-- `receipt.json` — machine receipt for the selected command, including the V22 role id and contract hash binding.
+- `agent-operating-contract.json` — minimal common engineering contract and V22
+  base-role binding used by this fixture.
+- `receipt.json` — machine receipt for the selected command, including the
+  contract hash and role binding facts.
 - `transcript.json` — captured stdout/stderr text for the selected command.
 
 ## Honest boundary
@@ -38,5 +45,6 @@ workers, or a scheduler. It does not raise assurance, does not claim
 A2/container isolation, and does not prove lane task completion.
 
 Residual: the committed receipt records the absolute `cwd` of the capture host.
-A fresh clone can revalidate the JSON shape and boundary fields, but should
-re-run the command to recreate host-local receipt paths and hashes.
+A fresh clone can revalidate the JSON shape, boundary fields, contract hash,
+and V22 role binding, but should re-run the command to recreate host-local
+receipt paths and hashes.

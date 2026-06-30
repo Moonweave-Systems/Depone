@@ -242,6 +242,31 @@ lane `end_commit`:
 }
 ```
 
+For a passed `env_kind=cloud` lane, `cloud_artifact` is required. It is still an
+observed external fact binding, not a provider runtime-isolation attestation.
+Its `adapter_kind` must match the lane `runner_adapter_kind`, and the boundary
+must state the runtime-attestation limitation explicitly. `evidence_hash` is
+validated against the lane `evidence_next_verdict` file's SHA256:
+
+```json
+{
+  "kind": "depone-team-ledger-cloud-artifact",
+  "schema_version": "0.1",
+  "provider": "codex-cloud",
+  "adapter_kind": "codex",
+  "external_run_id": "provider-run-id",
+  "repo": "Moonweave-Systems/Depone",
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "evidence_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "captured_at": "2026-06-30T07:30:00Z",
+  "boundary": {
+    "observed_external_facts_only": true,
+    "attests_runtime_isolation": false
+  }
+}
+```
+
 Validate with:
 
 ```bash
@@ -249,6 +274,7 @@ python3 -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run 
 python3 -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out out/team/team-merge-receipt.json --json
 python3 -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
 python3 -m depone team-ledger --ledger team-ledger.json --out team-ledger-verdict.json
+python3 -m depone team-ledger --ledger docs/cloud-lane-artifact/team-ledger.json --json
 python3 -m depone team-dry-run --self-test
 python3 -m depone team-ledger --self-test
 ```

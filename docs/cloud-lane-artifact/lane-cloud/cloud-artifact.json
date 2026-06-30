@@ -1,0 +1,16 @@
+{
+  "adapter_kind": "codex",
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "boundary": {
+    "attests_runtime_isolation": false,
+    "observed_external_facts_only": true
+  },
+  "captured_at": "2026-06-30T07:30:00Z",
+  "evidence_hash": "ba04376d961b95c524ceb941a505c616405bd04ffed2b50a63ca92a4d312f3e3",
+  "external_run_id": "fixture-codex-cloud-run-001",
+  "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "kind": "depone-team-ledger-cloud-artifact",
+  "provider": "codex-cloud",
+  "repo": "Moonweave-Systems/Depone",
+  "schema_version": "0.1"
+}

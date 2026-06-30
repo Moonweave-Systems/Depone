@@ -1,0 +1,31 @@
+{
+  "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "kind": "depone-team-ledger",
+  "lanes": [
+    {
+      "cloud_artifact": "lane-cloud/cloud-artifact.json",
+      "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "env_kind": "cloud",
+      "evidence_dir": "lane-cloud",
+      "evidence_next_verdict": "lane-cloud/evidence-next-verdict.json",
+      "lane_id": "lane-cloud",
+      "objective": "Represent an observed external cloud lane artifact without attesting provider isolation",
+      "runner_adapter_kind": "codex",
+      "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "team_adapter_kind": "external",
+      "touched_files": [
+        "docs/cloud-lane-artifact/lane-cloud/cloud-artifact.json"
+      ],
+      "verification_artifacts": [
+        "lane-cloud/cloud-artifact.json",
+        "lane-cloud/evidence-next-verdict.json"
+      ],
+      "verification_state": "pass"
+    }
+  ],
+  "leader_id": "fixture-leader",
+  "leader_objective": "Validate observed cloud lane artifact fan-in without launching cloud runners",
+  "schema_version": "0.1",
+  "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "stop_rule": "fixture only; no cloud execution or provider runtime isolation claim"
+}

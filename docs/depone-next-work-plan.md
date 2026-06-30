@@ -1,6 +1,6 @@
 # Depone Next Work Plan
 
-Status: post-worktree-lane-receipt planning note
+Status: post-team-dry-run and cloud-lane-artifact planning note
 Date: 2026-06-30
 Base: `origin/main` at `89948b7` (`Add Team Ledger merge receipt producer`)
 
@@ -50,11 +50,13 @@ must stop.
 
 ### Weak Or Missing Layers
 
-- Depone can produce a planning-only native team dry-run artifact, but does not
-  yet launch and manage a durable multi-agent team by itself.
+- Depone can produce a planning-only native team dry-run artifact and validate
+  observed cloud lane artifacts, but does not yet launch and manage a durable
+  multi-agent team by itself.
 - Depone does not yet create per-lane worktrees, assign tasks, run workers, and
   collect lane evidence end-to-end.
 - Depone does not yet own a cloud runner backend or remote workspace lifecycle.
+  Cloud lanes are currently observed external facts, not runtime attestations.
 - Depone does not yet ingest GitHub PR/check status as first-class evidence for
   Team Ledger lanes.
 - Merge receipts are produced by command input, but not yet derived from actual
@@ -189,6 +191,11 @@ Acceptance evidence:
 - source links in docs;
 - changed-tier contract and DWM doctor.
 
+Status: implemented as a small validation slice. A passed `env_kind=cloud` lane
+now requires `cloud_artifact`, and the committed fixture under
+`docs/cloud-lane-artifact/` revalidates locally. Honest residual: this still
+does not prove provider runtime isolation or provision cloud workers.
+
 ## GitFlow Rules For The Next Work
 
 - Do not repair the diverged local `/home/ubuntu/depone` `main` with reset or
@@ -204,10 +211,11 @@ Acceptance evidence:
 
 ## Recommended Immediate Next Step
 
-Implement Slice 3: Minimal `depone team-dry-run`.
+Implement a minimal local lane launcher preflight.
 
-This is the best next step now that PR artifacts and local worktree receipts
-exist. It creates a native Depone planning surface without launching workers,
-mutating worktrees, or claiming runtime evidence. The next slice after this
-should either make those planned lanes launchable locally, or add observed cloud
-lane artifacts before Depone owns cloud execution.
+This is the best next step now that PR artifacts, local worktree receipts,
+planning-only team dry-run artifacts, and observed cloud lane artifacts exist.
+Keep it narrow: create or select per-lane worktrees, run explicit preflight
+checks, emit planned launch receipts, and stop before background worker
+execution. The goal is to remove one more manual handoff without pretending that
+Depone already owns full team scheduling.

@@ -8,6 +8,7 @@ honest, present evidence before fan-in.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -23,6 +24,7 @@ TEAM_LEDGER_KIND = "depone-team-ledger"
 TEAM_LEDGER_SCHEMA_VERSION = "0.1"
 TEAM_LEDGER_VERDICT_KIND = "depone-team-ledger-verdict"
 TEAM_LEDGER_PR_ARTIFACT_KIND = "depone-team-ledger-pr-artifact"
+TEAM_LEDGER_CLOUD_ARTIFACT_KIND = "depone-team-ledger-cloud-artifact"
 TEAM_LEDGER_SUBJECT_COMMIT_SEMANTICS = "observed_subject_commit"
 VALID_ENV_KINDS = frozenset({"local", "container", "cloud"})
 VALID_ADAPTER_KINDS = frozenset(
@@ -421,6 +423,14 @@ def _validate_lane(
         errors,
         lane_id=lane_error_id,
     )
+    cloud_artifact_summary = _validate_cloud_artifact(
+        lane.get("cloud_artifact"),
+        lane,
+        base_dir,
+        errors,
+        lane_id=lane_error_id,
+        required=state == "pass" and lane.get("env_kind") == "cloud",
+    )
     worktree_receipt_summary = _validate_worktree_receipt(
         lane.get("worktree_receipt"),
         lane,
@@ -452,6 +462,7 @@ def _validate_lane(
         "evidence_next_verdict": evidence_next_verdict,
         "evidence_next": evidence_next_summary,
         "pr_artifact": pr_artifact_summary,
+        "cloud_artifact": cloud_artifact_summary,
         "worktree_receipt": worktree_receipt_summary,
         "verification_artifact_count": len(verification_artifacts),
         "touched_files": touched_files,
@@ -875,6 +886,315 @@ def _validate_pr_artifact_captured_at(
             {
                 "code": "ERR_TEAM_LEDGER_PR_ARTIFACT_INVALID",
                 "message": "pr_artifact captured_at must be parseable as an ISO timestamp",
+                "lane_id": lane_id,
+            }
+        )
+
+
+def _validate_cloud_artifact(
+    cloud_artifact: Any,
+    lane: dict[str, Any],
+    base_dir: Path,
+    errors: list[dict[str, str]],
+    *,
+    lane_id: str,
+    required: bool,
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "path": cloud_artifact if isinstance(cloud_artifact, str) else None,
+        "provider": None,
+        "adapter_kind": None,
+        "external_run_id": None,
+        "repo": None,
+        "base_sha": None,
+        "head_sha": None,
+        "pr_url": None,
+        "evidence_hash": None,
+        "observed_external_facts_only": None,
+        "attests_runtime_isolation": None,
+    }
+    if cloud_artifact is None:
+        if required:
+            errors.append(
+                {
+                    "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_REQUIRED",
+                    "message": "passed cloud lane must include cloud_artifact",
+                    "lane_id": lane_id,
+                }
+            )
+        return summary
+    if not isinstance(cloud_artifact, str) or not cloud_artifact.strip():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_PATH_INVALID",
+                "message": "cloud_artifact must be a relative JSON path when present",
+                "lane_id": lane_id,
+            }
+        )
+        return summary
+
+    artifact_path = Path(cloud_artifact)
+    if artifact_path.is_absolute():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_PATH_INVALID",
+                "message": "cloud_artifact must be relative to the ledger base directory",
+                "lane_id": lane_id,
+            }
+        )
+        return summary
+
+    resolved = (base_dir / artifact_path).resolve(strict=False)
+    base_resolved = base_dir.resolve(strict=False)
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_PATH_INVALID",
+                "message": "cloud_artifact must stay under the ledger base directory",
+                "lane_id": lane_id,
+            }
+        )
+        return summary
+
+    if not resolved.is_file():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_MISSING",
+                "message": "cloud_artifact file must exist",
+                "lane_id": lane_id,
+            }
+        )
+        return summary
+
+    try:
+        artifact = json.loads(resolved.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": f"cloud_artifact must be readable JSON: {exc}",
+                "lane_id": lane_id,
+            }
+        )
+        return summary
+    if not isinstance(artifact, dict):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": "cloud_artifact root must be an object",
+                "lane_id": lane_id,
+            }
+        )
+        return summary
+
+    for field in (
+        "provider",
+        "adapter_kind",
+        "external_run_id",
+        "repo",
+        "base_sha",
+        "head_sha",
+        "evidence_hash",
+    ):
+        summary[field] = artifact.get(field)
+    summary["pr_url"] = artifact.get("pr_url")
+
+    if artifact.get("kind") != TEAM_LEDGER_CLOUD_ARTIFACT_KIND:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": f"cloud_artifact kind must be {TEAM_LEDGER_CLOUD_ARTIFACT_KIND}",
+                "lane_id": lane_id,
+            }
+        )
+    if artifact.get("schema_version") != TEAM_LEDGER_SCHEMA_VERSION:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": f"cloud_artifact schema_version must be {TEAM_LEDGER_SCHEMA_VERSION}",
+                "lane_id": lane_id,
+            }
+        )
+
+    for field in (
+        "provider",
+        "external_run_id",
+        "repo",
+        "base_sha",
+        "head_sha",
+        "evidence_hash",
+    ):
+        _validate_cloud_artifact_string_field(artifact, field, errors, lane_id=lane_id)
+    _validate_cloud_artifact_captured_at(artifact.get("captured_at"), errors, lane_id=lane_id)
+
+    adapter_kind = artifact.get("adapter_kind")
+    if not isinstance(adapter_kind, str) or adapter_kind not in VALID_ADAPTER_KINDS:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": "cloud_artifact adapter_kind must be a known adapter kind",
+                "lane_id": lane_id,
+            }
+        )
+    lane_runner_adapter_kind = lane.get("runner_adapter_kind")
+    if (
+        isinstance(lane_runner_adapter_kind, str)
+        and lane_runner_adapter_kind
+        and isinstance(adapter_kind, str)
+        and adapter_kind != lane_runner_adapter_kind
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_ADAPTER_KIND_MISMATCH",
+                "message": "cloud_artifact adapter_kind must match lane runner_adapter_kind",
+                "lane_id": lane_id,
+            }
+        )
+
+    evidence_hash = artifact.get("evidence_hash")
+    if isinstance(evidence_hash, str) and (
+        len(evidence_hash) != 64 or any(char not in "0123456789abcdef" for char in evidence_hash)
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": "cloud_artifact evidence_hash must be lowercase sha256 hex",
+                "lane_id": lane_id,
+            }
+        )
+    elif isinstance(evidence_hash, str):
+        evidence_next_path = lane.get("evidence_next_verdict")
+        if isinstance(evidence_next_path, str) and evidence_next_path:
+            resolved_evidence_next = (base_dir / evidence_next_path).resolve(strict=False)
+            base_resolved = base_dir.resolve(strict=False)
+            try:
+                resolved_evidence_next.relative_to(base_resolved)
+            except ValueError:
+                resolved_evidence_next = None
+            if resolved_evidence_next is not None and resolved_evidence_next.is_file():
+                actual_hash = hashlib.sha256(resolved_evidence_next.read_bytes()).hexdigest()
+                if evidence_hash != actual_hash:
+                    errors.append(
+                        {
+                            "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_EVIDENCE_HASH_MISMATCH",
+                            "message": "cloud_artifact evidence_hash must match evidence_next_verdict sha256",
+                            "lane_id": lane_id,
+                        }
+                    )
+
+    boundary = artifact.get("boundary")
+    if isinstance(boundary, dict):
+        summary["observed_external_facts_only"] = boundary.get("observed_external_facts_only")
+        summary["attests_runtime_isolation"] = boundary.get("attests_runtime_isolation")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("observed_external_facts_only") is not True
+        or boundary.get("attests_runtime_isolation") is not False
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_BOUNDARY_INVALID",
+                "message": (
+                    "cloud_artifact boundary must record observed_external_facts_only=true "
+                    "and attests_runtime_isolation=false"
+                ),
+                "lane_id": lane_id,
+            }
+        )
+
+    lane_start_commit = lane.get("start_commit")
+    base_sha = artifact.get("base_sha")
+    if isinstance(lane_start_commit, str) and lane_start_commit and isinstance(base_sha, str):
+        if base_sha != lane_start_commit:
+            errors.append(
+                {
+                    "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_BASE_SHA_MISMATCH",
+                    "message": "cloud_artifact base_sha must match lane start_commit",
+                    "lane_id": lane_id,
+                }
+            )
+
+    lane_end_commit = lane.get("end_commit")
+    head_sha = artifact.get("head_sha")
+    if isinstance(lane_end_commit, str) and lane_end_commit and isinstance(head_sha, str):
+        if head_sha != lane_end_commit:
+            errors.append(
+                {
+                    "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_HEAD_SHA_MISMATCH",
+                    "message": "cloud_artifact head_sha must match lane end_commit",
+                    "lane_id": lane_id,
+                }
+            )
+
+    lane_pr_url = lane.get("pr_url")
+    artifact_pr_url = artifact.get("pr_url")
+    if (
+        isinstance(lane_pr_url, str)
+        and lane_pr_url
+        and isinstance(artifact_pr_url, str)
+        and artifact_pr_url
+        and artifact_pr_url != lane_pr_url
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_PR_URL_MISMATCH",
+                "message": "cloud_artifact pr_url must match lane pr_url",
+                "lane_id": lane_id,
+            }
+        )
+    elif artifact_pr_url is not None and not isinstance(artifact_pr_url, str):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": "cloud_artifact pr_url must be a string when present",
+                "lane_id": lane_id,
+            }
+        )
+
+    return summary
+
+
+def _validate_cloud_artifact_string_field(
+    artifact: dict[str, Any],
+    field: str,
+    errors: list[dict[str, str]],
+    *,
+    lane_id: str,
+) -> None:
+    if not isinstance(artifact.get(field), str) or not str(artifact.get(field)).strip():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": f"cloud_artifact {field} must be a non-empty string",
+                "lane_id": lane_id,
+            }
+        )
+
+
+def _validate_cloud_artifact_captured_at(
+    value: Any,
+    errors: list[dict[str, str]],
+    *,
+    lane_id: str,
+) -> None:
+    if not isinstance(value, str) or not value.strip():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": "cloud_artifact captured_at must be a non-empty ISO timestamp",
+                "lane_id": lane_id,
+            }
+        )
+        return
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+                "message": "cloud_artifact captured_at must be parseable as an ISO timestamp",
                 "lane_id": lane_id,
             }
         )
@@ -1475,6 +1795,48 @@ def _self_test() -> None:
         bad_pr_verdict = build_team_ledger_verdict(bad_pr, base_dir=root)
         if bad_pr_verdict["decision"] != "blocked":
             raise AssertionError("missing PR artifact must block")
+
+        cloud_artifact = evidence / "cloud-artifact.json"
+        cloud_artifact.write_text(
+            json.dumps(
+                {
+                    "kind": TEAM_LEDGER_CLOUD_ARTIFACT_KIND,
+                    "schema_version": TEAM_LEDGER_SCHEMA_VERSION,
+                    "provider": "codex-cloud",
+                    "adapter_kind": "codex",
+                    "external_run_id": "codex-cloud-run-42",
+                    "repo": "Moonweave-Systems/Depone",
+                    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "pr_url": "https://github.com/Moonweave-Systems/Depone/pull/42",
+                    "evidence_hash": hashlib.sha256(evidence_next.read_bytes()).hexdigest(),
+                    "captured_at": "2026-06-30T07:30:00Z",
+                    "boundary": {
+                        "observed_external_facts_only": True,
+                        "attests_runtime_isolation": False,
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        cloud_lane = build_sample_team_ledger("lane-evidence")
+        cloud_lane["lanes"][0]["env_kind"] = "cloud"
+        cloud_lane["lanes"][0]["team_adapter_kind"] = "external"
+        cloud_lane["lanes"][0]["evidence_next_verdict"] = "lane-evidence/evidence-next-verdict.json"
+        cloud_lane["lanes"][0]["cloud_artifact"] = "lane-evidence/cloud-artifact.json"
+        cloud_verdict = build_team_ledger_verdict(cloud_lane, base_dir=root)
+        if cloud_verdict["decision"] != "pass":
+            raise AssertionError("passed cloud lane with matching artifact must pass")
+
+        missing_cloud = build_sample_team_ledger("lane-evidence")
+        missing_cloud["lanes"][0]["env_kind"] = "cloud"
+        missing_cloud["lanes"][0]["evidence_next_verdict"] = "lane-evidence/evidence-next-verdict.json"
+        missing_cloud_verdict = build_team_ledger_verdict(missing_cloud, base_dir=root)
+        if missing_cloud_verdict["decision"] != "blocked":
+            raise AssertionError("passed cloud lane without cloud artifact must block")
 
         second_evidence = root / "lane-evidence-2"
         second_evidence.mkdir()

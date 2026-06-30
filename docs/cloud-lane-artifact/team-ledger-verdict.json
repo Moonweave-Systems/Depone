@@ -1,0 +1,85 @@
+{
+  "blocked_lane_count": 0,
+  "boundary": {
+    "approves_merge": false,
+    "calls_live_models": false,
+    "executes_commands": false,
+    "inspects_cloud_runtime": false,
+    "launches_agents": false,
+    "raises_assurance": false
+  },
+  "decision": "pass",
+  "errors": [],
+  "kind": "depone-team-ledger-verdict",
+  "lane_count": 1,
+  "lane_results": [
+    {
+      "cloud_artifact": {
+        "adapter_kind": "codex",
+        "attests_runtime_isolation": false,
+        "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_hash": "ba04376d961b95c524ceb941a505c616405bd04ffed2b50a63ca92a4d312f3e3",
+        "external_run_id": "fixture-codex-cloud-run-001",
+        "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "observed_external_facts_only": true,
+        "path": "lane-cloud/cloud-artifact.json",
+        "pr_url": null,
+        "provider": "codex-cloud",
+        "repo": "Moonweave-Systems/Depone"
+      },
+      "decision": "pass",
+      "env_kind": "cloud",
+      "errors": [],
+      "evidence_dir": "lane-cloud",
+      "evidence_dir_exists": true,
+      "evidence_next": {
+        "blocking_reason_count": 0,
+        "decision": "continue",
+        "path": "lane-cloud/evidence-next-verdict.json"
+      },
+      "evidence_next_verdict": "lane-cloud/evidence-next-verdict.json",
+      "lane_id": "lane-cloud",
+      "pr_artifact": {
+        "base_sha": null,
+        "check_status": null,
+        "failed_count": null,
+        "head_sha": null,
+        "merge_state_status": null,
+        "path": null,
+        "pending_count": null,
+        "pr_url": null,
+        "state": null
+      },
+      "runner_adapter_kind": "codex",
+      "team_adapter_kind": "external",
+      "touched_file_count": 1,
+      "touched_files": [
+        "docs/cloud-lane-artifact/lane-cloud/cloud-artifact.json"
+      ],
+      "verification_artifact_count": 2,
+      "verification_state": "pass",
+      "worktree_receipt": {
+        "base_commit": null,
+        "branch": null,
+        "changed_files": [],
+        "dirty": null,
+        "dirty_file_count": null,
+        "head_commit": null,
+        "path": null
+      }
+    }
+  ],
+  "leader_objective": "Validate observed cloud lane artifact fan-in without launching cloud runners",
+  "merge_receipt": {
+    "decision": null,
+    "overlap_count": 0,
+    "path": null,
+    "required": false
+  },
+  "overlapping_touched_files": [],
+  "passed_lane_count": 1,
+  "schema_version": "0.1",
+  "source_hashes": {
+    "team_ledger": "d63e7177994763b1f9e3c74da6a599c986f51b0212c6944c8bfa2d16524c2881"
+  }
+}

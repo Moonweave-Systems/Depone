@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 import sys
 import tempfile
@@ -123,6 +124,48 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
                     },
                     "stale": stale,
                     "captured_at": "2026-06-30T06:30:00Z",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return relative_path
+
+    def _write_cloud_artifact(
+        self,
+        relative_path: str = "lane-evidence/cloud-artifact.json",
+        *,
+        head_sha: str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        base_sha: str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        attests_runtime_isolation: bool = False,
+        captured_at: str = "2026-06-30T07:30:00Z",
+        evidence_hash: str | None = None,
+    ) -> str:
+        artifact_path = self.root / relative_path
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        if evidence_hash is None:
+            evidence_next_path = self.root / "lane-evidence" / "evidence-next-verdict.json"
+            evidence_hash = hashlib.sha256(evidence_next_path.read_bytes()).hexdigest()
+        artifact_path.write_text(
+            json.dumps(
+                {
+                    "kind": "depone-team-ledger-cloud-artifact",
+                    "schema_version": "0.1",
+                    "provider": "codex-cloud",
+                    "adapter_kind": "codex",
+                    "external_run_id": "codex-cloud-run-42",
+                    "repo": "Moonweave-Systems/Depone",
+                    "base_sha": base_sha,
+                    "head_sha": head_sha,
+                    "pr_url": "https://github.com/Moonweave-Systems/Depone/pull/42",
+                    "evidence_hash": evidence_hash,
+                    "captured_at": captured_at,
+                    "boundary": {
+                        "observed_external_facts_only": True,
+                        "attests_runtime_isolation": attests_runtime_isolation,
+                    },
                 },
                 indent=2,
                 sort_keys=True,
@@ -622,6 +665,136 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         ledger["lanes"][0]["verification_state"] = "blocked"
         ledger["lanes"][0]["blocked_reason"] = "PR lane is still waiting on review"
         ledger["lanes"][0]["pr_url"] = "https://github.com/Moonweave-Systems/Depone/pull/42"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked-explicit")
+        self.assertEqual(verdict["errors"], [])
+
+    def test_cloud_artifact_allows_passed_cloud_lane_with_matching_sha(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["team_adapter_kind"] = "external"
+        ledger["lanes"][0]["runner_adapter_kind"] = "codex"
+        ledger["lanes"][0]["cloud_artifact"] = self._write_cloud_artifact()
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(
+            verdict["lane_results"][0]["cloud_artifact"]["external_run_id"],
+            "codex-cloud-run-42",
+        )
+        self.assertEqual(verdict["lane_results"][0]["cloud_artifact"]["provider"], "codex-cloud")
+
+    def test_committed_cloud_lane_fixture_revalidates(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        fixture_root = repo_root / "docs" / "cloud-lane-artifact"
+        ledger = json.loads((fixture_root / "team-ledger.json").read_text(encoding="utf-8"))
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=fixture_root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(verdict["errors"], [])
+        self.assertEqual(
+            verdict["lane_results"][0]["cloud_artifact"]["attests_runtime_isolation"],
+            False,
+        )
+
+    def test_passed_cloud_lane_requires_cloud_artifact(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_REQUIRED",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_cloud_artifact_head_sha_must_match_lane_end_commit(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["cloud_artifact"] = self._write_cloud_artifact(
+            head_sha="cccccccccccccccccccccccccccccccccccccccc"
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_HEAD_SHA_MISMATCH",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_cloud_artifact_evidence_hash_must_match_evidence_next_verdict(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["cloud_artifact"] = self._write_cloud_artifact(
+            evidence_hash="0" * 64
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_EVIDENCE_HASH_MISMATCH",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_cloud_artifact_adapter_kind_must_match_lane_runner_adapter(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["runner_adapter_kind"] = "shell"
+        ledger["lanes"][0]["cloud_artifact"] = self._write_cloud_artifact()
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_ADAPTER_KIND_MISMATCH",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_cloud_artifact_cannot_attest_runtime_isolation(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["cloud_artifact"] = self._write_cloud_artifact(
+            attests_runtime_isolation=True
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_BOUNDARY_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_cloud_artifact_invalid_timestamp_blocks_with_cloud_error(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["cloud_artifact"] = self._write_cloud_artifact(
+            captured_at="not-a-date"
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_CLOUD_ARTIFACT_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+        self.assertTrue(
+            any("cloud_artifact captured_at" in error["message"] for error in verdict["errors"])
+        )
+
+    def test_blocked_cloud_lane_does_not_require_cloud_artifact(self) -> None:
+        ledger = build_sample_team_ledger("missing-evidence")
+        ledger["lanes"][0]["env_kind"] = "cloud"
+        ledger["lanes"][0]["verification_state"] = "blocked"
+        ledger["lanes"][0]["blocked_reason"] = "cloud run is waiting on provider setup"
 
         verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
 

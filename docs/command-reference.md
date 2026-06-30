@@ -70,6 +70,16 @@ operator-supplied command receipts. `team-ledger` can consume the receipt throug
 lane `worktree_receipt`; a dirty receipt or a receipt whose head commit,
 evidence dir, or changed files do not match the lane blocks fan-in. This is a
 local worktree fact binding, not a cloud runtime attestation or worker launcher.
+
+For `env_kind=cloud` lanes, `team-ledger` requires a `cloud_artifact` before a
+lane can pass. The artifact binds provider name, adapter kind, external run id,
+repo, base/head SHA, evidence hash, and captured time to local JSON. Its
+adapter kind must match the lane `runner_adapter_kind`, and `evidence_hash`
+must match the lane `evidence_next_verdict` file's SHA256. Its boundary must
+explicitly say `observed_external_facts_only=true` and
+`attests_runtime_isolation=false`; Depone does not treat an observed cloud lane
+artifact as proof of provider runtime isolation.
+
 When a committed evidence bundle necessarily advances git history after capture,
 optional ledger `commit_scope` records that `end_commit` is the observed subject
 commit and lists the only allowed post-subject artifact paths. `team-ledger`

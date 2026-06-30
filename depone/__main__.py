@@ -31,6 +31,7 @@ from depone.cli import (
     evidence_run,
     team_dry_run,
     team_launch_preflight,
+    team_shell_lane_launch,
     team_worktree_prep,
     validate,
     validate_contracts,
@@ -419,6 +420,49 @@ def _add_team_launch_preflight_args(parser: argparse.ArgumentParser) -> None:
         "--team-ledger-out",
         default="",
         help="Optional output path for Team Ledger JSON generated from the preflight lanes",
+    )
+    parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+    _add_json_arg(parser)
+
+
+def _add_team_shell_lane_launch_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--allowlist",
+        default="",
+        help="JSON allowlist with commands entries containing id and argv",
+    )
+    parser.add_argument(
+        "--command-id",
+        default="",
+        help="Allowlisted command id to execute",
+    )
+    parser.add_argument(
+        "--cwd",
+        default=".",
+        help="Working directory for the allowlisted argv command",
+    )
+    parser.add_argument(
+        "--out",
+        default="",
+        help="Output path for the shell lane command receipt JSON",
+    )
+    parser.add_argument(
+        "--transcript",
+        default="",
+        help="Output path for the stdout/stderr transcript JSON",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=120,
+        help="Command timeout in seconds",
+    )
+    parser.add_argument(
+        "--agent-role-id",
+        default="worker",
+        help="Existing V22 role id to bind into the lane receipt agent contract",
     )
     parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
@@ -1164,6 +1208,12 @@ def main() -> None:
     )
     _add_team_worktree_prep_args(team_worktree_prep_parser)
 
+    team_shell_lane_launch_parser = sub.add_parser(
+        "team-shell-lane-launch",
+        help="Run one explicit allowlisted argv command for a shell lane",
+    )
+    _add_team_shell_lane_launch_args(team_shell_lane_launch_parser)
+
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
         "agent-fabric-claim-gate",
@@ -1262,6 +1312,8 @@ def main() -> None:
             team_launch_preflight.run(args)
         elif args.command == "team-worktree-prep":
             team_worktree_prep.run(args)
+        elif args.command == "team-shell-lane-launch":
+            team_shell_lane_launch.run(args)
         elif args.command in ("evidence-run", "run"):
             evidence_run.run(args)
         elif args.command in ("evidence-next", "next"):

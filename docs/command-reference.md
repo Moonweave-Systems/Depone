@@ -25,6 +25,7 @@ python -m depone evidence-chain --capture capture-0.json --capture capture-1.jso
 python -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run --json
 python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
 python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
+python -m depone team-shell-lane-launch --allowlist docs/team-shell-lane-launch/allowlist.json --command-id fixture-echo --cwd . --out docs/team-shell-lane-launch/receipt.json --transcript docs/team-shell-lane-launch/transcript.json --agent-role-id worker --json
 python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
 python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
 python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
@@ -75,6 +76,15 @@ or selects local git worktrees for each planned lane. It runs
 `git worktree add --detach` only when `--create-worktree` is present, writes a
 machine receipt, and still does not launch agents, execute lane commands, call
 live models, delete worktrees, raise assurance, or prove task completion.
+
+`team-shell-lane-launch` is the narrow local shell-lane adapter. It executes
+only an argv command selected by `command_id` from a JSON allowlist, invokes
+`subprocess.run(..., shell=False)`, and writes a command receipt containing the
+resolved cwd, argv, exit code, stdout/stderr SHA-256 hashes, and transcript
+path/hash plus an `agent_contract_hash` bound to `packaging/depone-agent-operating-contract.json` and a V22 role id. It is a shell-only command adapter with A1-style local evidence only:
+it does not accept arbitrary shell strings, concatenate shell commands, launch
+Codex/Claude/OpenCode, call live models, schedule teams, or raise assurance to
+A2.
 
 `team-ledger-merge-receipt` writes the machine JSON merge receipt consumed by
 `team-ledger` when passed lanes touch the same file. It normalizes lane ids and

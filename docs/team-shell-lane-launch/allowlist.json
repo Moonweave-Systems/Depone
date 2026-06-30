@@ -1,0 +1,12 @@
+{
+  "commands": [
+    {
+      "id": "fixture-echo",
+      "argv": [
+        "python3",
+        "-c",
+        "print('depone shell lane fixture')"
+      ]
+    }
+  ]
+}

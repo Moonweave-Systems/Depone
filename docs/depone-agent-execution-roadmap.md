@@ -186,6 +186,29 @@ Do not start with a large team runtime. Build a small evidence model first:
 
 This lets Depone audit OMX/LazyCodex-style teams before it owns a team runtime.
 
+### 6.3.1 Role Model
+
+Roles are useful, but only as contracts that constrain tools, evidence
+obligations, and review boundaries. They are not a claim that more personas make
+coding better. Keep the existing V22 base roles (`planner`, `explorer`,
+`worker`, `reviewer`, `verifier`, `operator`) and treat future names as narrow
+specializations of those contracts:
+
+- developer/coder: a bounded `worker` specialization that edits and tests one
+  slice;
+- specialist developer: a `worker` specialization with declared domain context
+  such as Python CLI, packaging, frontend, infrastructure, security, or data;
+- analyst: an `explorer` or `planner` specialization that maps facts, risks, and
+  options but cannot mark work complete;
+- generalist: the default planner/worker path for small tasks where specialization
+  does not add measurable value;
+- verifier/reviewer: separate roles that inspect artifacts and findings, not the
+  same lane that authored the change.
+
+Add a new role only when it improves capture, validation, isolation, signing, or
+measured task outcome. A role must declare allowed tools, output schema, evidence
+obligations, and trust boundary before any adapter can use it.
+
 ### 6.4 Isolation Model
 
 Next isolation work should be in this order:

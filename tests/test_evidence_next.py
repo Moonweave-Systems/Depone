@@ -13,6 +13,7 @@ from unittest.mock import patch
 import depone.__main__ as depone_main
 from depone.agent_fabric.capture_bridge import _sha256_json
 from depone.agent_fabric.evidence_substrate import build_evidence_bundle
+from depone.agent_fabric.claim_gate import canonical_hash
 from depone.cli.evidence_next import evaluate_evidence_dir
 
 
@@ -130,6 +131,46 @@ class EvidenceNextTests(unittest.TestCase):
 
         self.assertEqual(decision["decision"], "continue")
         self.assertEqual(decision["evidence_ingest"]["decision"], "pass")
+
+
+    def test_previous_capture_subject_revalidates_when_predecessor_is_supplied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            previous = Path(tmp) / "previous"
+            current = Path(tmp) / "current"
+            shutil.copytree(FIXTURE_ROOT, previous)
+            shutil.copytree(FIXTURE_ROOT, current)
+            previous_manifest = json.loads(
+                (previous / "capture-manifest.json").read_text(encoding="utf-8")
+            )
+            current_manifest_path = current / "capture-manifest.json"
+            current_manifest = json.loads(
+                current_manifest_path.read_text(encoding="utf-8")
+            )
+            current_manifest["prev_capture_hash"] = canonical_hash(previous_manifest)
+            current_manifest_path.write_text(
+                json.dumps(current_manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            receipt = json.loads(
+                (current / "runner-receipt.json").read_text(encoding="utf-8")
+            )
+            bundle = build_evidence_bundle(current_manifest, runner_receipt=receipt)
+            (current / "evidence-bundle.json").write_text(
+                json.dumps(bundle, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            without_previous = evaluate_evidence_dir(current)
+            with_previous = evaluate_evidence_dir(
+                current,
+                previous_capture=previous / "capture-manifest.json",
+            )
+
+        self.assertEqual(without_previous["decision"], "blocked")
+        self.assertEqual(without_previous["evidence_ingest"]["decision"], "inconclusive")
+        self.assertEqual(with_previous["decision"], "continue")
+        self.assertEqual(with_previous["evidence_ingest"]["decision"], "pass")
+        self.assertEqual(with_previous["verified_artifacts"]["verified_subject_count"], 5)
 
     def test_cli_next_alias_dispatches_to_evidence_next(self) -> None:
         seen = []

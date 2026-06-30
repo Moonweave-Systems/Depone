@@ -12,6 +12,8 @@ from unittest.mock import patch
 
 import depone.__main__ as depone_main
 from depone.agent_fabric.capture_bridge import validate_capture_manifest
+from depone.agent_fabric.claim_gate import canonical_hash
+from depone.agent_fabric.evidence_substrate import verify_capture_chain
 from depone.agent_fabric.paired_run import validate_runner_receipt
 from depone.cli import advance
 from depone.cli.evidence_next import evaluate_evidence_dir
@@ -113,6 +115,13 @@ class EvidenceAdvanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             args = self._args(root)
+            previous = root / "previous"
+            previous.mkdir()
+            previous_manifest = {"kind": "agent-fabric-capture-manifest", "prev_capture_hash": None}
+            (previous / "capture-manifest.json").write_text(
+                json.dumps(previous_manifest) + "\n",
+                encoding="utf-8",
+            )
             with patch.object(
                 advance,
                 "evaluate_evidence_dir",
@@ -126,6 +135,11 @@ class EvidenceAdvanceTests(unittest.TestCase):
                     artifact = advance.advance_once(args)
 
         run_loop.assert_called_once_with(args)
+        self.assertEqual(getattr(args, "prev_capture_hash"), canonical_hash(previous_manifest))
+        self.assertEqual(
+            getattr(args, "previous_capture_path"),
+            str(Path(args.evidence_dir) / "capture-manifest.json"),
+        )
         self.assertEqual(artifact["executed_continuations"], 1)
         self.assertEqual(artifact["automation_boundary"]["executed_continuation_count"], 1)
         self.assertFalse(artifact["automation_boundary"]["full_scheduler"])
@@ -252,13 +266,29 @@ class EvidenceAdvanceTests(unittest.TestCase):
         receipt = json.loads(
             (evidence_dir / "runner-receipt.json").read_text(encoding="utf-8")
         )
-        next_decision = evaluate_evidence_dir(evidence_dir)
+        previous_manifest = json.loads(
+            Path("docs/depone-run-receipt-frontdoor/capture-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        next_decision = evaluate_evidence_dir(
+            evidence_dir,
+            previous_capture=Path("docs/depone-run-receipt-frontdoor/capture-manifest.json"),
+        )
+        chain_verdict = verify_capture_chain([previous_manifest, manifest])
 
         self.assertEqual(advance_payload["decision"], "pass")
         self.assertEqual(advance_payload["executed_continuations"], 1)
         self.assertFalse(advance_payload["automation_boundary"]["full_scheduler"])
         self.assertEqual(validate_capture_manifest(manifest), [])
         self.assertEqual(validate_runner_receipt(receipt), [])
+        self.assertEqual(
+            manifest["prev_capture_hash"],
+            canonical_hash(previous_manifest),
+        )
+        self.assertEqual(chain_verdict["decision"], "pass")
+        self.assertNotIn("chain", advance_payload)
+        self.assertNotIn("prev_capture_hash", advance_payload)
         self.assertEqual(next_decision["decision"], "continue")
         self.assertEqual(next_decision["blocking_reasons"], [])
         self.assertEqual(next_decision["assurance"], "A2-isolated-observed")

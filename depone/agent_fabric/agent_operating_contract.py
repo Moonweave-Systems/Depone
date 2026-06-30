@@ -97,6 +97,69 @@ def validate_repo_agent_operating_contract(repo_root: Path = Path(".")) -> list[
     return validate_agent_operating_contract(contract, role_registry)
 
 
+def build_agent_contract_facts(
+    contract: dict[str, object],
+    role_registry: dict[str, object],
+    role_id: str,
+) -> dict[str, object]:
+    """Return contract facts for a lane role, or raise ValueError fail-closed."""
+
+    errors = [
+        *validate_agent_operating_contract(contract, role_registry),
+        *validate_v22_role_id(role_registry, role_id),
+    ]
+    if errors:
+        codes = ", ".join(error["code"] for error in errors)
+        raise ValueError(f"agent contract facts invalid: {codes}")
+    registry = contract["role_registry"]
+    if not isinstance(registry, dict):
+        raise ValueError("agent contract facts invalid: role_registry")
+    return {
+        "agent_contract_id": contract["agent_contract_id"],
+        "agent_contract_hash": contract["agent_contract_hash"],
+        "role_id": role_id,
+        "role_registry_path": registry["path"],
+        "role_registry_sha256": registry["sha256"],
+    }
+
+
+def validate_v22_role_id(
+    role_registry: dict[str, object],
+    role_id: str,
+) -> list[dict[str, str]]:
+    """Validate that a lane role id exists in packaging/dwm-roles.json."""
+
+    errors: list[dict[str, str]] = []
+    if not isinstance(role_id, str) or not role_id.strip():
+        errors.append(
+            _error(
+                "ERR_AGENT_CONTRACT_V22_ROLE_ID_REQUIRED",
+                "role_id must be a non-empty string",
+            )
+        )
+        return errors
+    roles = role_registry.get("roles") if isinstance(role_registry, dict) else None
+    if not isinstance(roles, list):
+        errors.append(_error("ERR_AGENT_CONTRACT_V22_ROLES_INVALID", "role registry roles must be a list"))
+        return errors
+    role_ids = [role.get("id") for role in roles if isinstance(role, dict)]
+    if role_id not in role_ids:
+        errors.append(
+            _error(
+                "ERR_AGENT_CONTRACT_V22_ROLE_ID_UNKNOWN",
+                f"role_id must exist in {DWM_ROLES_PATH.as_posix()}",
+            )
+        )
+    if len(role_ids) != len(set(role_ids)):
+        errors.append(
+            _error(
+                "ERR_AGENT_CONTRACT_V22_ROLE_ID_DUPLICATE",
+                f"role ids in {DWM_ROLES_PATH.as_posix()} must be unique",
+            )
+        )
+    return errors
+
+
 def _validate_contract_identity(contract: dict[str, object], errors: list[dict[str, str]]) -> None:
     if contract.get("kind") != AGENT_OPERATING_CONTRACT_KIND:
         errors.append(

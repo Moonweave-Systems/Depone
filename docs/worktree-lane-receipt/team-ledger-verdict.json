@@ -61,11 +61,15 @@
           "depone/cli/agent_fabric_team_ledger.py",
           "docs/command-reference.md",
           "docs/depone-cloud-team-control.md",
+          "docs/worktree-lane-receipt/evidence-next-verdict.json",
+          "docs/worktree-lane-receipt/team-ledger-verdict.json",
+          "docs/worktree-lane-receipt/team-ledger.json",
+          "docs/worktree-lane-receipt/worktree-receipt.json",
           "tests/test_agent_fabric_worktree_receipt.py"
         ],
         "dirty": false,
         "dirty_file_count": 0,
-        "head_commit": "c8179cb9270f717a7fa69e09469771938d164ea2",
+        "head_commit": "ed419194f0aa0ba59adeb5ae131233a202113574",
         "path": "docs/worktree-lane-receipt/worktree-receipt.json"
       }
     }
@@ -81,6 +85,6 @@
   "passed_lane_count": 1,
   "schema_version": "0.1",
   "source_hashes": {
-    "team_ledger": "b9d420a650d48bd83dbca152ae48bd0584a0eab7809d7d1af24e9746db251be8"
+    "team_ledger": "ceb9778f63abc9be6fd64008380ca753730571fb53803be54d7b782ae64085a1"
   }
 }

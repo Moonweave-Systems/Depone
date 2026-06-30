@@ -48,11 +48,25 @@ class EvidenceAdvanceTests(unittest.TestCase):
             json=True,
         )
 
+    def _write_previous_capture(self, root: Path) -> dict[str, object]:
+        previous = root / "previous"
+        previous.mkdir(exist_ok=True)
+        previous_manifest: dict[str, object] = {
+            "kind": "agent-fabric-capture-manifest",
+            "prev_capture_hash": None,
+        }
+        (previous / "capture-manifest.json").write_text(
+            json.dumps(previous_manifest) + "\n",
+            encoding="utf-8",
+        )
+        return previous_manifest
+
     def test_advance_revalidates_previous_evidence_dir_before_continuation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             args = self._args(root)
             args.previous_source_fixture = str(root / "previous-source.json")
+            previous_manifest = self._write_previous_capture(root)
             calls = []
 
             def fake_evaluate(path: Path, *, source_fixture: Path | None = None) -> dict[str, object]:
@@ -76,6 +90,7 @@ class EvidenceAdvanceTests(unittest.TestCase):
         self.assertEqual(artifact["decision"], "pass")
         self.assertEqual(artifact["next_gate"]["decision"], "continue")
         self.assertEqual(artifact["previous_source_fixture"], args.previous_source_fixture)
+        self.assertEqual(getattr(args, "prev_capture_hash"), canonical_hash(previous_manifest))
 
     def test_advance_refuses_when_next_decision_is_not_continue(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -115,13 +130,7 @@ class EvidenceAdvanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             args = self._args(root)
-            previous = root / "previous"
-            previous.mkdir()
-            previous_manifest = {"kind": "agent-fabric-capture-manifest", "prev_capture_hash": None}
-            (previous / "capture-manifest.json").write_text(
-                json.dumps(previous_manifest) + "\n",
-                encoding="utf-8",
-            )
+            previous_manifest = self._write_previous_capture(root)
             with patch.object(
                 advance,
                 "evaluate_evidence_dir",
@@ -148,6 +157,7 @@ class EvidenceAdvanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             args = self._args(root)
+            self._write_previous_capture(root)
             with patch.object(
                 advance,
                 "evaluate_evidence_dir",

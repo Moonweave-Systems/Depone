@@ -167,7 +167,7 @@ class EvidenceNextTests(unittest.TestCase):
             )
 
         self.assertEqual(without_previous["decision"], "blocked")
-        self.assertEqual(without_previous["evidence_ingest"]["decision"], "inconclusive")
+        self.assertEqual(without_previous["evidence_ingest"]["decision"], "blocked")
         self.assertEqual(with_previous["decision"], "continue")
         self.assertEqual(with_previous["evidence_ingest"]["decision"], "pass")
         self.assertEqual(with_previous["verified_artifacts"]["verified_subject_count"], 5)

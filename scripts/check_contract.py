@@ -2655,6 +2655,24 @@ def require_agent_surface_contract_pass() -> None:
             raise SystemExit("evidence-ingest digest mismatch was not blocked")
 
 
+def require_install_readiness_contract_pass() -> None:
+    completed = run_contract_command(
+        [sys.executable, "scripts/install_smoke.py", "--json"],
+        timeout_seconds=LONG_COMMAND_TIMEOUT_SECONDS,
+    )
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"install smoke did not emit JSON: {exc}") from exc
+    if payload.get("decision") != "pass":
+        raise SystemExit(f"install smoke did not pass: {payload.get('decision')}")
+    boundary = payload.get("install_boundary", {})
+    if boundary.get("installs_runtime_dependencies") is not False:
+        raise SystemExit("install smoke must use --no-deps and avoid runtime dependency install")
+    if boundary.get("claims_pypi_ready") is not False:
+        raise SystemExit("install smoke must not claim PyPI readiness")
+
+
 def contract_steps_for_tier(tier: str) -> list[tuple[str, object, int]]:
     if tier == "smoke":
         return [
@@ -2666,6 +2684,7 @@ def contract_steps_for_tier(tier: str) -> list[tuple[str, object, int]]:
             ("fixture smoke", require_fixture_smoke, DEFAULT_STEP_TIMEOUT_SECONDS),
             ("changed-surface command tier", require_changed_surface_commands_pass, 600),
             ("agent-facing CLI contract", require_agent_surface_contract_pass, 300),
+            ("install-readiness smoke", require_install_readiness_contract_pass, 600),
         ]
     if tier != "full":
         raise SystemExit(f"unknown contract tier: {tier}")
@@ -2749,7 +2768,12 @@ Overclaims execution: no
         raise SystemExit("self-test failed: default release command timeout not selected")
     if [label for label, _callback, _timeout in contract_steps_for_tier("smoke")] != ["fixture smoke", "smoke command tier"]:
         raise SystemExit("self-test failed: smoke tier steps changed")
-    if [label for label, _callback, _timeout in contract_steps_for_tier("changed")] != ["fixture smoke", "changed-surface command tier", "agent-facing CLI contract"]:
+    if [label for label, _callback, _timeout in contract_steps_for_tier("changed")] != [
+        "fixture smoke",
+        "changed-surface command tier",
+        "agent-facing CLI contract",
+        "install-readiness smoke",
+    ]:
         raise SystemExit("self-test failed: changed tier steps changed")
     if "release command corpus" not in [label for label, _callback, _timeout in contract_steps_for_tier("full")]:
         raise SystemExit("self-test failed: full tier does not include release command corpus")

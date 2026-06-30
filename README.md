@@ -35,6 +35,18 @@ depone verify plan.json --evidence ./evidence/ --out report.json --operator-view
 # MCP stdio server for MCP-capable agents: python -m depone mcp
 ```
 
+To independently smoke-test source installation in a clean virtualenv, run:
+
+```bash
+python scripts/install_smoke.py --json
+```
+
+The smoke installs Depone from the local source tree with `--no-deps`, runs the
+installed `depone doctor`, and re-validates a committed team-ledger artifact.
+It does not publish a package or claim PyPI readiness. The latest checked-in
+machine artifact is
+[`docs/install-readiness/install-smoke.json`](docs/install-readiness/install-smoke.json).
+
 Agent-session evidence loop:
 
 ```bash
@@ -171,6 +183,7 @@ Core CLI commands include built-in `--self-test`, including `verify`,
 `next`/`evidence-next`, `advance`, and `demo`.
 
 ```bash
+python scripts/install_smoke.py --json
 python scripts/check_contract.py --tier changed
 ```
 

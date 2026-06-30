@@ -1,0 +1,129 @@
+{
+  "checks": [
+    {
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "venv",
+        "/tmp/depone-install-smoke-s4c5ipd3/venv"
+      ],
+      "name": "create-virtualenv",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "timed_out": false
+    },
+    {
+      "command": [
+        "/tmp/depone-install-smoke-s4c5ipd3/venv/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "--no-deps",
+        "/tmp/depone-install-readiness"
+      ],
+      "name": "source-install",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "Processing /tmp/depone-install-readiness\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Getting requirements to build wheel: started\n  Getting requirements to build wheel: finished with status 'done'\n  Preparing metadata (pyproject.toml): started\n  Preparing metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: depone\n  Building wheel for depone (pyproject.toml): started\n  Building wheel for depone (pyproject.toml): finished with status 'done'\n  Created wheel for depone: filename=depone-0.1.0-py3-none-any.whl size=183933 sha256=ec35f2a64237095db208597fce3d812fb326ed75aeb2e3fe271ee55fcce63ab0\n  Stored in directory: /home/ubuntu/.cache/pip/wheels/0d/68/f3/fe6ba08c72fa138c7eb8a630a308c65a271d6e8f3fff860e32\nSuccessfully built depone\nInstalling collected packages: depone\nSuccessfully installed depone-0.1.0\n",
+      "timed_out": false
+    },
+    {
+      "command": [
+        "/tmp/depone-install-smoke-s4c5ipd3/venv/bin/depone",
+        "doctor",
+        "--json"
+      ],
+      "json": {
+        "checks": [
+          {
+            "detail": "3.10.12",
+            "name": "python-version",
+            "ok": true
+          },
+          {
+            "detail": "reference_adapter_shell.json",
+            "name": "package-fixture",
+            "ok": true
+          },
+          {
+            "detail": "/tmp/depone-doctor-adu1eilj",
+            "name": "temp-write",
+            "ok": true
+          },
+          {
+            "detail": "stdout=utf-8 stderr=utf-8",
+            "name": "console-encoding",
+            "ok": true
+          }
+        ],
+        "command": "doctor",
+        "decision": "pass",
+        "ok": true,
+        "version": "0.1.0",
+        "warnings": []
+      },
+      "name": "depone-console-doctor",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\"checks\": [{\"detail\": \"3.10.12\", \"name\": \"python-version\", \"ok\": true}, {\"detail\": \"reference_adapter_shell.json\", \"name\": \"package-fixture\", \"ok\": true}, {\"detail\": \"/tmp/depone-doctor-adu1eilj\", \"name\": \"temp-write\", \"ok\": true}, {\"detail\": \"stdout=utf-8 stderr=utf-8\", \"name\": \"console-encoding\", \"ok\": true}], \"command\": \"doctor\", \"decision\": \"pass\", \"ok\": true, \"version\": \"0.1.0\", \"warnings\": []}\n",
+      "timed_out": false
+    },
+    {
+      "command": [
+        "/tmp/depone-install-smoke-s4c5ipd3/venv/bin/python",
+        "-m",
+        "depone",
+        "team-ledger",
+        "--self-test"
+      ],
+      "name": "module-team-ledger-self-test",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "depone team-ledger --self-test: pass\n",
+      "timed_out": false
+    },
+    {
+      "command": [
+        "/tmp/depone-install-smoke-s4c5ipd3/venv/bin/python",
+        "-m",
+        "depone",
+        "team-ledger",
+        "--ledger",
+        "/tmp/depone-install-readiness/docs/cloud-lane-artifact/team-ledger.json",
+        "--json"
+      ],
+      "json": {
+        "blocked_lane_count": 0,
+        "command": "team-ledger",
+        "decision": "pass",
+        "error_count": 0,
+        "lane_count": 1,
+        "passed_lane_count": 1
+      },
+      "name": "cloud-lane-artifact",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\"blocked_lane_count\": 0, \"command\": \"team-ledger\", \"decision\": \"pass\", \"error_count\": 0, \"lane_count\": 1, \"passed_lane_count\": 1}\n",
+      "timed_out": false
+    }
+  ],
+  "command": "install-smoke",
+  "decision": "pass",
+  "install_boundary": {
+    "claims_pypi_ready": false,
+    "creates_virtualenv": true,
+    "installs_runtime_dependencies": false,
+    "installs_source_package": true,
+    "publishes_package": false
+  },
+  "python_executable": "/usr/bin/python3",
+  "schema_version": "1.0",
+  "source": "/tmp/depone-install-readiness",
+  "venv_python": "/tmp/depone-install-smoke-s4c5ipd3/venv/bin/python"
+}

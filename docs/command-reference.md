@@ -22,6 +22,7 @@ python -m depone observe --runner-sandbox ./runner-worktree --source-fixture-has
 python -m depone evidence-substrate --capture-manifest capture-manifest.json --out evidence-bundle.json --json
 python -m depone evidence-ingest --dsse evidence-bundle.json:dsse_envelope --artifact depone-capture-manifest=capture-manifest.json:json --out ingest-verdict.json --json
 python -m depone evidence-chain --capture capture-0.json --capture capture-1.json --out evidence-chain-verdict.json --json
+python -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run --json
 python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
 python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
 python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
@@ -52,6 +53,12 @@ previous evidence-run directory and refuses before execution unless the decision
 is `continue` and blockers are empty. Only then does it invoke one existing
 `evidence-run` continuation, write `advance-decision.json`, and stop; it is not
 a queue, scheduler, or agent runtime.
+
+`team-dry-run` turns a small team plan JSON into re-validatable planning
+artifacts: `team-dry-run.json`, `team-ledger.json`,
+`team-ledger-verdict.json`, and `next-commands.json`. It does not launch agents,
+create worktrees, execute commands, or raise assurance. Its Team Ledger verdict
+is expected to be `blocked-explicit` until real lane evidence exists.
 
 `team-ledger-merge-receipt` writes the machine JSON merge receipt consumed by
 `team-ledger` when passed lanes touch the same file. It normalizes lane ids and

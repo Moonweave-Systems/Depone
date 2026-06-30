@@ -245,9 +245,11 @@ lane `end_commit`:
 Validate with:
 
 ```bash
+python3 -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run --json
 python3 -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out out/team/team-merge-receipt.json --json
 python3 -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
 python3 -m depone team-ledger --ledger team-ledger.json --out team-ledger-verdict.json
+python3 -m depone team-dry-run --self-test
 python3 -m depone team-ledger --self-test
 ```
 
@@ -269,5 +271,8 @@ The current follow-up order is tracked in `docs/depone-next-work-plan.md`.
 
 1. Optional PR artifact checks for Team Ledger lanes are implemented.
 2. Local worktree lane receipts are the current slice.
-3. Only after those artifacts are useful, consider a minimal `depone team`
+3. `team-dry-run` is the next minimal native team surface: it writes a blocked
+   Team Ledger skeleton, a dry-run artifact, and next-command suggestions, but
+   does not launch workers or mutate worktrees.
+4. Only after those artifacts are useful, consider a minimal `depone team`
    command that coordinates lanes under explicit budgets and stop rules.

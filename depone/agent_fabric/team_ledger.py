@@ -427,6 +427,7 @@ def _validate_lane(
         base_dir,
         errors,
         lane_id=lane_error_id,
+        required=state == "pass",
     )
 
     touched_files = _validate_touched_files(lane.get("touched_files"), errors, lane_id=lane_error_id)
@@ -886,6 +887,7 @@ def _validate_worktree_receipt(
     errors: list[dict[str, str]],
     *,
     lane_id: str,
+    required: bool,
 ) -> dict[str, Any]:
     summary: dict[str, Any] = {
         "path": worktree_receipt if isinstance(worktree_receipt, str) else None,
@@ -934,6 +936,8 @@ def _validate_worktree_receipt(
         return summary
 
     if not resolved.is_file():
+        if not required:
+            return summary
         errors.append(
             {
                 "code": "ERR_TEAM_LEDGER_WORKTREE_RECEIPT_MISSING",

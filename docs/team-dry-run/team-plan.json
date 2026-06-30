@@ -1,0 +1,30 @@
+{
+  "base_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+  "lanes": [
+    {
+      "objective": "Implement the bounded team-dry-run CLI and planner",
+      "runner_adapter_kind": "codex",
+      "team_adapter_kind": "depone-native",
+      "touched_files": [
+        "depone/agent_fabric/team_dry_run.py",
+        "depone/cli/team_dry_run.py",
+        "depone/__main__.py",
+        "tests/test_agent_fabric_team_dry_run.py"
+      ]
+    },
+    {
+      "lane_id": "docs-artifacts",
+      "objective": "Document the dry-run contract and regenerate committed artifacts",
+      "planned_worktree": "worktrees/docs-artifacts",
+      "runner_adapter_kind": "codex",
+      "team_adapter_kind": "depone-native",
+      "touched_files": [
+        "docs/command-reference.md",
+        "docs/depone-cloud-team-control.md",
+        "docs/team-dry-run/team-plan.json"
+      ]
+    }
+  ],
+  "leader_id": "codex-leader",
+  "leader_objective": "Prepare a planning-only Depone native team dry-run without launching workers"
+}

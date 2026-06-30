@@ -29,6 +29,7 @@ from depone.cli import (
     doctor,
     evidence_next,
     evidence_run,
+    team_dry_run,
     validate,
     validate_contracts,
 )
@@ -356,6 +357,23 @@ def _add_team_ledger_args(parser: argparse.ArgumentParser) -> None:
         "--out",
         default="",
         help="Optional output path for the Team Ledger verdict JSON",
+    )
+    parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+    _add_json_arg(parser)
+
+
+def _add_team_dry_run_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--plan",
+        default="",
+        help="Team dry-run plan JSON path",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default="out/team-dry-run",
+        help="Repo-relative output directory for dry-run artifacts",
     )
     parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
@@ -1051,6 +1069,12 @@ def main() -> None:
     )
     _add_worktree_lane_receipt_args(worktree_lane_receipt_parser)
 
+    team_dry_run_parser = sub.add_parser(
+        "team-dry-run",
+        help="Plan Team Ledger lanes without launching workers",
+    )
+    _add_team_dry_run_args(team_dry_run_parser)
+
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
         "agent-fabric-claim-gate",
@@ -1143,6 +1167,8 @@ def main() -> None:
             agent_fabric_team_ledger.run_merge_receipt(args)
         elif args.command == "worktree-lane-receipt":
             agent_fabric_team_ledger.run_worktree_receipt(args)
+        elif args.command == "team-dry-run":
+            team_dry_run.run(args)
         elif args.command in ("evidence-run", "run"):
             evidence_run.run(args)
         elif args.command in ("evidence-next", "next"):

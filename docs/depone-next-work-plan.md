@@ -1,6 +1,6 @@
 # Depone Next Work Plan
 
-Status: post-Team-Ledger planning note
+Status: post-worktree-lane-receipt planning note
 Date: 2026-06-30
 Base: `origin/main` at `89948b7` (`Add Team Ledger merge receipt producer`)
 
@@ -50,7 +50,8 @@ must stop.
 
 ### Weak Or Missing Layers
 
-- Depone does not yet launch and manage a durable multi-agent team by itself.
+- Depone can produce a planning-only native team dry-run artifact, but does not
+  yet launch and manage a durable multi-agent team by itself.
 - Depone does not yet create per-lane worktrees, assign tasks, run workers, and
   collect lane evidence end-to-end.
 - Depone does not yet own a cloud runner backend or remote workspace lifecycle.
@@ -138,14 +139,14 @@ Acceptance evidence:
 - CLI self-test;
 - changed-tier contract and DWM doctor.
 
-### Slice 3: Minimal `depone team run --dry-run`
+### Slice 3: Minimal `depone team-dry-run`
 
 Goal: convert a leader objective and lane specs into planned local worktree lane
 receipts without launching workers yet.
 
 Small implementation shape:
 
-- accept a small team plan JSON;
+- accept a small team plan JSON through `python3 -m depone team-dry-run`;
 - allocate deterministic lane ids and planned worktree paths;
 - emit a Team Ledger skeleton with blocked lanes until evidence exists;
 - write exact next commands for an operator or external team runtime.
@@ -203,10 +204,10 @@ Acceptance evidence:
 
 ## Recommended Immediate Next Step
 
-Implement Slice 1: Team Ledger PR artifact checks.
+Implement Slice 3: Minimal `depone team-dry-run`.
 
-This is the best next step because it connects the new Team Ledger fan-in model
-to the actual way cloud/team agents produce useful work: PRs and checks. It is
-smaller and less risky than building a Depone-native scheduler, and it directly
-reduces the current gap between Depone's evidence layer and cloud-first coding
-agent workflows.
+This is the best next step now that PR artifacts and local worktree receipts
+exist. It creates a native Depone planning surface without launching workers,
+mutating worktrees, or claiming runtime evidence. The next slice after this
+should either make those planned lanes launchable locally, or add observed cloud
+lane artifacts before Depone owns cloud execution.

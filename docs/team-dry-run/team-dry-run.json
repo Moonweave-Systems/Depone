@@ -1,0 +1,214 @@
+{
+  "base_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+  "boundary": {
+    "executes_commands": false,
+    "launches_agents": false,
+    "mutates_worktree": false,
+    "raises_assurance": false
+  },
+  "kind": "depone-team-dry-run",
+  "lanes": [
+    {
+      "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
+      "evidence_dir": "lane-1",
+      "lane_id": "lane-1",
+      "objective": "Implement the bounded team-dry-run CLI and planner",
+      "planned_worktree": "docs/team-dry-run/worktrees/lane-1"
+    },
+    {
+      "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
+      "evidence_dir": "docs-artifacts",
+      "lane_id": "docs-artifacts",
+      "objective": "Document the dry-run contract and regenerate committed artifacts",
+      "planned_worktree": "worktrees/docs-artifacts"
+    }
+  ],
+  "leader_objective": "Prepare a planning-only Depone native team dry-run without launching workers",
+  "next_commands": [
+    {
+      "commands": [
+        "git worktree add docs/team-dry-run/worktrees/lane-1 b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+        "python3 -m depone worktree-lane-receipt --worktree docs/team-dry-run/worktrees/lane-1 --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir lane-1 --out docs/team-dry-run/lane-1/worktree-receipt.json --json"
+      ],
+      "lane_id": "lane-1"
+    },
+    {
+      "commands": [
+        "git worktree add worktrees/docs-artifacts b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+        "python3 -m depone worktree-lane-receipt --worktree worktrees/docs-artifacts --base-commit b0416e69c6ac7f155db66af8cbff3edacd4350d3 --evidence-dir docs-artifacts --out docs/team-dry-run/docs-artifacts/worktree-receipt.json --json"
+      ],
+      "lane_id": "docs-artifacts"
+    }
+  ],
+  "out_dir": "docs/team-dry-run",
+  "schema_version": "0.1",
+  "team_ledger": {
+    "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+    "kind": "depone-team-ledger",
+    "lanes": [
+      {
+        "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
+        "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+        "env_kind": "local",
+        "evidence_dir": "lane-1",
+        "lane_id": "lane-1",
+        "objective": "Implement the bounded team-dry-run CLI and planner",
+        "runner_adapter_kind": "codex",
+        "start_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+        "team_adapter_kind": "depone-native",
+        "touched_files": [
+          "depone/agent_fabric/team_dry_run.py",
+          "depone/cli/team_dry_run.py",
+          "depone/__main__.py",
+          "tests/test_agent_fabric_team_dry_run.py"
+        ],
+        "verification_artifacts": [],
+        "verification_state": "blocked",
+        "worktree_receipt": "lane-1/worktree-receipt.json"
+      },
+      {
+        "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
+        "end_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+        "env_kind": "local",
+        "evidence_dir": "docs-artifacts",
+        "lane_id": "docs-artifacts",
+        "objective": "Document the dry-run contract and regenerate committed artifacts",
+        "runner_adapter_kind": "codex",
+        "start_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+        "team_adapter_kind": "depone-native",
+        "touched_files": [
+          "docs/command-reference.md",
+          "docs/depone-cloud-team-control.md",
+          "docs/team-dry-run/team-plan.json"
+        ],
+        "verification_artifacts": [],
+        "verification_state": "blocked",
+        "worktree_receipt": "docs-artifacts/worktree-receipt.json"
+      }
+    ],
+    "leader_id": "codex-leader",
+    "leader_objective": "Prepare a planning-only Depone native team dry-run without launching workers",
+    "schema_version": "0.1",
+    "start_commit": "b0416e69c6ac7f155db66af8cbff3edacd4350d3",
+    "stop_rule": "dry-run only; fan-in remains blocked until lane evidence exists"
+  },
+  "team_ledger_verdict": {
+    "blocked_lane_count": 2,
+    "boundary": {
+      "approves_merge": false,
+      "calls_live_models": false,
+      "executes_commands": false,
+      "inspects_cloud_runtime": false,
+      "launches_agents": false,
+      "raises_assurance": false
+    },
+    "decision": "blocked-explicit",
+    "errors": [],
+    "kind": "depone-team-ledger-verdict",
+    "lane_count": 2,
+    "lane_results": [
+      {
+        "decision": "blocked",
+        "env_kind": "local",
+        "errors": [],
+        "evidence_dir": "lane-1",
+        "evidence_dir_exists": false,
+        "evidence_next": {
+          "blocking_reason_count": null,
+          "decision": null,
+          "path": null
+        },
+        "evidence_next_verdict": null,
+        "lane_id": "lane-1",
+        "pr_artifact": {
+          "base_sha": null,
+          "check_status": null,
+          "failed_count": null,
+          "head_sha": null,
+          "merge_state_status": null,
+          "path": null,
+          "pending_count": null,
+          "pr_url": null,
+          "state": null
+        },
+        "runner_adapter_kind": "codex",
+        "team_adapter_kind": "depone-native",
+        "touched_file_count": 4,
+        "touched_files": [
+          "depone/__main__.py",
+          "depone/agent_fabric/team_dry_run.py",
+          "depone/cli/team_dry_run.py",
+          "tests/test_agent_fabric_team_dry_run.py"
+        ],
+        "verification_artifact_count": 0,
+        "verification_state": "blocked",
+        "worktree_receipt": {
+          "base_commit": null,
+          "branch": null,
+          "changed_files": [],
+          "dirty": null,
+          "dirty_file_count": null,
+          "head_commit": null,
+          "path": "lane-1/worktree-receipt.json"
+        }
+      },
+      {
+        "decision": "blocked",
+        "env_kind": "local",
+        "errors": [],
+        "evidence_dir": "docs-artifacts",
+        "evidence_dir_exists": false,
+        "evidence_next": {
+          "blocking_reason_count": null,
+          "decision": null,
+          "path": null
+        },
+        "evidence_next_verdict": null,
+        "lane_id": "docs-artifacts",
+        "pr_artifact": {
+          "base_sha": null,
+          "check_status": null,
+          "failed_count": null,
+          "head_sha": null,
+          "merge_state_status": null,
+          "path": null,
+          "pending_count": null,
+          "pr_url": null,
+          "state": null
+        },
+        "runner_adapter_kind": "codex",
+        "team_adapter_kind": "depone-native",
+        "touched_file_count": 3,
+        "touched_files": [
+          "docs/command-reference.md",
+          "docs/depone-cloud-team-control.md",
+          "docs/team-dry-run/team-plan.json"
+        ],
+        "verification_artifact_count": 0,
+        "verification_state": "blocked",
+        "worktree_receipt": {
+          "base_commit": null,
+          "branch": null,
+          "changed_files": [],
+          "dirty": null,
+          "dirty_file_count": null,
+          "head_commit": null,
+          "path": "docs-artifacts/worktree-receipt.json"
+        }
+      }
+    ],
+    "leader_objective": "Prepare a planning-only Depone native team dry-run without launching workers",
+    "merge_receipt": {
+      "decision": null,
+      "overlap_count": 0,
+      "path": null,
+      "required": false
+    },
+    "overlapping_touched_files": [],
+    "passed_lane_count": 0,
+    "schema_version": "0.1",
+    "source_hashes": {
+      "team_ledger": "f98ee0049f9bfb8ce882e12d6830057d7aae9813e8e6baed463669b2ea252791"
+    }
+  }
+}

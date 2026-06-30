@@ -22,6 +22,7 @@ from depone.cli import (
     agent_fabric_smoke,
     agent_fabric_verify_seal,
     agent_fabric_verify_signature,
+    advance,
     demo,
     design,
     doctor,
@@ -361,6 +362,20 @@ def _add_evidence_next_args(parser: argparse.ArgumentParser) -> None:
         "--self-test", action="store_true", help="Run self-test and exit"
     )
     _add_json_arg(parser)
+
+
+def _add_advance_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--evidence-dir",
+        default="",
+        help="Previous evidence-run artifact directory to re-validate before one continuation",
+    )
+    parser.add_argument(
+        "--advance-out",
+        default="advance-decision.json",
+        help="Machine-readable advance decision artifact path",
+    )
+    _add_evidence_run_args(parser)
 
 
 def main() -> None:
@@ -896,6 +911,13 @@ def main() -> None:
     )
     _add_evidence_next_args(next_parser)
 
+    # advance
+    advance_parser = sub.add_parser(
+        "advance",
+        help="Gate on evidence-next, then run exactly one evidence-run continuation",
+    )
+    _add_advance_args(advance_parser)
+
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
         "agent-fabric-claim-gate",
@@ -986,6 +1008,8 @@ def main() -> None:
             evidence_run.run(args)
         elif args.command in ("evidence-next", "next"):
             evidence_next.run(args)
+        elif args.command == "advance":
+            advance.run(args)
         elif args.command == "agent-fabric-claim-gate":
             agent_fabric_claim_gate.run(args)
         elif args.command == "demo":

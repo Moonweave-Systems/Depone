@@ -87,6 +87,8 @@ flowchart LR
 | `depone evidence-chain` | Verify an ordered append-only capture manifest chain |
 | `depone evidence-run` | Run the common observe -> substrate -> ingest -> verify loop |
 | `depone run` | Native-runner convenience alias for `evidence-run`; not a scheduler |
+| `depone next` | Re-validate an evidence-run directory and recommend the next safe action without executing it |
+| `depone advance` | Re-validate with `next`, then run exactly one existing evidence-run continuation when unblocked |
 | `depone mcp` | Serve the same evidence/verify capabilities over MCP stdio |
 | `depone demo` | Run a complete design -> compile -> verify cycle |
 
@@ -120,7 +122,10 @@ sequenceDiagram
 `design` makes safe workflow contracts, `compile` emits target artifacts, and
 `verify` checks execution evidence against the plan. `run` is the evidence-native
 entrypoint for the existing local evidence loop: a compatibility alias over
-`evidence-run`, not a general-purpose agent-team scheduler.
+`evidence-run`, not a general-purpose agent-team scheduler. `next` is the
+non-executing revalidation gate. `advance` is the explicit one-step operator
+gate: it refuses unless `next` returns `continue` with zero blockers, then runs
+exactly one `evidence-run` continuation and writes `advance-decision.json`.
 
 ## Safety Model
 
@@ -131,17 +136,8 @@ production deployment, and history rewrite require explicit gates.
 
 ## Roadmap
 
-```mermaid
-flowchart TD
-    A["Agent-safe CLI"] --> B["Evidence substrate"]
-    B --> C["depone run / evidence-run wrapper"]
-    C --> D["Session receipt adapters"]
-    D --> E["Operator signing policy"]
-    E --> F["A2 isolation path"]
-    C --> C1["Current: A1 local observed"]
-    D --> D1["Next: Codex / Claude receipts"]
-    E --> E1["Later: signed trust policy"]
-```
+Depone is moving from agent-safe CLI and evidence substrate toward stronger
+session receipt adapters, operator signing policy, and A2 isolation paths.
 
 ## What Is Still Honest
 Depone claims **no direct-agent superiority** - it is a design + verification layer, not an agent runtime.
@@ -171,8 +167,8 @@ Legacy diagnostics: `python scripts/dwm_demo.py run --out out/demo/quickstart`, 
 ## Quality
 
 Core CLI commands include built-in `--self-test`, including `verify`,
-`observe`, `evidence-substrate`, `evidence-ingest`, `run`/`evidence-run`, and
-`demo`.
+`observe`, `evidence-substrate`, `evidence-ingest`, `run`/`evidence-run`,
+`next`/`evidence-next`, `advance`, and `demo`.
 
 ```bash
 python scripts/check_contract.py --tier changed
@@ -186,10 +182,8 @@ DWM Core keeps agentic work inspectable, reproducible, resumable, and honest
 about what has actually been executed.
 ## Documentation
 - [`docs/agent-tool-contract.md`](docs/agent-tool-contract.md): agent-facing CLI and evidence contract.
-- [`docs/command-reference.md`](docs/command-reference.md) and [`docs/spec.md`](docs/spec.md): command reference and product spec.
-- [`docs/release-history.md`](docs/release-history.md): versioned implementation history.
-- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md): plan schema v0.5 reference.
-- [`SKILL.md`](SKILL.md): installed agent skill for Codex environments.
+- [`docs/command-reference.md`](docs/command-reference.md), [`docs/spec.md`](docs/spec.md), and [`docs/release-history.md`](docs/release-history.md): command, product, and release references.
+- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md): plan schema and installed Codex skill.
 
 ## License
 

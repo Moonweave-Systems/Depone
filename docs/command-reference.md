@@ -26,6 +26,7 @@ python -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run -
 python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
 python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
 python -m depone team-shell-lane-launch --allowlist docs/team-shell-lane-launch/allowlist.json --command-id fixture-echo --cwd . --out docs/team-shell-lane-launch/receipt.json --transcript docs/team-shell-lane-launch/transcript.json --agent-role-id worker --json
+python -m depone team-pr-artifact --input saved-pr.json --expected-head-sha <head_sha> --out docs/team-pr-artifact/pr-artifact.json --json
 python -m depone codex-local-capability --repo . --codex-binary definitely-missing-codex-for-committed-fixture --instruction-file AGENTS.md --instruction-file CLAUDE.md --out docs/codex-local-capability/capability.json --json
 python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
 python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
@@ -86,6 +87,14 @@ path/hash plus an `agent_contract_hash` bound to `packaging/depone-agent-operati
 it does not accept arbitrary shell strings, concatenate shell commands, launch
 Codex/Claude/OpenCode, call live models, schedule teams, or raise assurance to
 A2.
+
+`team-pr-artifact` converts saved GitHub PR JSON, or an explicitly selected live
+`gh` PR query, into a fail-closed machine artifact for Team Ledger fan-in. It
+works offline from `--input` saved JSON, binds the expected head SHA, blocks on
+malformed input, failed or pending checks, stale captures, unsafe URLs, bad PR
+state, and mergeability problems, and writes `pr-artifact.json` for downstream
+validation. It is an observation/validation adapter only: it does not launch
+agents, call live models, merge PRs, or raise assurance.
 
 `codex-local-capability` detects whether a local Codex adapter is available for
 future lane launch work and writes a capability receipt. It records binary
@@ -166,6 +175,7 @@ python -m depone agent-fabric-dogfood-evidence --capture-manifest depone/fixture
 python -m depone agent-fabric-dogfood-evidence --capture-manifest depone/fixtures/agent_fabric/capture_manifest_shell.json --capture-manifest depone/fixtures/agent_fabric/capture_manifest_docs_source_only.json --out controlled-capture-corpus.json
 python -m depone agent-fabric-paired-evidence --adapter-smoke agent-fabric-adapter-smoke.json --dogfood-evidence dogfood-evidence.json --out paired-evidence.json
 python -m depone agent-fabric-claim-gate --adapter-smoke agent-fabric-adapter-smoke.json --paired-evidence paired-evidence.json --out agent-fabric-claim-gate.json
+python -m depone team-pr-artifact --self-test
 
 python scripts/dwm.py plan "<objective>" --out out/v21/<run_id>
 python scripts/dwm.py run "<objective>" --out out/v21/<run_id>

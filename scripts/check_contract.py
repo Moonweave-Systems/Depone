@@ -2944,6 +2944,94 @@ def require_team_shell_lane_launch_docs_contract() -> None:
         raise SystemExit("team-shell-lane-launch receipt agent_contract facts mismatch")
 
 
+def require_team_pr_artifact_docs_contract() -> None:
+    readme_path = ROOT / "docs" / "team-pr-artifact" / "README.md"
+    artifact_path = ROOT / "docs" / "team-pr-artifact" / "pr-artifact.json"
+    module_path = ROOT / "depone" / "agent_fabric" / "team_pr_artifact.py"
+    cli_path = ROOT / "depone" / "cli" / "team_pr_artifact.py"
+    command_available = module_path.exists() and cli_path.exists()
+    if not command_available:
+        if artifact_path.exists():
+            raise SystemExit(
+                "docs/team-pr-artifact/pr-artifact.json must not be committed before "
+                "depone.agent_fabric.team_pr_artifact and depone.cli.team_pr_artifact exist"
+            )
+        return
+
+    if not readme_path.exists():
+        raise SystemExit("docs/team-pr-artifact/README.md is required")
+    if not artifact_path.exists():
+        raise SystemExit("docs/team-pr-artifact/pr-artifact.json is required")
+
+    require_terms(
+        "docs/team-pr-artifact/README.md",
+        [
+            "python3 -m depone team-pr-artifact",
+            "pr-artifact.json",
+            "saved json",
+            "head sha",
+            "failed",
+            "pending",
+            "stale",
+            "mergeability",
+            "does not launch agents",
+            "does not call live models",
+            "does not raise assurance",
+            "team ledger",
+        ],
+    )
+
+    run_contract_command([sys.executable, "-m", "depone", "team-pr-artifact", "--self-test"])
+
+    import importlib
+
+    module = importlib.import_module("depone.agent_fabric.team_pr_artifact")
+    validator = None
+    for name in ("validate_team_pr_artifact", "validate_pr_artifact"):
+        candidate = getattr(module, name, None)
+        if callable(candidate):
+            validator = candidate
+            break
+    if validator is None:
+        raise SystemExit(
+            "depone.agent_fabric.team_pr_artifact must expose "
+            "validate_team_pr_artifact or validate_pr_artifact"
+        )
+
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    errors = validator(artifact)
+    if errors:
+        raise SystemExit(f"team-pr-artifact fixture invalid: {errors}")
+
+    if artifact.get("kind") != "depone-team-ledger-pr-artifact":
+        raise SystemExit("team-pr-artifact fixture kind mismatch")
+    if artifact.get("schema_version") != "0.1":
+        raise SystemExit("team-pr-artifact fixture schema_version mismatch")
+    if artifact.get("provider") != "github":
+        raise SystemExit("team-pr-artifact fixture provider must be github")
+    if artifact.get("stale") is not False:
+        raise SystemExit("team-pr-artifact fixture must not be stale")
+    check_summary = artifact.get("check_summary")
+    if not isinstance(check_summary, dict) or check_summary.get("status") != "pass":
+        raise SystemExit("team-pr-artifact fixture check_summary.status must be pass")
+    if check_summary.get("failed_count") != 0 or check_summary.get("pending_count") != 0:
+        raise SystemExit("team-pr-artifact fixture checks must have zero failed and pending")
+    for key in ("base_sha", "head_sha"):
+        value = artifact.get(key)
+        if (
+            not isinstance(value, str)
+            or len(value) != 40
+            or any(character not in "0123456789abcdef" for character in value.lower())
+        ):
+            raise SystemExit(f"team-pr-artifact fixture {key} must be a 40-character hex SHA")
+    boundary = artifact.get("boundary")
+    if not isinstance(boundary, dict):
+        raise SystemExit("team-pr-artifact boundary must be an object")
+    for key in ("launches_agents", "calls_live_models", "raises_assurance"):
+        if boundary.get(key) is not False:
+            raise SystemExit(f"team-pr-artifact boundary.{key} must be false")
+
+
 def require_codex_local_capability_docs_contract() -> None:
     readme_path = ROOT / "docs" / "codex-local-capability" / "README.md"
     capability_path = ROOT / "docs" / "codex-local-capability" / "capability.json"
@@ -3041,6 +3129,7 @@ def contract_steps_for_tier(tier: str) -> list[tuple[str, object, int]]:
             ("team-launch-preflight docs contract", require_team_launch_preflight_docs_contract, 300),
             ("team-worktree-prep docs contract", require_team_worktree_prep_docs_contract, 300),
             ("team-shell-lane-launch docs contract", require_team_shell_lane_launch_docs_contract, 300),
+            ("team-pr-artifact docs contract", require_team_pr_artifact_docs_contract, 300),
             ("codex-local-capability docs contract", require_codex_local_capability_docs_contract, 300),
         ]
     if tier != "full":
@@ -3133,6 +3222,7 @@ Overclaims execution: no
         "team-launch-preflight docs contract",
         "team-worktree-prep docs contract",
         "team-shell-lane-launch docs contract",
+        "team-pr-artifact docs contract",
         "codex-local-capability docs contract",
     ]:
         raise SystemExit("self-test failed: changed tier steps changed")

@@ -20,6 +20,7 @@ from depone.cli import (
     agent_fabric_seal,
     agent_fabric_sign,
     agent_fabric_smoke,
+    agent_fabric_team_ledger,
     agent_fabric_verify_seal,
     agent_fabric_verify_signature,
     advance,
@@ -110,6 +111,23 @@ def _add_observe_args(parser: argparse.ArgumentParser) -> None:
         nargs=argparse.REMAINDER,
         help="Observer-chosen verification command to run after --",
     )
+
+
+def _add_team_ledger_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--ledger",
+        default="",
+        help="Input Depone Team Ledger v0 JSON",
+    )
+    parser.add_argument(
+        "--out",
+        default="team-ledger-verdict.json",
+        help="Output path for Team Ledger verdict JSON",
+    )
+    parser.add_argument(
+        "--self-test", action="store_true", help="Run self-test and exit"
+    )
+    _add_json_arg(parser)
 
 
 def _add_evidence_substrate_args(parser: argparse.ArgumentParser) -> None:
@@ -930,6 +948,21 @@ def main() -> None:
     )
     _add_advance_args(advance_parser)
 
+
+    # agent-fabric-team-ledger
+    team_ledger_parser = sub.add_parser(
+        "agent-fabric-team-ledger",
+        help="Validate a Depone Team Ledger v0 fan-in record",
+    )
+    _add_team_ledger_args(team_ledger_parser)
+
+    # team-ledger (agent-facing alias)
+    team_ledger_alias_parser = sub.add_parser(
+        "team-ledger",
+        help="Validate a Depone Team Ledger v0 fan-in record",
+    )
+    _add_team_ledger_args(team_ledger_alias_parser)
+
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
         "agent-fabric-claim-gate",
@@ -1022,6 +1055,9 @@ def main() -> None:
             evidence_next.run(args)
         elif args.command == "advance":
             advance.run(args)
+
+        elif args.command in ("agent-fabric-team-ledger", "team-ledger"):
+            agent_fabric_team_ledger.run(args)
         elif args.command == "agent-fabric-claim-gate":
             agent_fabric_claim_gate.run(args)
         elif args.command == "demo":

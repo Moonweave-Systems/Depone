@@ -1,0 +1,39 @@
+{
+  "boundary": {
+    "raises_assurance": false,
+    "trusts_external_signature": false
+  },
+  "decision": "pass",
+  "otel_errors": [],
+  "predicate_recognized": true,
+  "predicate_type": "https://depone.dev/attestations/evidence/v1",
+  "reasons": [],
+  "signing_status": "unsigned-content-addressed",
+  "subject_results": [
+    {
+      "actual": "5cb2e350f4b644858543191c62b9f0b612dcc0c29620d6d4ef450c0cfd10188c",
+      "expected": "5cb2e350f4b644858543191c62b9f0b612dcc0c29620d6d4ef450c0cfd10188c",
+      "name": "depone-capture-manifest",
+      "status": "verified"
+    },
+    {
+      "actual": "009327cf064732c631c6a3144fb4b79d71e48ca0ccd37e1c9099bfc18af95c29",
+      "expected": "009327cf064732c631c6a3144fb4b79d71e48ca0ccd37e1c9099bfc18af95c29",
+      "name": "source_fixture",
+      "status": "verified"
+    },
+    {
+      "actual": "60a58662e65f153d1ad820cc5c430a41b871fb79c97205d12b39b5df59a7eab5",
+      "expected": "60a58662e65f153d1ad820cc5c430a41b871fb79c97205d12b39b5df59a7eab5",
+      "name": "observer_capture",
+      "status": "verified"
+    },
+    {
+      "actual": "8a80303e6c6474b079ba1bdd04643c86df6fc35a04d036e10027457fce132ed9",
+      "expected": "8a80303e6c6474b079ba1bdd04643c86df6fc35a04d036e10027457fce132ed9",
+      "name": "runner_receipt",
+      "status": "verified"
+    }
+  ],
+  "verified_subject_count": 4
+}

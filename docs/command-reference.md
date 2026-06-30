@@ -38,6 +38,11 @@ python -m depone evidence-run --runner-sandbox ./runner-worktree --source-fixtur
 kept behavior-compatible with `evidence-run` and does not add a team scheduler,
 agent execution engine, or higher assurance claim by itself.
 
+When the observer launches a uid runner through `--runner-user`, the output
+directory also contains `runner-receipt.json`. The evidence bundle binds that
+receipt as a rehashable statement subject and uses it to label the OTel
+GenAI-shaped root span.
+
 Exit codes: `0` pass/success, `1` fail/blocked/refuted, `2`
 inconclusive/insufficient evidence, `3` usage/config/input error, and `4`
 internal/runtime error.

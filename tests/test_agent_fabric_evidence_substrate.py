@@ -97,6 +97,73 @@ class AgentFabricEvidenceSubstrateTests(unittest.TestCase):
             {"verified"},
         )
 
+    def test_runner_receipt_is_rehashed_statement_subject_when_supplied(self) -> None:
+        capture = self._capture()
+        runner_receipt = {
+            "kind": "agent-fabric-runner-receipt",
+            "schema_version": "1.0",
+            "runner_kind": "manual",
+            "arm": "governed",
+            "task_id": "evidence-run",
+            "worktree": "/tmp/runner",
+            "invocation": ["sudo", "-u", "deponerun", "bash", "-lc", "true"],
+            "transcript_path": "/tmp/observer/observer-capture.json",
+            "exit_code": 0,
+            "touched_files": ["sample.txt"],
+            "started_at": "2026-06-29T00:00:00Z",
+            "ended_at": "2026-06-29T00:00:00Z",
+            "human_intervened": False,
+        }
+        bundle = build_evidence_bundle(capture, runner_receipt=runner_receipt)
+
+        subjects = {
+            item["name"]: item["digest"]["sha256"]
+            for item in bundle["statement"]["subject"]
+        }
+        self.assertEqual(subjects["runner_receipt"], canonical_hash(runner_receipt))
+        self.assertEqual(
+            validate_statement_for_capture(
+                bundle["statement"],
+                capture,
+                runner_receipt=runner_receipt,
+            ),
+            [],
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest_path = root / "capture-manifest.json"
+            observer_path = root / "observer-capture.json"
+            runner_path = root / "runner-receipt.json"
+            manifest_path.write_text(json.dumps(capture), encoding="utf-8")
+            observer_path.write_text(
+                json.dumps(capture["observer_capture"]), encoding="utf-8"
+            )
+            runner_path.write_text(json.dumps(runner_receipt), encoding="utf-8")
+
+            verdict = ingest_external_evidence(
+                bundle["dsse_envelope"],
+                {
+                    "source_fixture": "depone/fixtures/agent_fabric/reference_adapter_shell.json",
+                    "depone-capture-manifest": str(manifest_path),
+                    "observer_capture": str(observer_path),
+                    "runner_receipt": str(runner_path),
+                },
+                artifact_digest_modes={
+                    "source_fixture": DIGEST_MODE_CANONICAL_JSON,
+                    "depone-capture-manifest": DIGEST_MODE_CANONICAL_JSON,
+                    "observer_capture": DIGEST_MODE_CANONICAL_JSON,
+                    "runner_receipt": DIGEST_MODE_CANONICAL_JSON,
+                },
+                otel_spans=bundle["otel_spans"],
+            )
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(
+            {result["status"] for result in verdict["subject_results"]},
+            {"verified"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

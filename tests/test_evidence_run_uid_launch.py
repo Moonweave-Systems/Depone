@@ -50,11 +50,15 @@ class EvidenceRunUidLaunchTests(unittest.TestCase):
 
         with patch("depone.cli.evidence_run.shutil.which", return_value="sudo"):
             with patch("depone.cli.evidence_run.subprocess.run", side_effect=fake_run):
-                receipt = _launch_runner_user(
-                    Path("/srv/depone/sandbox"),
-                    user="deponerun",
-                    shell_command="printf runner-ok",
-                )
+                with patch(
+                    "depone.cli.evidence_run.now_utc",
+                    side_effect=["2026-06-29T00:00:01Z", "2026-06-29T00:00:02Z"],
+                ):
+                    receipt = _launch_runner_user(
+                        Path("/srv/depone/sandbox"),
+                        user="deponerun",
+                        shell_command="printf runner-ok",
+                    )
 
         self.assertEqual(receipt["user"], "deponerun")
         self.assertEqual(receipt["uid"], 1001)
@@ -63,6 +67,8 @@ class EvidenceRunUidLaunchTests(unittest.TestCase):
         self.assertEqual(receipt["cwd"], "/srv/depone/sandbox")
         self.assertEqual(receipt["exit_code"], 0)
         self.assertEqual(receipt["stdout"], "runner-ok\n")
+        self.assertEqual(receipt["started_at"], "2026-06-29T00:00:01Z")
+        self.assertEqual(receipt["ended_at"], "2026-06-29T00:00:02Z")
 
     def test_launch_runner_user_fails_closed_when_command_fails(self) -> None:
         def fake_run(command: list[str], **kwargs: object) -> object:
@@ -116,6 +122,8 @@ class EvidenceRunUidLaunchTests(unittest.TestCase):
                 "stdout": "",
                 "stderr": "",
                 "invocation": ["sudo", "-u", "deponerun", "bash", "-lc", "printf after"],
+                "started_at": "2026-06-29T00:00:01Z",
+                "ended_at": "2026-06-29T00:00:02Z",
             }
             args = argparse.Namespace(
                 runner_sandbox=str(runner),
@@ -153,6 +161,24 @@ class EvidenceRunUidLaunchTests(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
+            runner_receipt = json.loads(
+                (root / "evidence-run" / "runner-receipt.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            bundle = json.loads(
+                (root / "evidence-run" / "evidence-bundle.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            summary = json.loads(
+                (root / "evidence-run" / "evidence-run-summary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            transcript = json.loads(
+                Path(runner_receipt["transcript_path"]).read_text(encoding="utf-8")
+            )
 
         self.assertEqual(payload["boundary"]["observer_assurance"], "A2-isolated-observed")
         self.assertTrue(payload["boundary"]["privilege_isolated"])
@@ -166,6 +192,33 @@ class EvidenceRunUidLaunchTests(unittest.TestCase):
             manifest["observer_capture"]["runner_uid_launch"],
             launch_receipt,
         )
+        self.assertEqual(runner_receipt["kind"], "agent-fabric-runner-receipt")
+        self.assertEqual(runner_receipt["runner_kind"], "manual")
+        self.assertEqual(runner_receipt["arm"], "governed")
+        self.assertEqual(runner_receipt["task_id"], "evidence-run")
+        self.assertEqual(runner_receipt["worktree"], str(runner))
+        self.assertEqual(runner_receipt["invocation"], launch_receipt["invocation"])
+        self.assertEqual(runner_receipt["exit_code"], 0)
+        self.assertEqual(runner_receipt["touched_files"], ["sample.txt"])
+        self.assertEqual(runner_receipt["started_at"], launch_receipt["started_at"])
+        self.assertEqual(runner_receipt["ended_at"], launch_receipt["ended_at"])
+        self.assertTrue(runner_receipt["transcript_path"].endswith("runner-transcript.json"))
+        self.assertNotIn("observer-capture.json", runner_receipt["transcript_path"])
+        self.assertEqual(transcript["stdout"], "")
+        self.assertEqual(transcript["stderr"], "")
+        subjects = {
+            item["name"]: item["digest"]["sha256"]
+            for item in bundle["statement"]["subject"]
+        }
+        self.assertIn("runner_receipt", subjects)
+        self.assertEqual(
+            bundle["otel_spans"][0]["attributes"]["gen_ai.agent.name"],
+            "manual",
+        )
+        self.assertEqual(bundle["otel_spans"][0]["attributes"]["depone.arm"], "governed")
+        self.assertEqual(summary["runner_receipt"]["path"], payload["runner_receipt"]["path"])
+        self.assertEqual(summary["runner_receipt"]["error_count"], 0)
+        self.assertEqual(summary["evidence_ingest"]["decision"], "pass")
 
 
 if __name__ == "__main__":

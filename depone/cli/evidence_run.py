@@ -36,6 +36,9 @@ from depone.agent_fabric.observe import (
     write_observer_capture,
 )
 from depone.agent_fabric.paired_run import PairedRunError
+from depone.agent_fabric.paired_run import build_runner_receipt
+from depone.agent_fabric.paired_run import now_utc
+from depone.agent_fabric.paired_run import validate_runner_receipt
 from depone.agent_fabric.sign import (
     DsseSigningError,
     sign_evidence_bundle,
@@ -232,9 +235,25 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
     capture_manifest_path = out_dir / "capture-manifest.json"
     _write_json(capture_manifest_path, capture_manifest)
 
-    bundle = build_evidence_bundle(capture_manifest)
+    runner_receipt, runner_receipt_errors, runner_receipt_path = _maybe_write_runner_receipt(
+        out_dir=out_dir,
+        runner_sandbox=runner_sandbox,
+        capture=capture,
+        launched_uid_runner=launched_uid_runner,
+    )
+    if runner_receipt_errors:
+        raise ValueError(
+            "runner receipt invalid: " + "; ".join(runner_receipt_errors)
+        )
+
+    bundle = build_evidence_bundle(
+        capture_manifest,
+        runner_receipt=runner_receipt,
+    )
     substrate_errors = validate_statement_for_capture(
-        bundle["statement"], capture_manifest
+        bundle["statement"],
+        capture_manifest,
+        runner_receipt=runner_receipt,
     )
     bundle_path = out_dir / "evidence-bundle.json"
     _write_json(bundle_path, bundle)
@@ -246,18 +265,24 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
         public_key_path=sign_public_key,
     )
 
+    artifact_paths = {
+        "depone-capture-manifest": str(capture_manifest_path),
+        "source_fixture": str(source_fixture_path),
+        "observer_capture": str(observer_path),
+    }
+    artifact_digest_modes = {
+        "depone-capture-manifest": DIGEST_MODE_CANONICAL_JSON,
+        "source_fixture": DIGEST_MODE_CANONICAL_JSON,
+        "observer_capture": DIGEST_MODE_CANONICAL_JSON,
+    }
+    if runner_receipt_path is not None:
+        artifact_paths["runner_receipt"] = str(runner_receipt_path)
+        artifact_digest_modes["runner_receipt"] = DIGEST_MODE_CANONICAL_JSON
+
     ingest_verdict = ingest_external_evidence(
         bundle["dsse_envelope"],
-        {
-            "depone-capture-manifest": str(capture_manifest_path),
-            "source_fixture": str(source_fixture_path),
-            "observer_capture": str(observer_path),
-        },
-        artifact_digest_modes={
-            "depone-capture-manifest": DIGEST_MODE_CANONICAL_JSON,
-            "source_fixture": DIGEST_MODE_CANONICAL_JSON,
-            "observer_capture": DIGEST_MODE_CANONICAL_JSON,
-        },
+        artifact_paths,
+        artifact_digest_modes=artifact_digest_modes,
         otel_spans=bundle["otel_spans"],
     )
     ingest_path = out_dir / "ingest-verdict.json"
@@ -311,6 +336,13 @@ def run_evidence_loop(args: argparse.Namespace) -> dict[str, Any]:
             "otel_span_count": len(bundle["otel_spans"]),
             "error_count": len(substrate_errors),
             "errors": substrate_errors,
+        },
+        "runner_receipt": {
+            "path": str(runner_receipt_path) if runner_receipt_path is not None else None,
+            "runner_kind": runner_receipt.get("runner_kind") if runner_receipt else None,
+            "arm": runner_receipt.get("arm") if runner_receipt else None,
+            "error_count": len(runner_receipt_errors),
+            "errors": runner_receipt_errors,
         },
         "signed_evidence_bundle": signed_bundle_payload,
         "evidence_ingest": {
@@ -367,6 +399,59 @@ def _run_verify(
         "operator_view_out": str(operator_view_path),
         "phase_count": len(report_dict["phases"]),
     }
+
+
+def _maybe_write_runner_receipt(
+    *,
+    out_dir: Path,
+    runner_sandbox: Path,
+    capture: dict[str, Any],
+    launched_uid_runner: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, list[str], Path | None]:
+    if launched_uid_runner is None:
+        return None, [], None
+
+    invocation = launched_uid_runner.get("invocation")
+    exit_code = launched_uid_runner.get("exit_code", 0)
+    touched_files = capture.get("touched_files", [])
+    started_at = launched_uid_runner.get("started_at")
+    ended_at = launched_uid_runner.get("ended_at")
+    transcript_path = out_dir / "runner-transcript.json"
+    _write_json(
+        transcript_path,
+        {
+            "runtime": launched_uid_runner.get("runtime"),
+            "user": launched_uid_runner.get("user"),
+            "uid": launched_uid_runner.get("uid"),
+            "observed_uid": launched_uid_runner.get("observed_uid"),
+            "command": launched_uid_runner.get("command"),
+            "cwd": launched_uid_runner.get("cwd"),
+            "exit_code": exit_code if isinstance(exit_code, int) else 0,
+            "stdout": launched_uid_runner.get("stdout", ""),
+            "stderr": launched_uid_runner.get("stderr", ""),
+            "started_at": started_at if isinstance(started_at, str) else "",
+            "ended_at": ended_at if isinstance(ended_at, str) else "",
+        },
+    )
+    receipt = build_runner_receipt(
+        runner_kind="manual",
+        arm="governed",
+        task_id="evidence-run",
+        worktree=str(runner_sandbox),
+        invocation=invocation if isinstance(invocation, list) else [],
+        transcript_path=str(transcript_path),
+        exit_code=exit_code if isinstance(exit_code, int) else 0,
+        touched_files=touched_files if isinstance(touched_files, list) else [],
+        started_at=started_at if isinstance(started_at, str) else "",
+        ended_at=ended_at if isinstance(ended_at, str) else "",
+        human_intervened=False,
+    )
+    errors = validate_runner_receipt(receipt)
+    if errors:
+        return receipt, errors, None
+    path = out_dir / "runner-receipt.json"
+    _write_json(path, receipt)
+    return receipt, [], path
 
 
 def _aggregate_decision(decisions: list[str]) -> str:
@@ -521,6 +606,7 @@ def _launch_runner_user(
         "-lc",
         f'set -eu\nprintf "{_RUNNER_UID_MARKER}%s\\n" "$(id -u)"\n{shell_command}',
     ]
+    started_at = now_utc()
     result = subprocess.run(
         command,
         cwd=sandbox,
@@ -530,6 +616,7 @@ def _launch_runner_user(
         capture_output=True,
         check=False,
     )
+    ended_at = now_utc()
     if result.returncode != 0:
         raise ValueError(result.stderr.strip() or result.stdout.strip())
     observed_uid, stdout = _extract_runner_uid_marker(result.stdout)
@@ -549,6 +636,8 @@ def _launch_runner_user(
         "stdout": stdout,
         "stderr": result.stderr,
         "invocation": command,
+        "started_at": started_at,
+        "ended_at": ended_at,
     }
 
 

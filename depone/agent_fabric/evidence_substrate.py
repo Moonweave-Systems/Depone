@@ -46,6 +46,7 @@ def build_intoto_statement_from_capture(
     capture_manifest: dict[str, Any],
     *,
     name: str = "depone-capture-manifest",
+    runner_receipt: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Serialize an existing capture manifest as an in-toto Statement."""
 
@@ -71,6 +72,13 @@ def build_intoto_statement_from_capture(
             {
                 "name": "observer_capture",
                 "digest": {"sha256": observer_hash},
+            }
+        )
+    if isinstance(runner_receipt, dict):
+        subject.append(
+            {
+                "name": "runner_receipt",
+                "digest": {"sha256": canonical_hash(runner_receipt)},
             }
         )
 
@@ -105,6 +113,16 @@ def build_intoto_statement_from_capture(
                 "test_output": observer_capture.get("test_output", {}),
                 "command_receipts": observer_capture.get("command_receipts", []),
             },
+            "runner": (
+                {
+                    "runner_kind": runner_receipt.get("runner_kind"),
+                    "arm": runner_receipt.get("arm"),
+                    "task_id": runner_receipt.get("task_id"),
+                    "receipt_hash": canonical_hash(runner_receipt),
+                }
+                if isinstance(runner_receipt, dict)
+                else None
+            ),
             "boundary": {
                 "raises_assurance": False,
                 "signed": False,
@@ -637,7 +655,10 @@ def build_evidence_bundle(
     *,
     runner_receipt: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    statement = build_intoto_statement_from_capture(capture_manifest)
+    statement = build_intoto_statement_from_capture(
+        capture_manifest,
+        runner_receipt=runner_receipt,
+    )
     return {
         "kind": "depone-evidence-substrate-bundle",
         "schema_version": "1.0",
@@ -660,6 +681,8 @@ def build_evidence_bundle(
 def validate_statement_for_capture(
     statement: dict[str, Any],
     capture_manifest: dict[str, Any],
+    *,
+    runner_receipt: dict[str, Any] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     if statement.get("_type") != INTOTO_STATEMENT_TYPE:
@@ -681,6 +704,8 @@ def validate_statement_for_capture(
     observer_hash = capture_manifest.get("observer_capture_hash")
     if observer_hash:
         expected["observer_capture"] = observer_hash
+    if isinstance(runner_receipt, dict):
+        expected["runner_receipt"] = canonical_hash(runner_receipt)
     for name, digest in expected.items():
         if digests.get(name) != digest:
             errors.append(f"statement subject digest mismatch: {name}")

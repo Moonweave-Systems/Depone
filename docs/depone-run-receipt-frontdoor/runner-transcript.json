@@ -1,0 +1,13 @@
+{
+  "command": "printf \"receipt-after\\n\" > sample.txt",
+  "cwd": "/srv/depone/run-receipt-sandbox",
+  "ended_at": "2026-06-29T23:31:42Z",
+  "exit_code": 0,
+  "observed_uid": 1002,
+  "runtime": "posix-sudo",
+  "started_at": "2026-06-29T23:31:42Z",
+  "stderr": "",
+  "stdout": "",
+  "uid": 1002,
+  "user": "deponerun"
+}

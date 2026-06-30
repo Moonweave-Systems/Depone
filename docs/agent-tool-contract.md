@@ -42,6 +42,11 @@ executes or schedules agent teams. It preserves the same fail-closed evidence
 semantics as `evidence-run`; compatibility callers may continue using
 `python -m depone evidence-run --runner-sandbox ...`.
 
+When `depone run` / `evidence-run` launches a uid runner itself with
+`--runner-user`, it also writes `runner-receipt.json` under the output
+directory. That receipt is rehashed as a DSSE statement subject and reflected in
+the OTel GenAI-shaped spans; it does not raise assurance by itself.
+
 ## Machine Contract
 
 When `--json` is present, stdout is exactly one JSON object. Human-readable logs

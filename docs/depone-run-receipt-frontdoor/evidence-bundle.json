@@ -1,0 +1,132 @@
+{
+  "assurance": "A2-isolated-observed",
+  "boundary": {
+    "approves_public_claim": false,
+    "raises_assurance": false,
+    "signed": false
+  },
+  "dsse_envelope": {
+    "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWxsb3dlZF90b3VjaGVkX2ZpbGVzIjpbInNhbXBsZS50eHQiXSwiYXNzdXJhbmNlIjoiQTItaXNvbGF0ZWQtb2JzZXJ2ZWQiLCJib3VuZGFyeSI6eyJyYWlzZXNfYXNzdXJhbmNlIjpmYWxzZSwic2lnbmVkIjpmYWxzZSwic2lnbmluZ19zdGF0dXMiOiJ1bnNpZ25lZC1jb250ZW50LWFkZHJlc3NlZCJ9LCJkZWNpc2lvbiI6Imlzb2xhdGVkLW9ic2VydmVkIiwib2JzZXJ2ZXIiOnsiY29tbWFuZF9yZWNlaXB0cyI6W3siY29tbWFuZCI6WyJweXRob24zIiwiLWMiLCJmcm9tIHBhdGhsaWIgaW1wb3J0IFBhdGg7IGFzc2VydCBQYXRoKCdzYW1wbGUudHh0JykucmVhZF90ZXh0KCkgPT0gJ3JlY2VpcHQtYWZ0ZXJcXG4nIl0sImN3ZCI6Ii9zcnYvZGVwb25lL3J1bi1yZWNlaXB0LXNhbmRib3giLCJlbmRlZF9hdCI6IjIwMjYtMDYtMjlUMjM6MzE6NDJaIiwiZXhpdF9jb2RlIjowLCJsb2dfcGF0aCI6Ii9ob21lL3VidW50dS9vYnNlcnZlci1vd25lZC9ydW4tcmVjZWlwdC1ldmlkZW5jZS1ydW4vb2JzZXJ2ZXItb3duZWQvdmVyaWZ5LWxvZy5qc29uIiwic3RhcnRlZF9hdCI6IjIwMjYtMDYtMjlUMjM6MzE6NDJaIiwic3RhdHVzIjoicGFzc2VkIn1dLCJvYnNlcnZlZF9ieSI6ImRlcG9uZS1vYnNlcnZlciIsInRlc3Rfb3V0cHV0Ijp7ImNvbW1hbmQiOlsicHl0aG9uMyIsIi1jIiwiZnJvbSBwYXRobGliIGltcG9ydCBQYXRoOyBhc3NlcnQgUGF0aCgnc2FtcGxlLnR4dCcpLnJlYWRfdGV4dCgpID09ICdyZWNlaXB0LWFmdGVyXFxuJyJdLCJwcmVfdmVyaWZpY2F0aW9uX2NoYW5nZWRfZmlsZXMiOlsic2FtcGxlLnR4dCJdLCJzdGF0dXMiOiJwYXNzZWQiLCJzdW1tYXJ5IjoiZXhpdCAwIn0sInRvdWNoZWRfZmlsZXMiOlsic2FtcGxlLnR4dCJdfSwicnVubmVyIjp7ImFybSI6ImdvdmVybmVkIiwicmVjZWlwdF9oYXNoIjoiOGE4MDMwM2U2YzY0NzRiMDc5YmExYmRkMDQ2NDNjODZkZjZmYzM1YTA0ZDAzNmUxMDAyNzQ1N2ZjZTEzMmVkOSIsInJ1bm5lcl9raW5kIjoibWFudWFsIiwidGFza19pZCI6ImV2aWRlbmNlLXJ1biJ9LCJzY2hlbWFfdmVyc2lvbiI6IjEuMCIsInNvdXJjZV9raW5kIjoiYWdlbnQtZmFicmljLWNhcHR1cmUtbWFuaWZlc3QiLCJ2YWxpZGF0aW9uX2Vycm9ycyI6W119LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9kZXBvbmUuZGV2L2F0dGVzdGF0aW9ucy9ldmlkZW5jZS92MSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzaGEyNTYiOiI1Y2IyZTM1MGY0YjY0NDg1ODU0MzE5MWM2MmI5ZjBiNjEyZGNjMGMyOTYyMGQ2ZDRlZjQ1MGMwY2ZkMTAxODhjIn0sIm5hbWUiOiJkZXBvbmUtY2FwdHVyZS1tYW5pZmVzdCJ9LHsiZGlnZXN0Ijp7InNoYTI1NiI6IjAwOTMyN2NmMDY0NzMyYzYzMWM2YTMxNDRmYjRiNzlkNzFlNDhjYTBjY2QzN2UxYzkwOTliZmMxOGFmOTVjMjkifSwibmFtZSI6InNvdXJjZV9maXh0dXJlIn0seyJkaWdlc3QiOnsic2hhMjU2IjoiNjBhNTg2NjJlNjVmMTUzZDFhZDgyMGNjNWM0MzBhNDFiODcxZmI3OWM5NzIwNWQxMmIzOWI1ZGY1OWE3ZWFiNSJ9LCJuYW1lIjoib2JzZXJ2ZXJfY2FwdHVyZSJ9LHsiZGlnZXN0Ijp7InNoYTI1NiI6IjhhODAzMDNlNmM2NDc0YjA3OWJhMWJkZDA0NjQzYzg2ZGY2ZmMzNWEwNGQwMzZlMTAwMjc0NTdmY2UxMzJlZDkifSwibmFtZSI6InJ1bm5lcl9yZWNlaXB0In1dfQ==",
+    "payloadType": "application/vnd.in-toto+json",
+    "signatures": []
+  },
+  "kind": "depone-evidence-substrate-bundle",
+  "otel_spans": [
+    {
+      "attributes": {
+        "depone.arm": "governed",
+        "depone.assurance": "A2-isolated-observed",
+        "depone.decision": "isolated-observed",
+        "gen_ai.agent.name": "manual",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "name": "invoke_agent",
+      "parent_span_id": null,
+      "span_id": "09a197fd1bcf01f2",
+      "trace_id": "8fc6e5bbe5ee261270469e4b70576de2"
+    },
+    {
+      "attributes": {
+        "depone.command": [
+          "python3",
+          "-c",
+          "from pathlib import Path; assert Path('sample.txt').read_text() == 'receipt-after\\n'"
+        ],
+        "depone.exit_code": 0,
+        "depone.status": "passed",
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "verification_command"
+      },
+      "name": "execute_tool",
+      "parent_span_id": "09a197fd1bcf01f2",
+      "span_id": "e2448ddd080b1fe0",
+      "trace_id": "8fc6e5bbe5ee261270469e4b70576de2"
+    }
+  ],
+  "schema_version": "1.0",
+  "signing_status": "unsigned-content-addressed",
+  "statement": {
+    "_type": "https://in-toto.io/Statement/v1",
+    "predicate": {
+      "allowed_touched_files": [
+        "sample.txt"
+      ],
+      "assurance": "A2-isolated-observed",
+      "boundary": {
+        "raises_assurance": false,
+        "signed": false,
+        "signing_status": "unsigned-content-addressed"
+      },
+      "decision": "isolated-observed",
+      "observer": {
+        "command_receipts": [
+          {
+            "command": [
+              "python3",
+              "-c",
+              "from pathlib import Path; assert Path('sample.txt').read_text() == 'receipt-after\\n'"
+            ],
+            "cwd": "/srv/depone/run-receipt-sandbox",
+            "ended_at": "2026-06-29T23:31:42Z",
+            "exit_code": 0,
+            "log_path": "/home/ubuntu/observer-owned/run-receipt-evidence-run/observer-owned/verify-log.json",
+            "started_at": "2026-06-29T23:31:42Z",
+            "status": "passed"
+          }
+        ],
+        "observed_by": "depone-observer",
+        "test_output": {
+          "command": [
+            "python3",
+            "-c",
+            "from pathlib import Path; assert Path('sample.txt').read_text() == 'receipt-after\\n'"
+          ],
+          "pre_verification_changed_files": [
+            "sample.txt"
+          ],
+          "status": "passed",
+          "summary": "exit 0"
+        },
+        "touched_files": [
+          "sample.txt"
+        ]
+      },
+      "runner": {
+        "arm": "governed",
+        "receipt_hash": "8a80303e6c6474b079ba1bdd04643c86df6fc35a04d036e10027457fce132ed9",
+        "runner_kind": "manual",
+        "task_id": "evidence-run"
+      },
+      "schema_version": "1.0",
+      "source_kind": "agent-fabric-capture-manifest",
+      "validation_errors": []
+    },
+    "predicateType": "https://depone.dev/attestations/evidence/v1",
+    "subject": [
+      {
+        "digest": {
+          "sha256": "5cb2e350f4b644858543191c62b9f0b612dcc0c29620d6d4ef450c0cfd10188c"
+        },
+        "name": "depone-capture-manifest"
+      },
+      {
+        "digest": {
+          "sha256": "009327cf064732c631c6a3144fb4b79d71e48ca0ccd37e1c9099bfc18af95c29"
+        },
+        "name": "source_fixture"
+      },
+      {
+        "digest": {
+          "sha256": "60a58662e65f153d1ad820cc5c430a41b871fb79c97205d12b39b5df59a7eab5"
+        },
+        "name": "observer_capture"
+      },
+      {
+        "digest": {
+          "sha256": "8a80303e6c6474b079ba1bdd04643c86df6fc35a04d036e10027457fce132ed9"
+        },
+        "name": "runner_receipt"
+      }
+    ]
+  }
+}

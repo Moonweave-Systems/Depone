@@ -504,13 +504,13 @@ def _expand_allowlist_runtime_tokens(
 
 def _expand_runtime_tokens(value: str, replacements: dict[str, str]) -> str:
     def replace(match: re.Match[str]) -> str:
-        token = match.group(1)
-        if token not in _ALLOWED_RUNTIME_TOKENS:
+        name = match.group(1)
+        if name not in _ALLOWED_RUNTIME_TOKENS:
             raise TeamLocalError(
                 "ERR_TEAM_LOCAL_TOKEN_INVALID",
-                f"runtime token {{{token}}} is not allowed",
+                f"runtime token {{{name}}} is not allowed",
             )
-        return replacements[token]
+        return replacements[name]
 
     return _RUNTIME_TOKEN_PATTERN.sub(replace, value)
 

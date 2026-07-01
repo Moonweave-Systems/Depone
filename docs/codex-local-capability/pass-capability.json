@@ -1,0 +1,66 @@
+{
+  "adapter": {
+    "binary_path": "/home/ubuntu/.local/bin/codex",
+    "codex_binary": "codex",
+    "id": "codex-local",
+    "version": "codex-cli 0.142.4"
+  },
+  "agent_contract": {
+    "agent_contract_hash": "7f8609766f1aad439050f876ea2c5261cde3715070b27fd4fbfefd81c43d71e8",
+    "agent_contract_id": "depone-agent-operating-contract.v0.1",
+    "role_id": "worker",
+    "role_registry_path": "packaging/dwm-roles.json",
+    "role_registry_sha256": "8a5ea14ff29d9f00c7b253364912f95c946f6c53616e16804ab96d5bbbdb36fc"
+  },
+  "agent_contract_hash": "7f8609766f1aad439050f876ea2c5261cde3715070b27fd4fbfefd81c43d71e8",
+  "blocked_reasons": [],
+  "boundary": {
+    "captures_capability_only": true,
+    "executes_coding_task": false,
+    "launches_live_model": false,
+    "raises_assurance": false
+  },
+  "decision": "pass",
+  "instruction_files": [
+    {
+      "path": "AGENTS.md",
+      "present": true,
+      "sha256": "530273f6c4d2b4e3cac47df4baf5f0f3a01fa16350ac27fb30d1bd1ad5e67622"
+    },
+    {
+      "path": "CLAUDE.md",
+      "present": true,
+      "sha256": "37dc54d8826f4cdbaadfe2c6fd842b69a788aec3d55bcb4e12e85889ede0ee0a"
+    }
+  ],
+  "kind": "depone-codex-local-capability",
+  "readiness": {
+    "version_probe": {
+      "argv": [
+        "codex",
+        "--version"
+      ],
+      "error": null,
+      "executed": true,
+      "exit_code": 0,
+      "sanitized_version_text": "codex-cli 0.142.4",
+      "stderr_present": false,
+      "stdout_present": true,
+      "timed_out": false,
+      "unexpected_output": false
+    }
+  },
+  "repo": {
+    "branch": "",
+    "dirty": false,
+    "head": "a4358ba7b720dfb5b6f13e10f02d7f6c21c8c73c",
+    "is_git_worktree": true,
+    "path": "/home/ubuntu/depone-wave3-team-local/.omx/team/depone-next-big-waves-74805df1/worktrees/worker-2",
+    "root": "/home/ubuntu/depone-wave3-team-local/.omx/team/depone-next-big-waves-74805df1/worktrees/worker-2"
+  },
+  "requested_runtime": {
+    "approval_policy": "on-request",
+    "sandbox_mode": "workspace-write"
+  },
+  "schema_version": "0.1"
+}

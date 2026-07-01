@@ -96,12 +96,42 @@ def _a1_manifest() -> dict:
             "diff_summary": {"changed_files": ["depone/example.py"]},
             "touched_files": ["depone/example.py"],
             "test_output": {"status": "passed", "summary": "1 passed"},
-            "command_receipts": [
-                {"command": ["python3", "test.py"], "exit_code": 0}
-            ],
+            "command_receipts": [{"command": ["python3", "test.py"], "exit_code": 0}],
         },
         allowed_touched_files=["depone/example.py"],
     )
+
+
+def _forged_isolated_manifest() -> dict:
+    """A hand-forged capture claiming isolated-observed (A2) assurance backed by
+    root-uid isolation facts. Root can override directory permission bits, so the
+    boundary is not real; the manifest must fail closed when re-verified."""
+    manifest = build_capture_manifest(
+        _fixture(),
+        observer_capture={
+            "observed_by": "depone-observer",
+            "source_fixture_hash": "",
+            "diff_summary": {"changed_files": ["depone/example.py"]},
+            "touched_files": ["depone/example.py"],
+            "test_output": {"status": "passed", "summary": "1 passed"},
+            "command_receipts": [{"command": ["python3", "test.py"], "exit_code": 0}],
+        },
+        allowed_touched_files=["depone/example.py"],
+        isolation={
+            "runner_uid": 1001,
+            "observer_uid": 1002,
+            "observer_dir_writable_by_runner": False,
+        },
+    )
+    # Forge the recorded boundary onto a root runner and re-seal its hash, so the
+    # only remaining defense is re-verifying the facts.
+    manifest["isolation"]["runner_uid"] = 0
+    manifest["isolation_hash"] = hashlib.sha256(
+        json.dumps(manifest["isolation"], sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
+    ).hexdigest()
+    return manifest
 
 
 class VerificationReportAssuranceTests(unittest.TestCase):
@@ -119,6 +149,30 @@ class VerificationReportAssuranceTests(unittest.TestCase):
         self.assertEqual(report.assurance, "A1-local-observed")
         self.assertEqual(report.agent_fabric_captures[0].valid, True)
 
+    def test_forged_isolated_capture_in_evidence_dir_refutes_report(self) -> None:
+        # Forged evidence-dir PoC: a capture manifest hand-forged to claim
+        # isolated-observed assurance via root-uid facts, plus a permissive
+        # (satisfiable) evidence-contract. The forged boundary must fail closed
+        # so the report refutes rather than granting an observed decision.
+        evidence = EvidenceContext(
+            run_id="assurance-test-run",
+            files=_base_evidence_files(_forged_isolated_manifest()),
+            raw={"metadata": {"run_id": "assurance-test-run"}},
+        )
+
+        report = run_verification(_plan(), evidence)
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.decision, "fail")
+        self.assertEqual(report.agent_fabric_captures[0].valid, False)
+        self.assertTrue(
+            any(
+                "does not establish a privilege boundary" in error
+                for error in report.agent_fabric_captures[0].errors
+            ),
+            report.agent_fabric_captures[0].errors,
+        )
+
     def test_self_report_only_capture_stays_a0(self) -> None:
         evidence = EvidenceContext(
             run_id="assurance-test-run",
@@ -131,7 +185,6 @@ class VerificationReportAssuranceTests(unittest.TestCase):
         self.assertEqual(report.verdict, "verified")
         self.assertEqual(report.decision, "pass")
         self.assertEqual(report.assurance, "A0-claims-only")
-
 
     def test_a1_capture_cannot_bypass_missing_evidence_contract(self) -> None:
         files = [
@@ -185,7 +238,9 @@ class VerificationReportAssuranceTests(unittest.TestCase):
             report.evidence_contract,
         )
 
-    def test_invalid_capture_manifest_refutes_report_without_hiding_errors(self) -> None:
+    def test_invalid_capture_manifest_refutes_report_without_hiding_errors(
+        self,
+    ) -> None:
         manifest = _a1_manifest()
         manifest["observer_capture"]["test_output"]["summary"] = "tampered"
         evidence = EvidenceContext(

@@ -89,9 +89,7 @@ class VerificationReport:
     evidence_contract: list[EvidenceContractEntry] = field(default_factory=list)
     decision: Literal["pass", "fail", "inconclusive"] = "pass"
     assurance: str = "A0-claims-only"
-    agent_fabric_captures: list[AgentFabricCaptureCheck] = field(
-        default_factory=list
-    )
+    agent_fabric_captures: list[AgentFabricCaptureCheck] = field(default_factory=list)
     claim_evaluations: list[ClaimEvaluation] = field(default_factory=list)
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
@@ -230,7 +228,11 @@ def _evaluate_one_claim(
     ground_truth = str(item.get("ground_truth", ""))
 
     if not evaluator:
-        note = "present" if ground_truth and ground_truth in evidence_map else "absent or undeclared"
+        note = (
+            "present"
+            if ground_truth and ground_truth in evidence_map
+            else "absent or undeclared"
+        )
         return ClaimEvaluation(
             claim=claim,
             evaluator="(none)",
@@ -400,9 +402,7 @@ def _read_agent_fabric_captures(
 
 
 def _assurance_for_report(captures: list[AgentFabricCaptureCheck]) -> str:
-    if any(
-        capture.valid and capture.assurance == ASSURANCE_A1 for capture in captures
-    ):
+    if any(capture.valid and capture.assurance == ASSURANCE_A1 for capture in captures):
         return ASSURANCE_A1
     return "A0-claims-only"
 
@@ -487,6 +487,16 @@ def run_verification(
     if evidence_contract:
         any_refuted = True
     if any(not capture.valid for capture in agent_fabric_captures):
+        any_refuted = True
+
+    # A handoff whose to_phase is unknown or missing is never attributed to any
+    # phase, so without this it would silently vanish from the verdict. Fail
+    # closed: an orphan handoff refutes the report.
+    known_phases = set(phase_ids)
+    if any(
+        isinstance(handoff, dict) and handoff.get("to_phase") not in known_phases
+        for handoff in handoffs_spec
+    ):
         any_refuted = True
 
     # V127: deterministic claim evaluation drives the verdict, fail-closed.

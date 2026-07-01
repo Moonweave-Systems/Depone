@@ -96,7 +96,6 @@ class CaptureBridgeTests(unittest.TestCase):
         self.assertEqual(manifest["decision"], "claims-only")
         self.assertEqual(validate_capture_manifest(manifest), [])
 
-
     def test_rejects_unknown_assurance_level(self) -> None:
         manifest = build_capture_manifest(_fixture())
         manifest["assurance"] = "A3-future-level"
@@ -179,6 +178,32 @@ class CaptureBridgeTests(unittest.TestCase):
         self.assertEqual(facts["model"], UID_OBSERVER_LAUNCHED_ISOLATION_MODEL)
         self.assertIs(facts["observer_launched"], True)
         self.assertIs(verify_isolation_boundary(facts)["boundary"], True)
+
+    def test_root_runner_uid_does_not_establish_uid_boundary(self) -> None:
+        verified = verify_isolation_boundary(
+            {
+                "runner_uid": 0,
+                "observer_uid": 1001,
+                "observer_dir_writable_by_runner": False,
+            }
+        )
+
+        self.assertIs(verified["boundary"], False)
+
+    def test_root_runner_uid_does_not_upgrade_capture_past_a1(self) -> None:
+        manifest = build_capture_manifest(
+            _fixture(),
+            observer_capture=_observer_capture(),
+            allowed_touched_files=["depone/example.py"],
+            isolation={
+                "runner_uid": 0,
+                "observer_uid": 1001,
+                "observer_dir_writable_by_runner": False,
+            },
+        )
+
+        self.assertEqual(manifest["assurance"], "A1-local-observed")
+        self.assertEqual(validate_capture_manifest(manifest), [])
 
     def test_same_uid_isolation_does_not_upgrade_past_a1(self) -> None:
         manifest = build_capture_manifest(
@@ -392,7 +417,9 @@ class CaptureBridgeTests(unittest.TestCase):
 
         errors = validate_capture_manifest(manifest)
 
-        self.assertTrue(any("observer_capture_hash mismatch" in e for e in errors), errors)
+        self.assertTrue(
+            any("observer_capture_hash mismatch" in e for e in errors), errors
+        )
 
     def test_stale_observer_capture_fails_closed(self) -> None:
         manifest = build_capture_manifest(
@@ -403,7 +430,9 @@ class CaptureBridgeTests(unittest.TestCase):
 
         errors = validate_capture_manifest(manifest)
 
-        self.assertTrue(any("source_fixture_hash is stale" in e for e in errors), errors)
+        self.assertTrue(
+            any("source_fixture_hash is stale" in e for e in errors), errors
+        )
 
     def test_extra_touched_file_fails_closed(self) -> None:
         manifest = build_capture_manifest(

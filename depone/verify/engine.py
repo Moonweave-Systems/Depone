@@ -7,8 +7,12 @@ from typing import Any, Literal
 
 from depone.agent_fabric.capture_bridge import (
     ASSURANCE_A1,
+    ASSURANCE_A2,
     CAPTURE_MANIFEST_KIND,
     validate_capture_manifest,
+)
+from depone.agent_fabric.observer_provenance import (
+    validate_trusted_observer_provenance,
 )
 from depone.verify.adapters.base import EvidenceContext
 from depone.verify.evidence_contract import (
@@ -76,6 +80,7 @@ class AgentFabricCaptureCheck:
     assurance: str
     decision: str
     valid: bool
+    trusted_observer_provenance: bool = False
     errors: list[str] = field(default_factory=list)
 
 
@@ -89,9 +94,7 @@ class VerificationReport:
     evidence_contract: list[EvidenceContractEntry] = field(default_factory=list)
     decision: Literal["pass", "fail", "inconclusive"] = "pass"
     assurance: str = "A0-claims-only"
-    agent_fabric_captures: list[AgentFabricCaptureCheck] = field(
-        default_factory=list
-    )
+    agent_fabric_captures: list[AgentFabricCaptureCheck] = field(default_factory=list)
     claim_evaluations: list[ClaimEvaluation] = field(default_factory=list)
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
@@ -230,7 +233,11 @@ def _evaluate_one_claim(
     ground_truth = str(item.get("ground_truth", ""))
 
     if not evaluator:
-        note = "present" if ground_truth and ground_truth in evidence_map else "absent or undeclared"
+        note = (
+            "present"
+            if ground_truth and ground_truth in evidence_map
+            else "absent or undeclared"
+        )
         return ClaimEvaluation(
             claim=claim,
             evaluator="(none)",
@@ -387,12 +394,28 @@ def _read_agent_fabric_captures(
             continue
 
         errors = validate_capture_manifest(parsed)
+        provenance_errors: list[str] = []
+        trusted_provenance = False
+        assurance = str(parsed.get("assurance", "A0-claims-only"))
+        if not errors and assurance in (ASSURANCE_A1, ASSURANCE_A2):
+            provenance_errors = validate_trusted_observer_provenance(
+                parsed,
+                evidence_path=evidence_file.path,
+                provenance=evidence.raw.get("trusted_observer_provenance"),
+                key=evidence.raw.get("trusted_observer_seal_key"),
+                public_key_path=evidence.raw.get(
+                    "trusted_observer_public_key_file"
+                ),
+            )
+            errors.extend(provenance_errors)
+            trusted_provenance = not provenance_errors
         captures.append(
             AgentFabricCaptureCheck(
                 evidence_path=evidence_file.path,
-                assurance=str(parsed.get("assurance", "A0-claims-only")),
+                assurance=assurance,
                 decision=str(parsed.get("decision", "unknown")),
                 valid=not errors,
+                trusted_observer_provenance=trusted_provenance,
                 errors=errors,
             )
         )
@@ -400,9 +423,9 @@ def _read_agent_fabric_captures(
 
 
 def _assurance_for_report(captures: list[AgentFabricCaptureCheck]) -> str:
-    if any(
-        capture.valid and capture.assurance == ASSURANCE_A1 for capture in captures
-    ):
+    if any(capture.valid and capture.assurance == ASSURANCE_A2 for capture in captures):
+        return ASSURANCE_A2
+    if any(capture.valid and capture.assurance == ASSURANCE_A1 for capture in captures):
         return ASSURANCE_A1
     return "A0-claims-only"
 
@@ -487,6 +510,16 @@ def run_verification(
     if evidence_contract:
         any_refuted = True
     if any(not capture.valid for capture in agent_fabric_captures):
+        any_refuted = True
+
+    # A handoff whose to_phase is unknown or missing is never attributed to any
+    # phase, so without this it would silently vanish from the verdict. Fail
+    # closed: an orphan handoff refutes the report.
+    known_phases = set(phase_ids)
+    if any(
+        isinstance(handoff, dict) and handoff.get("to_phase") not in known_phases
+        for handoff in handoffs_spec
+    ):
         any_refuted = True
 
     # V127: deterministic claim evaluation drives the verdict, fail-closed.

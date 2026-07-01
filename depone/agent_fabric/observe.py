@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import tempfile
@@ -15,9 +16,20 @@ from depone.agent_fabric.capture_bridge import (
     validate_capture_manifest,
 )
 from depone.agent_fabric.claim_gate import canonical_hash
+from depone.agent_fabric.observer_provenance import (
+    DSSE_PROVENANCE_PAYLOAD_TYPE,
+    DSSE_PROVENANCE_SCHEME,
+    build_signed_trusted_observer_provenance,
+    validate_trusted_observer_provenance,
+)
 from depone.agent_fabric.paired_run import (
     PairedRunError,
     build_observer_capture,
+)
+from depone.agent_fabric.sign import (
+    ERR_OPENSSL_UNAVAILABLE,
+    _generate_ed25519_keypair,
+    openssl_path,
 )
 
 OBSERVER_INDEPENDENCE_MODEL = "separate-process-observer-owned-dir"
@@ -215,4 +227,59 @@ def _self_test() -> None:
             errors = validate_capture_manifest(manifest)
             if errors:
                 raise AssertionError(f"capture manifest should validate: {errors}")
+            if openssl_path() is None:
+                provenance = _unsigned_self_test_provenance(manifest)
+                provenance_errors = validate_trusted_observer_provenance(
+                    manifest,
+                    evidence_path="agent-fabric-capture-manifest.json",
+                    provenance=[provenance],
+                    public_key_path=str(Path(observer_dir) / "operator.pub"),
+                )
+                if ERR_OPENSSL_UNAVAILABLE not in provenance_errors:
+                    raise AssertionError(
+                        "missing openssl must fail closed for DSSE provenance"
+                    )
+            else:
+                private_key, public_key = _generate_ed25519_keypair(Path(observer_dir))
+                provenance = build_signed_trusted_observer_provenance(
+                    manifest,
+                    evidence_path="agent-fabric-capture-manifest.json",
+                    private_key_path=str(private_key),
+                    key_id="agent-fabric-observe-self-test-operator-key",
+                )
+                provenance_errors = validate_trusted_observer_provenance(
+                    manifest,
+                    evidence_path="agent-fabric-capture-manifest.json",
+                    provenance=[provenance],
+                    public_key_path=str(public_key),
+                )
+                if provenance_errors:
+                    raise AssertionError(
+                        f"trusted observer provenance should validate: {provenance_errors}"
+                    )
     print("depone agent-fabric-observe --self-test: pass")
+
+
+def _unsigned_self_test_provenance(manifest: dict[str, Any]) -> dict[str, Any]:
+    binding = {
+        "kind": "trusted-observer-provenance-binding",
+        "schema_version": "1.0",
+        "evidence_path": "agent-fabric-capture-manifest.json",
+        "manifest_hash": canonical_hash(manifest),
+        "observer_capture_hash": manifest.get("observer_capture_hash"),
+    }
+    payload = json.dumps(binding, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return {
+        "kind": "trusted-observer-provenance",
+        "schema_version": "1.0",
+        "evidence_path": "agent-fabric-capture-manifest.json",
+        "manifest_hash": binding["manifest_hash"],
+        "observer_capture_hash": binding["observer_capture_hash"],
+        "scheme": DSSE_PROVENANCE_SCHEME,
+        "key_id": "agent-fabric-observe-self-test-operator-key",
+        "dsse_envelope": {
+            "payloadType": DSSE_PROVENANCE_PAYLOAD_TYPE,
+            "payload": base64.b64encode(payload).decode("ascii"),
+            "signatures": [],
+        },
+    }

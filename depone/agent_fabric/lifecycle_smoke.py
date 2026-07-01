@@ -10,11 +10,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from depone.agent_fabric.capture_bridge import build_capture_manifest
+from depone.agent_fabric.observer_provenance import (
+    build_signed_trusted_observer_provenance,
+)
 from depone.agent_fabric.reference_adapter import build_reference_adapter_fixture
+from depone.agent_fabric.sign import _generate_ed25519_keypair, openssl_path
 from depone.compile.agent_fabric import compile_agent_fabric
 from depone.verify.adapters.base import EvidenceContext, EvidenceFile
 from depone.verify.engine import run_verification
@@ -33,12 +39,21 @@ def _evidence_file(path: str, data: dict[str, Any]) -> EvidenceFile:
     return EvidenceFile(path=path, content=content, sha256=_sha(content))
 
 
-def _evidence_context(manifest: dict[str, Any]) -> EvidenceContext:
+def _evidence_context(
+    manifest: dict[str, Any],
+    provenance: list[dict[str, Any]] | None = None,
+    public_key_path: str | None = None,
+) -> EvidenceContext:
     metadata = {"run_id": "agent-fabric-lifecycle-smoke"}
     contract = {
         "schema_version": "v105.verify_wedge",
         "required_evidence": ["run-metadata.json"],
     }
+    raw: dict[str, Any] = {"metadata": metadata}
+    if provenance is not None:
+        raw["trusted_observer_provenance"] = provenance
+    if public_key_path is not None:
+        raw["trusted_observer_public_key_file"] = public_key_path
     return EvidenceContext(
         run_id="agent-fabric-lifecycle-smoke",
         files=[
@@ -46,7 +61,7 @@ def _evidence_context(manifest: dict[str, Any]) -> EvidenceContext:
             _evidence_file("run-metadata.json", metadata),
             _evidence_file("agent-fabric-capture-manifest.json", manifest),
         ],
-        raw={"metadata": metadata},
+        raw=raw,
     )
 
 
@@ -80,7 +95,46 @@ def build_compile_to_report_smoke(
         observer_capture=observer_capture,
         allowed_touched_files=allowed_touched_files,
     )
+    if isinstance(manifest.get("observer_capture"), dict) and openssl_path() is not None:
+        with tempfile.TemporaryDirectory() as temp_text:
+            provenance, public_key_path = _trusted_provenance_for_smoke(
+                manifest,
+                Path(temp_text),
+            )
+            report = run_verification(
+                plan,
+                _evidence_context(manifest, provenance, public_key_path),
+            )
+            return _smoke_summary(bundle, invocations, first_invocation, manifest, report)
     report = run_verification(plan, _evidence_context(manifest))
+    return _smoke_summary(bundle, invocations, first_invocation, manifest, report)
+
+
+def _trusted_provenance_for_smoke(
+    manifest: dict[str, Any],
+    key_dir: Path,
+) -> tuple[list[dict[str, Any]] | None, str | None]:
+    observer_capture = manifest.get("observer_capture")
+    if not isinstance(observer_capture, dict):
+        return None, None
+    private_key, public_key = _generate_ed25519_keypair(key_dir)
+    return [
+        build_signed_trusted_observer_provenance(
+            manifest,
+            evidence_path="agent-fabric-capture-manifest.json",
+            private_key_path=str(private_key),
+            key_id="agent-fabric-lifecycle-smoke-operator-key",
+        )
+    ], str(public_key)
+
+
+def _smoke_summary(
+    bundle: dict[str, Any],
+    invocations: list[dict[str, Any]],
+    first_invocation: dict[str, Any],
+    manifest: dict[str, Any],
+    report: Any,
+) -> dict[str, Any]:
     report_data = asdict(report)
     compile_decision = str(bundle["compile_report"]["decision"])
     report_decision = str(report_data["decision"])

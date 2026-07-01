@@ -92,6 +92,12 @@ def _verify_uid_isolation_boundary(
     elif runner_uid == observer_uid:
         boundary = False
         reasons.append("runner and observer share the same uid (no privilege boundary)")
+    elif runner_uid == 0:
+        # Root can override normal directory permission bits, so a root runner
+        # never establishes the uid-boundary model. The container model is
+        # handled separately, where root is scoped to the container.
+        boundary = False
+        reasons.append("root runner uid cannot establish a uid privilege boundary")
 
     if writable is not False:
         boundary = False
@@ -106,7 +112,9 @@ def _verify_uid_isolation_boundary(
         "boundary": boundary,
         "runner_uid": runner_uid if isinstance(runner_uid, int) else None,
         "observer_uid": observer_uid if isinstance(observer_uid, int) else None,
-        "observer_dir_writable_by_runner": writable if isinstance(writable, bool) else None,
+        "observer_dir_writable_by_runner": writable
+        if isinstance(writable, bool)
+        else None,
         "reasons": reasons,
     }
     if model == UID_OBSERVER_LAUNCHED_ISOLATION_MODEL:
@@ -159,22 +167,30 @@ def _verify_container_isolation_boundary(facts: dict[str, Any]) -> dict[str, Any
         "boundary": boundary,
         "runner_uid": runner_uid if isinstance(runner_uid, int) else None,
         "observer_uid": observer_uid if isinstance(observer_uid, int) else None,
-        "observer_dir_writable_by_runner": writable if isinstance(writable, bool) else None,
+        "observer_dir_writable_by_runner": writable
+        if isinstance(writable, bool)
+        else None,
         "container": {
-            "runtime": container.get("runtime") if container.get("runtime") == "docker" else None,
+            "runtime": container.get("runtime")
+            if container.get("runtime") == "docker"
+            else None,
             "container_id": (
                 container.get("container_id")
                 if isinstance(container.get("container_id"), str)
                 else None
             ),
-            "image": container.get("image") if isinstance(container.get("image"), str) else None,
+            "image": container.get("image")
+            if isinstance(container.get("image"), str)
+            else None,
             "observer_launched": (
                 container.get("observer_launched")
                 if isinstance(container.get("observer_launched"), bool)
                 else None
             ),
             "running": (
-                container.get("running") if isinstance(container.get("running"), bool) else None
+                container.get("running")
+                if isinstance(container.get("running"), bool)
+                else None
             ),
             "observer_dir_mounted_rw": (
                 container.get("observer_dir_mounted_rw")
@@ -268,7 +284,11 @@ def probe_container_isolation_facts(
     except json.JSONDecodeError:
         facts["observer_dir_writable_by_runner"] = None
         return facts
-    if not isinstance(inspected, list) or not inspected or not isinstance(inspected[0], dict):
+    if (
+        not isinstance(inspected, list)
+        or not inspected
+        or not isinstance(inspected[0], dict)
+    ):
         facts["observer_dir_writable_by_runner"] = None
         return facts
 

@@ -90,6 +90,65 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         )
         return relative_path
 
+
+    def _write_merge_attempt_receipt(
+        self,
+        *,
+        decision: str = "pass",
+        merged_files: list[str] | None = None,
+        conflict_files: list[str] | None = None,
+        head_commits: list[str] | None = None,
+        cleanup_removed: bool = True,
+        relative_path: str = "team-merge-attempt.json",
+    ) -> str:
+        receipt_path = self.root / relative_path
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt_path.write_text(
+            json.dumps(
+                {
+                    "kind": "depone-team-merge-attempt",
+                    "schema_version": "0.1",
+                    "decision": decision,
+                    "base_commit": "a" * 40,
+                    "head_commits": head_commits or ["b" * 40],
+                    "attempt_worktree": "/tmp/depone-merge-attempt",
+                    "dirty_target_refused": False,
+                    "exit_code": 0 if decision == "pass" else 1,
+                    "merged_files": merged_files or ["depone/agent_fabric/team_ledger.py"],
+                    "conflict_files": conflict_files or [],
+                    "cleanup": {"attempt_worktree_removed": cleanup_removed},
+                    "captured_at": "2026-07-01T00:00:00Z",
+                    "source_command": ["git", "merge", "--no-commit"],
+                    "errors": [],
+                    "boundary": {"approves_merge": False, "raises_assurance": False},
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return relative_path
+
+    def _write_team_merge_attempt_receipt(
+        self,
+        *,
+        decision: str = "pass",
+        merged_files: list[str] | None = None,
+        conflict_files: list[str] | None = None,
+        head_commits: list[str] | None = None,
+        cleanup_removed: bool = True,
+        relative_path: str = "team-merge-attempt.json",
+    ) -> str:
+        return self._write_merge_attempt_receipt(
+            decision=decision,
+            merged_files=merged_files,
+            conflict_files=conflict_files,
+            head_commits=head_commits,
+            cleanup_removed=cleanup_removed,
+            relative_path=relative_path,
+        )
+
     def _write_pr_artifact(
         self,
         relative_path: str = "lane-evidence/pr-artifact.json",
@@ -833,6 +892,35 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         self.assertEqual(verdict["merge_receipt"]["decision"], "pass")
         self.assertEqual(verdict["merge_receipt"]["overlap_count"], 1)
 
+
+    def test_merge_attempt_receipt_allows_overlapping_passed_lanes(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["merge_receipt"] = self._write_merge_attempt_receipt()
+        for lane in ledger["lanes"]:
+            lane["touched_files"] = ["depone/agent_fabric/team_ledger.py"]
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(verdict["merge_receipt"]["decision"], "pass")
+        self.assertEqual(verdict["merge_receipt"]["kind"], "depone-team-merge-attempt")
+
+    def test_merge_attempt_receipt_conflicts_block_overlapping_passed_lanes(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["merge_receipt"] = self._write_merge_attempt_receipt(conflict_files=["depone/agent_fabric/team_ledger.py"])
+        for lane in ledger["lanes"]:
+            lane["touched_files"] = ["depone/agent_fabric/team_ledger.py"]
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_MERGE_RECEIPT_CONFLICTS_PRESENT",
+            {error["code"] for error in verdict["errors"]},
+        )
+
     def test_cli_writes_merge_receipt_that_validates_overlap(self) -> None:
         receipt_path = self.root / "team-merge-receipt.json"
         completed = subprocess.run(
@@ -896,6 +984,59 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         self.assertEqual(
             payload["error"]["code"],
             "ERR_TEAM_LEDGER_MERGE_RECEIPT_FILES_INVALID",
+        )
+
+
+    def test_team_merge_attempt_receipt_allows_overlapping_passed_lanes(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["merge_receipt"] = self._write_team_merge_attempt_receipt(
+            head_commits=["b" * 40, "c" * 40],
+        )
+        ledger["lanes"][1]["end_commit"] = "c" * 40
+        for lane in ledger["lanes"]:
+            lane["touched_files"] = ["depone/agent_fabric/team_ledger.py"]
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(verdict["merge_receipt"]["decision"], "pass")
+
+    def test_team_merge_attempt_receipt_requires_cleanup_removed(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["merge_receipt"] = self._write_team_merge_attempt_receipt(
+            cleanup_removed=False,
+            head_commits=["b" * 40, "c" * 40],
+        )
+        ledger["lanes"][1]["end_commit"] = "c" * 40
+        for lane in ledger["lanes"]:
+            lane["touched_files"] = ["depone/agent_fabric/team_ledger.py"]
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_team_merge_attempt_receipt_must_cover_lane_end_commits(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["merge_receipt"] = self._write_team_merge_attempt_receipt(
+            head_commits=["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]
+        )
+        ledger["lanes"][1]["end_commit"] = "cccccccccccccccccccccccccccccccccccccccc"
+        for lane in ledger["lanes"]:
+            lane["touched_files"] = ["depone/agent_fabric/team_ledger.py"]
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_MERGE_RECEIPT_COVERAGE_MISSING",
+            {error["code"] for error in verdict["errors"]},
         )
 
     def test_blocked_merge_receipt_blocks_overlapping_passed_lanes(self) -> None:

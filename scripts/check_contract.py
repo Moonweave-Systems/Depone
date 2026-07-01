@@ -2301,6 +2301,7 @@ def require_changed_surface_commands_pass() -> None:
         [sys.executable, "-m", "depone", "agent-fabric-evidence-chain", "--self-test"],
         [sys.executable, "-m", "depone", "team-ledger", "--self-test"],
         [sys.executable, "-m", "depone", "team-ledger-merge-receipt", "--self-test"],
+        [sys.executable, "-m", "depone", "team-merge-attempt", "--self-test"],
         [sys.executable, "-m", "depone", "team-shell-lane-launch", "--self-test"],
         [sys.executable, "-m", "depone", "codex-local-capability", "--self-test"],
         [sys.executable, "-m", "depone", "mcp", "--self-test"],
@@ -2548,6 +2549,9 @@ def require_agent_surface_contract_pass() -> None:
         )
         run_contract_command(
             [sys.executable, "-m", "depone", "team-ledger-merge-receipt", "--self-test"]
+        )
+        run_contract_command(
+            [sys.executable, "-m", "depone", "team-merge-attempt", "--self-test"]
         )
         run_contract_command(
             [sys.executable, "-m", "depone", "team-worktree-prep", "--self-test"]
@@ -3032,6 +3036,76 @@ def require_team_pr_artifact_docs_contract() -> None:
             raise SystemExit(f"team-pr-artifact boundary.{key} must be false")
 
 
+
+def require_team_merge_attempt_docs_contract() -> None:
+    readme_path = ROOT / "docs" / "team-merge-attempt" / "README.md"
+    artifact_path = ROOT / "docs" / "team-merge-attempt" / "merge-attempt.json"
+    module_path = ROOT / "depone" / "agent_fabric" / "team_merge_attempt.py"
+    cli_path = ROOT / "depone" / "cli" / "team_merge_attempt.py"
+    command_available = module_path.exists() and cli_path.exists()
+    if not command_available:
+        if artifact_path.exists():
+            raise SystemExit(
+                "docs/team-merge-attempt/merge-attempt.json must not be committed before "
+                "depone.agent_fabric.team_merge_attempt and depone.cli.team_merge_attempt exist"
+            )
+        return
+
+    if not readme_path.exists():
+        raise SystemExit("docs/team-merge-attempt/README.md is required")
+    if not artifact_path.exists():
+        raise SystemExit("docs/team-merge-attempt/merge-attempt.json is required")
+
+    require_terms(
+        "docs/team-merge-attempt/README.md",
+        [
+            "python3 -m depone team-merge-attempt",
+            "merge-attempt.json",
+            "disposable worktree",
+            "dirty",
+            "conflict files",
+            "cleanup state",
+            "does not launch agents",
+            "does not call live models",
+            "does not approve merges",
+            "does not raise assurance",
+            "team ledger",
+        ],
+    )
+
+    run_contract_command([sys.executable, "-m", "depone", "team-merge-attempt", "--self-test"])
+
+    import importlib
+
+    module = importlib.import_module("depone.agent_fabric.team_merge_attempt")
+    validator = getattr(module, "validate_team_merge_attempt_receipt", None)
+    if not callable(validator):
+        raise SystemExit("depone.agent_fabric.team_merge_attempt must expose validate_team_merge_attempt_receipt")
+
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    errors = validator(artifact)
+    if errors:
+        raise SystemExit(f"team-merge-attempt fixture invalid: {errors}")
+    if artifact.get("kind") != "depone-team-merge-attempt":
+        raise SystemExit("team-merge-attempt fixture kind mismatch")
+    if artifact.get("schema_version") != "0.1":
+        raise SystemExit("team-merge-attempt fixture schema_version mismatch")
+    if artifact.get("decision") != "pass":
+        raise SystemExit("team-merge-attempt fixture decision must be pass")
+    if artifact.get("exit_code") != 0:
+        raise SystemExit("team-merge-attempt fixture exit_code must be 0")
+    if artifact.get("conflict_files") != []:
+        raise SystemExit("team-merge-attempt fixture conflict_files must be empty")
+    cleanup = artifact.get("cleanup")
+    if not isinstance(cleanup, dict) or cleanup.get("attempt_worktree_removed") is not True:
+        raise SystemExit("team-merge-attempt fixture cleanup.attempt_worktree_removed must be true")
+    boundary = artifact.get("boundary")
+    if not isinstance(boundary, dict):
+        raise SystemExit("team-merge-attempt boundary must be an object")
+    for key in ("launches_agents", "calls_live_models", "approves_merge", "raises_assurance"):
+        if boundary.get(key) is not False:
+            raise SystemExit(f"team-merge-attempt boundary.{key} must be false")
+
 def require_codex_local_capability_docs_contract() -> None:
     readme_path = ROOT / "docs" / "codex-local-capability" / "README.md"
     fixture_dir = ROOT / "docs" / "codex-local-capability"
@@ -3177,6 +3251,7 @@ def contract_steps_for_tier(tier: str) -> list[tuple[str, object, int]]:
             ("team-worktree-prep docs contract", require_team_worktree_prep_docs_contract, 300),
             ("team-shell-lane-launch docs contract", require_team_shell_lane_launch_docs_contract, 300),
             ("team-pr-artifact docs contract", require_team_pr_artifact_docs_contract, 300),
+            ("team-merge-attempt docs contract", require_team_merge_attempt_docs_contract, 300),
             ("codex-local-capability docs contract", require_codex_local_capability_docs_contract, 300),
         ]
     if tier != "full":
@@ -3270,6 +3345,7 @@ Overclaims execution: no
         "team-worktree-prep docs contract",
         "team-shell-lane-launch docs contract",
         "team-pr-artifact docs contract",
+        "team-merge-attempt docs contract",
         "codex-local-capability docs contract",
     ]:
         raise SystemExit("self-test failed: changed tier steps changed")

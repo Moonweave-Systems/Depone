@@ -25,6 +25,7 @@ TEAM_LEDGER_SCHEMA_VERSION = "0.1"
 TEAM_LEDGER_VERDICT_KIND = "depone-team-ledger-verdict"
 TEAM_LEDGER_PR_ARTIFACT_KIND = "depone-team-ledger-pr-artifact"
 TEAM_LEDGER_CLOUD_ARTIFACT_KIND = "depone-team-ledger-cloud-artifact"
+TEAM_LEDGER_MERGE_ATTEMPT_KIND = "depone-team-merge-attempt"
 TEAM_LEDGER_SUBJECT_COMMIT_SEMANTICS = "observed_subject_commit"
 VALID_ENV_KINDS = frozenset({"local", "container", "cloud"})
 VALID_ADAPTER_KINDS = frozenset(
@@ -457,6 +458,8 @@ def _validate_lane(
         "team_adapter_kind": lane.get("team_adapter_kind"),
         "verification_state": state,
         "decision": "blocked" if errors or state == "blocked" else "pass",
+        "start_commit": lane.get("start_commit"),
+        "end_commit": lane.get("end_commit"),
         "evidence_dir": evidence_dir,
         "evidence_dir_exists": evidence_dir_exists,
         "evidence_next_verdict": evidence_next_verdict,
@@ -1550,19 +1553,33 @@ def _normalize_repo_relative_files(files: list[str]) -> list[str]:
 
 
 def _find_overlapping_touched_files(lane_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    owners_by_file: dict[str, list[str]] = {}
+    owners_by_file: dict[str, list[dict[str, str]]] = {}
     for lane in lane_results:
         if lane["decision"] != "pass":
             continue
         lane_id = str(lane["lane_id"])
+        end_commit = lane.get("end_commit")
+        owner = {"lane_id": lane_id}
+        if isinstance(end_commit, str) and end_commit:
+            owner["end_commit"] = end_commit
         for touched_file in lane.get("touched_files", []):
-            owners_by_file.setdefault(str(touched_file), []).append(lane_id)
+            owners_by_file.setdefault(str(touched_file), []).append(owner)
 
     overlaps: list[dict[str, Any]] = []
-    for touched_file, lane_ids in sorted(owners_by_file.items()):
-        unique_lane_ids = sorted(set(lane_ids))
+    for touched_file, owners in sorted(owners_by_file.items()):
+        unique_lane_ids = sorted({owner["lane_id"] for owner in owners})
         if len(unique_lane_ids) > 1:
-            overlaps.append({"path": touched_file, "lane_ids": unique_lane_ids})
+            lane_commits = sorted(
+                {
+                    owner["end_commit"]
+                    for owner in owners
+                    if owner["lane_id"] in unique_lane_ids and "end_commit" in owner
+                }
+            )
+            overlap: dict[str, Any] = {"path": touched_file, "lane_ids": unique_lane_ids}
+            if lane_commits:
+                overlap["lane_end_commits"] = lane_commits
+            overlaps.append(overlap)
     return overlaps
 
 
@@ -1642,11 +1659,27 @@ def _validate_merge_receipt(
         return summary
 
     summary["decision"] = receipt.get("decision")
+    summary["kind"] = receipt.get("kind") or receipt.get("command")
+    required_files = {str(item["path"]) for item in overlapping_touched_files}
+    required_lanes = {
+        lane_id
+        for item in overlapping_touched_files
+        for lane_id in item.get("lane_ids", [])
+        if isinstance(lane_id, str)
+    }
+
+    if receipt.get("kind") == TEAM_LEDGER_MERGE_ATTEMPT_KIND:
+        _validate_team_merge_attempt_receipt(receipt, overlapping_touched_files, errors)
+        return summary
+
     if receipt.get("command") != "team-ledger-merge-receipt":
         errors.append(
             {
                 "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
-                "message": "merge_receipt command must be team-ledger-merge-receipt",
+                "message": (
+                    "merge_receipt command must be team-ledger-merge-receipt or "
+                    f"kind must be {TEAM_MERGE_ATTEMPT_KIND}"
+                ),
             }
         )
     if receipt.get("decision") != "pass":
@@ -1674,13 +1707,6 @@ def _validate_merge_receipt(
         )
         return summary
 
-    required_files = {str(item["path"]) for item in overlapping_touched_files}
-    required_lanes = {
-        lane_id
-        for item in overlapping_touched_files
-        for lane_id in item.get("lane_ids", [])
-        if isinstance(lane_id, str)
-    }
     if not required_files.issubset(set(receipt_files)) or not required_lanes.issubset(set(receipt_lanes)):
         errors.append(
             {
@@ -1689,6 +1715,95 @@ def _validate_merge_receipt(
             }
         )
     return summary
+
+
+def _validate_team_merge_attempt_receipt(
+    receipt: dict[str, Any],
+    overlapping_touched_files: list[dict[str, Any]],
+    errors: list[dict[str, str]],
+) -> None:
+    if receipt.get("schema_version") != TEAM_LEDGER_SCHEMA_VERSION:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
+                "message": f"team-merge-attempt schema_version must be {TEAM_LEDGER_SCHEMA_VERSION}",
+            }
+        )
+    if receipt.get("decision") != "pass":
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_NOT_PASS",
+                "message": "merge_receipt must have decision=pass",
+            }
+        )
+    if receipt.get("exit_code") != 0:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_NOT_PASS",
+                "message": "team-merge-attempt merge_receipt exit_code must be 0",
+            }
+        )
+    if receipt.get("dirty_target_refused") is not False:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
+                "message": "team-merge-attempt dirty_target_refused must be false",
+            }
+        )
+
+    cleanup = receipt.get("cleanup")
+    if not isinstance(cleanup, dict) or cleanup.get("attempt_worktree_removed") is not True:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
+                "message": "team-merge-attempt cleanup.attempt_worktree_removed must be true",
+            }
+        )
+
+    conflict_files = receipt.get("conflict_files")
+    if not isinstance(conflict_files, list):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
+                "message": "team-merge-attempt conflict_files must be a list",
+            }
+        )
+    elif conflict_files:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_CONFLICTS_PRESENT",
+                "message": "team-merge-attempt merge_receipt must not contain conflict_files",
+            }
+        )
+
+    merged_files = receipt.get("merged_files")
+    head_commits = receipt.get("head_commits")
+    if not _is_string_list(merged_files) or not _is_string_list(head_commits):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_INVALID",
+                "message": "team-merge-attempt merged_files and head_commits must be lists of non-empty strings",
+            }
+        )
+        return
+
+    required_files = {str(item["path"]) for item in overlapping_touched_files}
+    required_commits = {
+        commit
+        for item in overlapping_touched_files
+        for commit in item.get("lane_end_commits", [])
+        if isinstance(commit, str)
+    }
+    if not required_files.issubset(set(merged_files)) or not required_commits.issubset(set(head_commits)):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_MERGE_RECEIPT_COVERAGE_MISSING",
+                "message": (
+                    "team-merge-attempt merge_receipt must cover every overlapping "
+                    "file and lane end_commit"
+                ),
+            }
+        )
 
 
 def _is_string_list(value: Any) -> bool:

@@ -27,6 +27,7 @@ python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry
 python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
 python -m depone team-shell-lane-launch --allowlist docs/team-shell-lane-launch/allowlist.json --command-id fixture-echo --cwd . --out docs/team-shell-lane-launch/receipt.json --transcript docs/team-shell-lane-launch/transcript.json --agent-role-id worker --json
 python -m depone team-pr-artifact --input saved-pr.json --expected-head-sha <head_sha> --out docs/team-pr-artifact/pr-artifact.json --json
+python -m depone team-merge-attempt --repo . --base <base_sha> --head <head_sha> --out docs/team-merge-attempt/merge-attempt.json --json
 python -m depone codex-local-capability --repo . --codex-binary definitely-missing-codex-for-committed-fixture --instruction-file AGENTS.md --instruction-file CLAUDE.md --out docs/codex-local-capability/capability.json --json
 python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
 python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
@@ -95,6 +96,14 @@ malformed input, failed or pending checks, stale captures, unsafe URLs, bad PR
 state, and mergeability problems, and writes `pr-artifact.json` for downstream
 validation. It is an observation/validation adapter only: it does not launch
 agents, call live models, merge PRs, or raise assurance.
+
+`team-merge-attempt` runs a no-commit git merge attempt in a disposable worktree
+by default and writes `merge-attempt.json` with base/head commits, merged files,
+conflict files, git exit code, and cleanup state. It refuses dirty in-place
+target worktrees unless explicitly allowed. Team Ledger can consume the
+`depone-team-merge-attempt` receipt when overlapping passed lanes need real
+merge/conflict evidence. It does not launch agents, call live models, approve
+merges, or raise assurance.
 
 `codex-local-capability` detects whether a local Codex adapter is available for
 future lane launch work and writes a capability receipt. It records binary

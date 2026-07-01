@@ -22,6 +22,7 @@ from depone.cli import (
     agent_fabric_smoke,
     agent_fabric_team_ledger,
     team_pr_artifact,
+    team_merge_attempt,
     agent_fabric_verify_seal,
     agent_fabric_verify_signature,
     advance,
@@ -402,6 +403,19 @@ def _add_team_pr_artifact_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
     )
+    _add_json_arg(parser)
+
+
+def _add_team_merge_attempt_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--repo", default=".", help="Git repository root used for the merge attempt")
+    parser.add_argument("--base", default="", help="Base commit or revision to check out before merging")
+    parser.add_argument("--head", action="append", default=[], help="Head commit/revision to merge; repeatable")
+    parser.add_argument("--artifact", default="", help="Existing team-merge-attempt JSON to validate")
+    parser.add_argument("--captured-at", default="", help="ISO timestamp to bind to the produced receipt")
+    parser.add_argument("--in-place", action="store_true", help="Use the target repo worktree instead of a disposable worktree")
+    parser.add_argument("--allow-dirty-target", action="store_true", help="Allow in-place attempts on a dirty target worktree")
+    parser.add_argument("--out", default="", help="Optional output path for the merge-attempt receipt JSON")
+    parser.add_argument("--self-test", action="store_true", help="Run self-test and exit")
     _add_json_arg(parser)
 
 def _add_team_ledger_args(parser: argparse.ArgumentParser) -> None:
@@ -1274,6 +1288,12 @@ def main() -> None:
     )
     _add_team_pr_artifact_args(team_pr_artifact_parser)
 
+    team_merge_attempt_parser = sub.add_parser(
+        "team-merge-attempt",
+        help="Run a disposable git merge attempt and write a receipt",
+    )
+    _add_team_merge_attempt_args(team_merge_attempt_parser)
+
     # team-ledger
     team_ledger_parser = sub.add_parser(
         "team-ledger",
@@ -1417,6 +1437,8 @@ def main() -> None:
             agent_fabric_evidence_chain.run(args)
         elif args.command == "team-pr-artifact":
             team_pr_artifact.run(args)
+        elif args.command == "team-merge-attempt":
+            team_merge_attempt.run(args)
         elif args.command in ("team-ledger", "agent-fabric-team-ledger"):
             agent_fabric_team_ledger.run(args)
         elif args.command == "team-ledger-merge-receipt":

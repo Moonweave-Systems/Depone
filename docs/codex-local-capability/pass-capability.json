@@ -13,16 +13,14 @@
     "role_registry_sha256": "8a5ea14ff29d9f00c7b253364912f95c946f6c53616e16804ab96d5bbbdb36fc"
   },
   "agent_contract_hash": "7f8609766f1aad439050f876ea2c5261cde3715070b27fd4fbfefd81c43d71e8",
-  "blocked_reasons": [
-    "repo working tree is dirty"
-  ],
+  "blocked_reasons": [],
   "boundary": {
     "captures_capability_only": true,
     "executes_coding_task": false,
     "launches_live_model": false,
     "raises_assurance": false
   },
-  "decision": "blocked",
+  "decision": "pass",
   "instruction_files": [
     {
       "path": "AGENTS.md",
@@ -54,8 +52,8 @@
   },
   "repo": {
     "branch": "",
-    "dirty": true,
-    "head": "a4358ba7b720dfb5b6f13e10f02d7f6c21c8c73c",
+    "dirty": false,
+    "head": "ed86c0bacdc64edfbb175a20a043c64929ca0892",
     "is_git_worktree": true,
     "path": "/home/ubuntu/depone-wave3-team-local/.omx/team/depone-next-big-waves-74805df1/worktrees/worker-1",
     "root": "/home/ubuntu/depone-wave3-team-local/.omx/team/depone-next-big-waves-74805df1/worktrees/worker-1"

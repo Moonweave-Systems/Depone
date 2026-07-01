@@ -26,6 +26,7 @@ python -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run -
 python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
 python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
 python -m depone team-shell-lane-launch --allowlist docs/team-shell-lane-launch/allowlist.json --command-id fixture-echo --cwd . --out docs/team-shell-lane-launch/receipt.json --transcript docs/team-shell-lane-launch/transcript.json --agent-role-id worker --json
+python -m depone team-local --plan team-local-plan.json --allowlist team-local-allowlist.json --repo . --worktree-root /tmp/depone-team-local --out-dir out/team-local --execute-lanes --json
 python -m depone team-pr-artifact --input saved-pr.json --expected-head-sha <head_sha> --out docs/team-pr-artifact/pr-artifact.json --json
 python -m depone team-merge-attempt --repo . --base <base_sha> --head <head_sha> --out docs/team-merge-attempt/merge-attempt.json --json
 python -m depone codex-local-capability --repo . --codex-binary definitely-missing-codex-for-committed-fixture --instruction-file AGENTS.md --instruction-file CLAUDE.md --out docs/codex-local-capability/capability.json --json
@@ -88,6 +89,16 @@ path/hash plus an `agent_contract_hash` bound to `packaging/depone-agent-operati
 it does not accept arbitrary shell strings, concatenate shell commands, launch
 Codex/Claude/OpenCode, call live models, schedule teams, or raise assurance to
 A2.
+
+`team-local` is the first minimal local team loop. It sequences existing safe
+primitives (`team-dry-run`, `team-launch-preflight`, `team-worktree-prep`, one
+allowlisted `team-shell-lane-launch` per lane, `evidence-next`, and
+`team-ledger`) and writes `team-run-ledger.json`. It is fail-closed: missing
+worktrees, missing allowlist commands, prohibited Codex/Claude/OpenCode
+executables, failed shell receipts, missing evidence-next artifacts, or blocked
+Team Ledger fan-in keep the run ledger blocked. It does not launch live models,
+start coding-agent sessions, execute unlisted shell commands, approve merges, or
+raise assurance.
 
 `team-pr-artifact` converts saved GitHub PR JSON, or an explicitly selected live
 `gh` PR query, into a fail-closed machine artifact for Team Ledger fan-in. It

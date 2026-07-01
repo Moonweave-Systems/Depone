@@ -2303,6 +2303,7 @@ def require_changed_surface_commands_pass() -> None:
         [sys.executable, "-m", "depone", "team-ledger-merge-receipt", "--self-test"],
         [sys.executable, "-m", "depone", "team-merge-attempt", "--self-test"],
         [sys.executable, "-m", "depone", "team-shell-lane-launch", "--self-test"],
+        [sys.executable, "-m", "depone", "team-local", "--self-test"],
         [sys.executable, "-m", "depone", "codex-local-capability", "--self-test"],
         [sys.executable, "-m", "depone", "mcp", "--self-test"],
         [sys.executable, "-m", "depone", "agent-fabric-observe", "--self-test"],
@@ -2558,6 +2559,9 @@ def require_agent_surface_contract_pass() -> None:
         )
         run_contract_command(
             [sys.executable, "-m", "depone", "team-shell-lane-launch", "--self-test"]
+        )
+        run_contract_command(
+            [sys.executable, "-m", "depone", "team-local", "--self-test"]
         )
         run_contract_command(
             [sys.executable, "-m", "depone", "codex-local-capability", "--self-test"]

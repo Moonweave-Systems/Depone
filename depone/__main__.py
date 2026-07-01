@@ -34,6 +34,7 @@ from depone.cli import (
     evidence_run,
     team_dry_run,
     team_launch_preflight,
+    team_local,
     team_shell_lane_launch,
     team_worktree_prep,
     validate,
@@ -497,6 +498,47 @@ def _add_team_launch_preflight_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
     )
+    _add_json_arg(parser)
+
+
+def _add_team_local_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--plan", default="", help="Team-local plan JSON path")
+    parser.add_argument(
+        "--allowlist",
+        default="",
+        help="Optional argv allowlist JSON for lane execution",
+    )
+    parser.add_argument("--repo", default=".", help="Source repository root")
+    parser.add_argument("--worktree-root", default=".", help="Root for planned lane worktrees")
+    parser.add_argument(
+        "--base-commit",
+        default="",
+        help="Expected base commit; defaults to plan base_commit",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default="out/team-local",
+        help="Repo-relative output directory for team-local artifacts",
+    )
+    parser.add_argument(
+        "--create-worktree",
+        action="store_true",
+        help="Allow git worktree add for missing planned worktrees",
+    )
+    parser.add_argument(
+        "--execute-lanes",
+        action="store_true",
+        help="Run one allowlisted shell command per lane",
+    )
+    parser.add_argument(
+        "--timeout-seconds", type=int, default=120, help="Lane command timeout in seconds"
+    )
+    parser.add_argument(
+        "--agent-role-id",
+        default="worker",
+        help="Existing V22 role id to bind into shell receipts",
+    )
+    parser.add_argument("--self-test", action="store_true", help="Run self-test and exit")
     _add_json_arg(parser)
 
 
@@ -1337,6 +1379,12 @@ def main() -> None:
     )
     _add_team_worktree_prep_args(team_worktree_prep_parser)
 
+    team_local_parser = sub.add_parser(
+        "team-local",
+        help="Run a minimal local team loop without live model launches",
+    )
+    _add_team_local_args(team_local_parser)
+
     team_shell_lane_launch_parser = sub.add_parser(
         "team-shell-lane-launch",
         help="Run one explicit allowlisted argv command for a shell lane",
@@ -1451,6 +1499,8 @@ def main() -> None:
             team_launch_preflight.run(args)
         elif args.command == "team-worktree-prep":
             team_worktree_prep.run(args)
+        elif args.command == "team-local":
+            team_local.run(args)
         elif args.command == "team-shell-lane-launch":
             team_shell_lane_launch.run(args)
         elif args.command == "codex-local-capability":

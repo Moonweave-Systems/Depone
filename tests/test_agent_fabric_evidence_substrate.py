@@ -17,6 +17,8 @@ from depone.agent_fabric.evidence_substrate import (
     validate_statement_for_capture,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 class AgentFabricEvidenceSubstrateTests(unittest.TestCase):
     def test_external_otel_spans_reject_unobserved_usage_fields(self) -> None:
@@ -38,8 +40,9 @@ class AgentFabricEvidenceSubstrateTests(unittest.TestCase):
 
     def _capture(self) -> dict[str, object]:
         return json.loads(
-            Path(
-                "depone/fixtures/agent_fabric/capture_manifest_v126_governed_utf8.json"
+            (
+                ROOT
+                / "depone/fixtures/agent_fabric/capture_manifest_v126_governed_utf8.json"
             ).read_text(encoding="utf-8")
         )
 
@@ -97,7 +100,9 @@ class AgentFabricEvidenceSubstrateTests(unittest.TestCase):
             verdict = ingest_external_evidence(
                 bundle["dsse_envelope"],
                 {
-                    "source_fixture": "depone/fixtures/agent_fabric/reference_adapter_shell.json",
+                    "source_fixture": str(
+                        ROOT / "depone/fixtures/agent_fabric/reference_adapter_shell.json"
+                    ),
                     "depone-capture-manifest": str(manifest_path),
                     "observer_capture": str(observer_path),
                 },
@@ -162,7 +167,9 @@ class AgentFabricEvidenceSubstrateTests(unittest.TestCase):
             verdict = ingest_external_evidence(
                 bundle["dsse_envelope"],
                 {
-                    "source_fixture": "depone/fixtures/agent_fabric/reference_adapter_shell.json",
+                    "source_fixture": str(
+                        ROOT / "depone/fixtures/agent_fabric/reference_adapter_shell.json"
+                    ),
                     "depone-capture-manifest": str(manifest_path),
                     "observer_capture": str(observer_path),
                     "runner_receipt": str(runner_path),

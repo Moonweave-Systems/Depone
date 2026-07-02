@@ -19,6 +19,8 @@ from depone.agent_fabric.paired_run import (
     validate_runner_receipt,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 class AgentFabricPairedRunTests(unittest.TestCase):
     def test_observer_capture_records_diff_and_command_receipt(self) -> None:
@@ -59,9 +61,9 @@ class AgentFabricPairedRunTests(unittest.TestCase):
             self.assertEqual(capture["command_receipts"][0]["exit_code"], 0)
 
             fixture = json.loads(
-                Path("depone/fixtures/agent_fabric/reference_adapter_shell.json").read_text(
-                    encoding="utf-8"
-                )
+                (
+                    ROOT / "depone/fixtures/agent_fabric/reference_adapter_shell.json"
+                ).read_text(encoding="utf-8")
             )
             capture["source_fixture_hash"] = ""
             manifest = build_capture_manifest(

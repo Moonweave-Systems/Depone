@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F46E5.svg)](LICENSE)
 [![Agent skill](https://img.shields.io/badge/agent%20skill-Codex-4F46E5.svg)](SKILL.md)
 [![Release](https://img.shields.io/github/v/release/Moonweave-Systems/Depone?color=4F46E5)](https://github.com/Moonweave-Systems/Depone/releases)
-[![Contract](https://img.shields.io/badge/contract-self--tested-059669.svg)](scripts/check_contract.py)
+[![Contract](https://img.shields.io/badge/contract-self--tested-059669.svg)](docs/command-reference.md)
 
 ![Depone hero](assets/dwm-hero.svg)
 
@@ -42,8 +42,7 @@ depone team-ledger --self-test
 Source installation smoke is `python scripts/install_smoke.py --json`. It
 installs Depone from the local source tree with `--no-deps`, runs the installed
 `depone doctor`, and re-validates a committed team-ledger artifact. It does not
-publish a package or claim PyPI readiness. The latest checked-in artifact is
-[`docs/install-readiness/install-smoke.json`](docs/install-readiness/install-smoke.json).
+publish a package or claim PyPI readiness.
 
 ## What Exists Today
 
@@ -61,9 +60,9 @@ It cannot turn a weak capture into a stronger one. If the bytes only support
 A0, the verifier must report A0. If observer capture or isolation evidence is
 missing, the verifier must not infer it from prose or operator intent.
 
-The package also contains historical DWM design and workflow-contract tooling.
-That tooling is part of the repository today, but the release claim for this
-wave is the verifier and evidence-contract role, not a new agent runtime.
+Historical DWM tooling was retired to git history (tag v0.1.0 preserves the full surface).
+The release claim for this wave is the verifier and evidence-contract role, not
+a new agent runtime.
 
 ## Command Reference
 
@@ -115,11 +114,11 @@ artifact bytes. A3/keyless transparency-log attestation is not implemented.
 ## What Is Still Honest
 
 Depone claims **no direct-agent superiority** - it is a design + verification
-layer, not an agent runtime. It does not claim upward performance. It is not a
-public benchmark graph. public trend promotion requires real release history
-and measured improvements over established baselines; it is blocked until
-release history supports it. Trend promotion is blocked until release history
-supports the claim. The skill is named `depone`.
+layer, not an agent runtime. It does not claim upward performance. It is not a public benchmark graph.
+Public trend promotion requires real release history and measured improvements
+over established baselines; it is blocked until release history supports it.
+Trend promotion is blocked until release history supports the claim. The skill
+is named `depone`.
 
 Known limits:
 
@@ -130,9 +129,6 @@ Known limits:
 - HMAC-backed provenance remains dependent on operator policy. An Ed25519-only
   deployment closes that residual policy path.
 - Transparency-log and Sigstore-style A3/keyless attestation are not implemented.
-- `scripts/dwm_*.py` remains a large historical double-engine beside the
-  `depone/` package. It is known release debt and is intentionally not refactored
-  in this hardening wave.
 - `CLAUDE.md` still says there is no `pyproject.toml`, while this release has a
   real `pyproject.toml`. That documentation contradiction is known debt, not a
   verifier-contract change.
@@ -140,22 +136,10 @@ Known limits:
 ### Inspection
 
 ```bash
-python scripts/dwm.py doctor
-python scripts/dwm.py commands --kind product
 python scripts/check_readme_quality.py README.md
-python scripts/check_contract.py --tier changed
+python3 -m depone validate-contracts --self-test
+python3 -m depone doctor --self-test
 ```
-
-Legacy diagnostics: `python scripts/dwm_demo.py run --out out/demo/quickstart`,
-`python scripts/dwm_demo.py inspect --demo out/demo/quickstart`, `python scripts/dwm.py status --run out/v9/v32-semantic-dogfood`, `python scripts/dwm.py next --run out/v9/v32-semantic-dogfood`, `python scripts/dwm.py commands --kind release`.
-
-## Evidence Graphs
-
-![Dogfood progress](assets/dwm-dogfood-progress.svg)
-*Dogfood benchmark progression across attempts.*
-
-![Live benchmark](assets/dwm-live-benchmark.svg)
-*Live benchmark history - not a public benchmark graph. Benchmark visuals are source-bound.*
 
 ## Quality
 
@@ -163,8 +147,8 @@ Release readiness is checked with:
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
-python3 scripts/check_contract.py --tier changed
-python3 scripts/dwm.py doctor
+python3 -m depone validate-contracts --self-test
+python3 -m depone doctor --self-test
 ```
 
 ## Position
@@ -176,8 +160,7 @@ honest about what has actually been evidenced.
 
 ## Documentation
 
-- [`docs/agent-tool-contract.md`](docs/agent-tool-contract.md): agent-facing CLI and evidence contract.
-- [`docs/command-reference.md`](docs/command-reference.md), [`docs/spec.md`](docs/spec.md), and [`docs/release-history.md`](docs/release-history.md): command, product, and release references.
+- [`docs/command-reference.md`](docs/command-reference.md) and [`docs/spec.md`](docs/spec.md): command and product references.
 - [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md): plan schema and installed Codex skill.
 
 ## License

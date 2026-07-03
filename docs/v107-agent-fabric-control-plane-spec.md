@@ -67,7 +67,6 @@ The repository already contains useful ingredients:
 The initial Agent Fabric material now includes deterministic contracts and
 compiler coverage, but it is not yet the desired end state:
 
-- `agents/openai.yaml` is interface metadata, not an agent system.
 - V107 compiles profile roles into validated invocation packets and compile
   reports, but it does not launch live agents.
 - V108-V112 provide fixture, capture, report, operator-view, and lifecycle-smoke

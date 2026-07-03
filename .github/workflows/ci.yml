@@ -25,8 +25,8 @@ jobs:
       - name: Run unit tests
         run: python3 -m unittest discover -s tests -p 'test_*.py'
 
-  contract:
-    name: contract gates
+  package-self-test:
+    name: package self-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Depone
@@ -37,11 +37,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run changed contract gate
-        run: python3 scripts/check_contract.py --tier changed
+      - name: Run contract package self-test
+        run: python3 -m depone validate-contracts --self-test
 
-      - name: Run DWM doctor
-        run: python3 scripts/dwm.py doctor
+      - name: Run package doctor self-test
+        run: python3 -m depone doctor --self-test
 
   conformance:
     name: witnessd reverse conformance

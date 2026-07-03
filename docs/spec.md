@@ -604,10 +604,7 @@ a fixture fails, update `SKILL.md`, `docs/spec.md`, or
 
 V0 is releasable when:
 
-- `scripts/quick_validate_skill.py` passes on the skill folder.
 - `SKILL.md` has no placeholders.
-- `agents/openai.yaml` matches the skill name and purpose.
-- `docs/github-research.md` records prior-art decisions.
 - `docs/spec.md` has fixtures and non-goals.
 - `references/workflow-patterns.md` gives enough pattern guidance for v0.
 - at least two fixture smoke checks pass, covering one codebase-facing fixture

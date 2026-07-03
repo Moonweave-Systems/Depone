@@ -20,20 +20,19 @@ REQUIRED_SECTIONS = [
     "## What Exists Today",
     "## What Is Still Honest",
     "## Safety Model",
-    "## Evidence Graphs",
+    "## Quality",
     "## Command Reference",
     "## Documentation",
     "## Position",
 ]
 REQUIRED_TERMS = [
-    "assets/dwm-dogfood-progress.svg",
-    "assets/dwm-live-benchmark.svg",
-    "docs/agent-tool-contract.md",
+    "assets/dwm-hero.svg",
     "docs/command-reference.md",
-    "docs/release-history.md",
+    "docs/spec.md",
+    "retired to git history (tag v0.1.0 preserves the full surface)",
     "not a public benchmark graph",
     "does not claim upward performance",
-    "public trend promotion requires real release history",
+    "Public trend promotion requires real release history",
     "Generated `out/` directories are verification evidence, not source of truth.",
 ]
 
@@ -62,15 +61,12 @@ def check_text(text: str, *, max_lines: int = MAX_LINES, root: Path = ROOT) -> N
         problems.append(f"too many version mentions: {mentions} > {MAX_VERSION_MENTIONS}")
     if "V36 README graph artifacts" in text or "V67 adds" in text:
         problems.append("README appears to contain release-history prose")
-    agent_tool_contract = root / "docs" / "agent-tool-contract.md"
     command_reference = root / "docs" / "command-reference.md"
-    release_history = root / "docs" / "release-history.md"
-    if not agent_tool_contract.is_file():
-        problems.append("docs/agent-tool-contract.md is missing")
+    spec = root / "docs" / "spec.md"
     if not command_reference.is_file():
         problems.append("docs/command-reference.md is missing")
-    if not release_history.is_file():
-        problems.append("docs/release-history.md is missing")
+    if not spec.is_file():
+        problems.append("docs/spec.md is missing")
     if problems:
         raise ReadmeQualityError("; ".join(problems))
 
@@ -91,17 +87,16 @@ def self_test() -> None:
             "## What Exists Today",
             "## What Is Still Honest",
             "## Safety Model",
-            "## Evidence Graphs",
-            "assets/dwm-dogfood-progress.svg",
-            "assets/dwm-live-benchmark.svg",
+            "## Quality",
+            "assets/dwm-hero.svg",
+            "retired to git history (tag v0.1.0 preserves the full surface)",
             "not a public benchmark graph",
             "does not claim upward performance",
-            "public trend promotion requires real release history",
+            "Public trend promotion requires real release history",
             "Generated `out/` directories are verification evidence, not source of truth.",
             "## Command Reference",
-            "docs/agent-tool-contract.md",
             "docs/command-reference.md",
-            "docs/release-history.md",
+            "docs/spec.md",
             "## Documentation",
             "## Position",
             "",
@@ -125,9 +120,8 @@ def self_test() -> None:
         else:
             raise ReadmeQualityError("self-test failed: missing reference docs passed")
         (root / "docs").mkdir()
-        (root / "docs" / "agent-tool-contract.md").write_text("# agent contract\n", encoding="utf-8")
         (root / "docs" / "command-reference.md").write_text("# commands\n", encoding="utf-8")
-        (root / "docs" / "release-history.md").write_text("# history\n", encoding="utf-8")
+        (root / "docs" / "spec.md").write_text("# spec\n", encoding="utf-8")
         check_readme(path)
     print("readme quality self-test: pass")
 

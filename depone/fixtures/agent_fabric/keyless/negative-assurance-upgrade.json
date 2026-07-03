@@ -1,0 +1,191 @@
+{
+  "assurance": "A3-keyless-signed-rekor",
+  "dsse_envelope": {
+    "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYXNzdXJhbmNlIjoiQTMta2V5bGVzcy1zaWduZWQtcmVrb3IiLCJib3VuZGFyeSI6eyJyYWlzZXNfYXNzdXJhbmNlIjpmYWxzZSwic2lnbmVkIjpmYWxzZSwic2lnbmluZ19zdGF0dXMiOiJrZXlsZXNzLWZ1bGNpby1yZWtvci1maXh0dXJlLXVudHJ1c3RlZCJ9LCJkZWNpc2lvbiI6Im9ic2VydmVkLWxvY2FsLWNhcHR1cmUiLCJzY2hlbWFfdmVyc2lvbiI6IjEuMCIsInNvdXJjZV9raW5kIjoiYWdlbnQtZmFicmljLWNhcHR1cmUtbWFuaWZlc3QifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vZGVwb25lLmRldi9hdHRlc3RhdGlvbnMvZXZpZGVuY2UvdjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2hhMjU2IjoiMjFlYzdhZjIyN2RiZDNjMzM4YTNkYWQ3ODQxMjViNGJmODQ4YTFiNjA3OTQ4OGUyNjliNGM5YjQ3ODcxYWU2YyJ9LCJuYW1lIjoiZGVwb25lLWNhcHR1cmUtbWFuaWZlc3QifV19",
+    "payloadType": "application/vnd.in-toto+json",
+    "signatures": [
+      {
+        "cert": {
+          "issuer": "https://token.actions.githubusercontent.com",
+          "subject": "repo:Moonweave-Systems/witnessd:environment:external-team-pilot"
+        },
+        "keyid": "fulcio-rekor-fixture-2026-07-03",
+        "rekor": {
+          "integrated_time": "2026-07-03T00:10:00Z",
+          "log_index": 1,
+          "uuid": "witnessd-w6-keyless-fixture-0001"
+        },
+        "sig": "fixture-metadata-not-a-cryptographic-signature"
+      }
+    ]
+  },
+  "kind": "depone-keyless-fixture-bundle",
+  "schema_version": "1.0",
+  "signature_boundary": {
+    "claimed_keyless_identity": true,
+    "claimed_rekor_metadata": true,
+    "fixture_only": true,
+    "keyless_identity": false,
+    "note": "Offline shape lint only. This is not Fulcio chain verification, Rekor inclusion verification, or a trusted signature result.",
+    "operator_key": false,
+    "public_verifiable": false,
+    "raises_assurance": false,
+    "scheme": "DSSE-Sigstore-Fulcio-Rekor-offline-fixture-untrusted",
+    "transparency_logged": false,
+    "trusts_external_signature": false
+  },
+  "signing_status": "keyless-fulcio-rekor-fixture-untrusted",
+  "statement": {
+    "_type": "https://in-toto.io/Statement/v1",
+    "predicate": {
+      "assurance": "A3-keyless-signed-rekor",
+      "boundary": {
+        "raises_assurance": false,
+        "signed": false,
+        "signing_status": "keyless-fulcio-rekor-fixture-untrusted"
+      },
+      "decision": "observed-local-capture",
+      "schema_version": "1.0",
+      "source_kind": "agent-fabric-capture-manifest"
+    },
+    "predicateType": "https://depone.dev/attestations/evidence/v1",
+    "subject": [
+      {
+        "digest": {
+          "sha256": "21ec7af227dbd3c338a3dad784125b4bf848a1b6079488e269b4c9b47871ae6c"
+        },
+        "name": "depone-capture-manifest"
+      }
+    ]
+  },
+  "subject_capture_manifest": {
+    "allowed_touched_files": [
+      "depone/agent_fabric/dogfood_evidence.py"
+    ],
+    "assurance": "A1-local-observed",
+    "decision": "observed-local-capture",
+    "fixture": {
+      "adapter": {
+        "executes_commands": false,
+        "harness": "shell",
+        "mode": "fixture-only",
+        "name": "shell-reference-fixture"
+      },
+      "capture": {
+        "command_receipts": [],
+        "diff_summary": {
+          "changed_files": [],
+          "summary": "fixture-only adapter did not observe a diff"
+        },
+        "self_report": {
+          "agent_role": "runner",
+          "command_receipts": [],
+          "errors": [
+            "fixture-only adapter did not execute work"
+          ],
+          "output_files": [
+            "out/agent/result.txt"
+          ],
+          "profile": "self-test-profile",
+          "result_version": "1.0",
+          "self_reported_claims": [
+            "fixture captured a self-report shape"
+          ],
+          "status": "partial"
+        },
+        "test_output": {
+          "command": null,
+          "status": "not-run",
+          "summary": "fixture-only adapter did not run tests"
+        },
+        "touched_files": [],
+        "trust_level": "A0-claims-only"
+      },
+      "invocation": {
+        "context_policy": "local-code-only",
+        "evidence_obligations": [
+          "command_receipt"
+        ],
+        "instructions": "Run local checks and report outputs without writing observer-owned evidence.",
+        "packet_version": "1.0",
+        "profile": "self-test-profile",
+        "role": "runner",
+        "target_harness": "shell",
+        "toolbelt": {
+          "allowed_mcp": [],
+          "allowed_tools": [
+            "cat",
+            "python3"
+          ],
+          "context_policy": "local-code-only",
+          "evidence_obligations": [
+            "command_receipt"
+          ],
+          "forbidden_tools": [
+            "write"
+          ],
+          "output_schema": "runner-result-v1"
+        }
+      },
+      "kind": "agent-fabric-reference-adapter-fixture",
+      "schema_version": "1.0"
+    },
+    "kind": "agent-fabric-capture-manifest",
+    "observer_capture": {
+      "command_receipts": [
+        {
+          "command": [
+            "python",
+            "-m",
+            "depone",
+            "agent-fabric-dogfood-evidence",
+            "--self-test"
+          ],
+          "cwd": "C:\\dev\\keelplane\\out\\v126-dogfood-real\\governed",
+          "ended_at": "2026-06-28T04:21:56Z",
+          "exit_code": 0,
+          "log_path": "out\\v126-dogfood-real\\governed-verify-log.json",
+          "started_at": "2026-06-28T04:21:56Z",
+          "status": "passed"
+        }
+      ],
+      "diff_summary": {
+        "changed_file_count": 1,
+        "changed_files": [
+          "depone/agent_fabric/dogfood_evidence.py"
+        ],
+        "stat": " depone/agent_fabric/dogfood_evidence.py | 6 ++++--\n 1 file changed, 4 insertions(+), 2 deletions(-)"
+      },
+      "observed_by": "depone-observer",
+      "source_fixture_hash": "009327cf064732c631c6a3144fb4b79d71e48ca0ccd37e1c9099bfc18af95c29",
+      "test_output": {
+        "command": [
+          "python",
+          "-m",
+          "depone",
+          "agent-fabric-dogfood-evidence",
+          "--self-test"
+        ],
+        "pre_verification_changed_files": [
+          "depone/agent_fabric/dogfood_evidence.py"
+        ],
+        "status": "passed",
+        "summary": "exit 0"
+      },
+      "touched_files": [
+        "depone/agent_fabric/dogfood_evidence.py"
+      ]
+    },
+    "observer_capture_hash": "3dd2990e58fc49f52fa8c47cfccd5363fcbbd9d4e1ef66da21cd1453a079b44d",
+    "required_observer_fields": [
+      "command_receipts",
+      "diff_summary",
+      "observed_by",
+      "source_fixture_hash",
+      "test_output",
+      "touched_files"
+    ],
+    "schema_version": "1.0",
+    "source_fixture_hash": "009327cf064732c631c6a3144fb4b79d71e48ca0ccd37e1c9099bfc18af95c29"
+  }
+}

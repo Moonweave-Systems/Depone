@@ -45,4 +45,5 @@ depone = [
     "fixtures/**/*.json",
     "fixtures/**/*.bin",
     "fixtures/**/*.md",
+    "fixtures/**/*.sha256",
 ]

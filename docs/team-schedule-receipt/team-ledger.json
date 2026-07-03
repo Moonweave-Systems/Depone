@@ -1,0 +1,50 @@
+{
+  "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "kind": "depone-team-ledger",
+  "lanes": [
+    {
+      "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "env_kind": "local",
+      "evidence_dir": "lane-docs",
+      "evidence_next_verdict": "lane-docs/evidence-next-verdict.json",
+      "lane_id": "lane-docs",
+      "objective": "Update docs",
+      "pr_url": "",
+      "runner_adapter_kind": "shell",
+      "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "team_adapter_kind": "shell",
+      "touched_files": [
+        "docs/depone-cloud-team-control.md"
+      ],
+      "verification_artifacts": [
+        "unittest"
+      ],
+      "verification_state": "pass"
+    },
+    {
+      "end_commit": "cccccccccccccccccccccccccccccccccccccccc",
+      "env_kind": "local",
+      "evidence_dir": "lane-tests",
+      "evidence_next_verdict": "lane-tests/evidence-next-verdict.json",
+      "lane_id": "lane-tests",
+      "objective": "Run tests",
+      "pr_url": "",
+      "runner_adapter_kind": "shell",
+      "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "team_adapter_kind": "shell",
+      "touched_files": [
+        "tests/test_agent_fabric_team_ledger.py"
+      ],
+      "verification_artifacts": [
+        "unittest"
+      ],
+      "verification_state": "pass"
+    }
+  ],
+  "leader_id": "leader-fixed",
+  "leader_objective": "Validate W15 schedule receipt fan-in before witnessd integration",
+  "schedule_receipt": "team-schedule-receipt.json",
+  "schema_version": "0.1",
+  "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "stop_rule": "fan-in only after every lane passes or is explicitly blocked"
+}

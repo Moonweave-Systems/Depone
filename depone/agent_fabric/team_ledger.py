@@ -29,6 +29,7 @@ TEAM_LEDGER_SCHEMA_VERSION = "0.1"
 TEAM_LEDGER_VERDICT_KIND = "depone-team-ledger-verdict"
 TEAM_LEDGER_PR_ARTIFACT_KIND = "depone-team-ledger-pr-artifact"
 TEAM_LEDGER_CLOUD_ARTIFACT_KIND = "depone-team-ledger-cloud-artifact"
+TEAM_SCHEDULE_RECEIPT_KIND = "depone-team-schedule-receipt"
 TEAM_LEDGER_MERGE_ATTEMPT_KIND = TEAM_MERGE_ATTEMPT_KIND
 TEAM_LEDGER_SUBJECT_COMMIT_SEMANTICS = "observed_subject_commit"
 VALID_ENV_KINDS = frozenset({"local", "container", "cloud"})
@@ -108,6 +109,16 @@ def build_team_ledger_verdict(
         required=bool(overlapping_touched_files),
         overlapping_touched_files=overlapping_touched_files,
     )
+    schedule_receipt = _validate_schedule_receipt(
+        ledger.get("schedule_receipt"),
+        root,
+        errors,
+        expected_lane_ids=[
+            str(lane["lane_id"])
+            for lane in lane_results
+            if isinstance(lane.get("lane_id"), str)
+        ],
+    )
 
     blocked = sum(1 for lane in lane_results if lane["decision"] != "pass")
     passed = len(lane_results) - blocked
@@ -129,6 +140,7 @@ def build_team_ledger_verdict(
         "lane_results": lane_results,
         "overlapping_touched_files": overlapping_touched_files,
         "merge_receipt": merge_receipt,
+        "schedule_receipt": schedule_receipt,
         "errors": errors,
         "source_hashes": {"team_ledger": canonical_hash(ledger)},
         "boundary": {
@@ -151,6 +163,21 @@ def validate_team_ledger(
     """Return validation errors for a Team Ledger v0 object."""
 
     return list(build_team_ledger_verdict(ledger, base_dir=base_dir)["errors"])
+
+
+def validate_team_schedule_receipt(receipt: Any) -> list[dict[str, str]]:
+    """Return validation errors for a team schedule receipt object."""
+
+    errors: list[dict[str, str]] = []
+    if not isinstance(receipt, dict):
+        return [
+            {
+                "code": "ERR_TEAM_SCHEDULE_RECEIPT_INVALID",
+                "message": "schedule receipt root must be an object",
+            }
+        ]
+    _validate_team_schedule_receipt_object(receipt, errors)
+    return errors
 
 
 def build_team_ledger_merge_receipt(
@@ -1802,6 +1829,353 @@ def _validate_merge_receipt(
             }
         )
     return summary
+
+
+def _validate_schedule_receipt(
+    schedule_receipt: Any,
+    base_dir: Path,
+    errors: list[dict[str, str]],
+    *,
+    expected_lane_ids: list[str],
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "path": schedule_receipt if isinstance(schedule_receipt, str) else None,
+        "present": False,
+        "lane_ids": [],
+        "derived_max_overlap": None,
+    }
+    if schedule_receipt is None:
+        return summary
+    if not isinstance(schedule_receipt, str) or not schedule_receipt.strip():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_PATH_INVALID",
+                "message": "schedule_receipt must be a relative JSON path when present",
+            }
+        )
+        return summary
+
+    receipt_path = Path(schedule_receipt)
+    if receipt_path.is_absolute():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_PATH_INVALID",
+                "message": "schedule_receipt must be relative to the ledger base directory",
+            }
+        )
+        return summary
+
+    resolved = (base_dir / receipt_path).resolve(strict=False)
+    base_resolved = base_dir.resolve(strict=False)
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_PATH_INVALID",
+                "message": "schedule_receipt must stay under the ledger base directory",
+            }
+        )
+        return summary
+
+    if not resolved.is_file():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_MISSING",
+                "message": "schedule_receipt file must exist",
+            }
+        )
+        return summary
+
+    try:
+        receipt = json.loads(resolved.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_INVALID",
+                "message": f"schedule_receipt must be readable JSON: {exc}",
+            }
+        )
+        return summary
+    if not isinstance(receipt, dict):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_INVALID",
+                "message": "schedule_receipt root must be an object",
+            }
+        )
+        return summary
+
+    summary.update(_validate_team_schedule_receipt_object(receipt, errors))
+    summary["present"] = True
+    observed_lane_ids = set(summary["lane_ids"])
+    expected = set(expected_lane_ids)
+    if expected and observed_lane_ids != expected:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_COVERAGE_MISSING",
+                "message": "schedule_receipt must cover exactly the ledger lane ids",
+            }
+        )
+    return summary
+
+
+def _validate_team_schedule_receipt_object(
+    receipt: dict[str, Any],
+    errors: list[dict[str, str]],
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "lane_ids": [],
+        "derived_max_overlap": None,
+    }
+    if receipt.get("kind") != TEAM_SCHEDULE_RECEIPT_KIND:
+        errors.append(
+            {
+                "code": "ERR_TEAM_SCHEDULE_RECEIPT_KIND_INVALID",
+                "message": f"kind must be {TEAM_SCHEDULE_RECEIPT_KIND}",
+            }
+        )
+    if receipt.get("schema_version") != TEAM_LEDGER_SCHEMA_VERSION:
+        errors.append(
+            {
+                "code": "ERR_TEAM_SCHEDULE_RECEIPT_SCHEMA_VERSION_INVALID",
+                "message": f"schema_version must be {TEAM_LEDGER_SCHEMA_VERSION}",
+            }
+        )
+    for field in ("observed_by", "captured_at"):
+        if (
+            not isinstance(receipt.get(field), str)
+            or not str(receipt.get(field)).strip()
+        ):
+            errors.append(
+                {
+                    "code": "ERR_TEAM_SCHEDULE_RECEIPT_REQUIRED_FIELD_MISSING",
+                    "message": f"{field} must be a non-empty string",
+                }
+            )
+    _parse_schedule_timestamp(
+        receipt.get("captured_at"),
+        errors,
+        field="captured_at",
+    )
+
+    boundary = receipt.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("executes_commands") is not False
+        or boundary.get("launches_agents") is not False
+        or boundary.get("raises_assurance") is not False
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_SCHEDULE_RECEIPT_BOUNDARY_INVALID",
+                "message": (
+                    "boundary must record executes_commands=false, "
+                    "launches_agents=false, and raises_assurance=false"
+                ),
+            }
+        )
+
+    lanes = receipt.get("lanes")
+    if not isinstance(lanes, list) or not lanes:
+        errors.append(
+            {
+                "code": "ERR_TEAM_SCHEDULE_RECEIPT_LANES_REQUIRED",
+                "message": "lanes must be a non-empty list",
+            }
+        )
+        return summary
+
+    seen_lane_ids: set[str] = set()
+    intervals: list[tuple[int, int]] = []
+    lane_ids: list[str] = []
+    for index, lane in enumerate(lanes):
+        if not isinstance(lane, dict):
+            errors.append(
+                {
+                    "code": "ERR_TEAM_SCHEDULE_RECEIPT_LANE_INVALID",
+                    "message": f"lanes[{index}] must be an object",
+                }
+            )
+            continue
+        lane_id = lane.get("lane_id")
+        lane_error_id = lane_id if isinstance(lane_id, str) and lane_id else None
+        if not isinstance(lane_id, str) or not lane_id.strip():
+            errors.append(
+                {
+                    "code": "ERR_TEAM_SCHEDULE_RECEIPT_LANE_ID_INVALID",
+                    "message": "lane_id must be a non-empty string",
+                }
+            )
+        else:
+            lane_id = lane_id.strip()
+            if lane_id in seen_lane_ids:
+                errors.append(
+                    {
+                        "code": "ERR_TEAM_SCHEDULE_RECEIPT_LANE_ID_DUPLICATE",
+                        "message": "lane_id must be unique",
+                        "lane_id": lane_id,
+                    }
+                )
+            seen_lane_ids.add(lane_id)
+            lane_ids.append(lane_id)
+
+        for field in ("worktree", "state_root", "pid_start_token"):
+            if (
+                not isinstance(lane.get(field), str)
+                or not str(lane.get(field)).strip()
+            ):
+                _append_schedule_lane_error(
+                    errors,
+                    "ERR_TEAM_SCHEDULE_RECEIPT_REQUIRED_FIELD_MISSING",
+                    f"{field} must be a non-empty string",
+                    lane_id=lane_error_id,
+                )
+
+        for field in ("pid", "exit_code"):
+            if not _is_int_not_bool(lane.get(field)):
+                _append_schedule_lane_error(
+                    errors,
+                    "ERR_TEAM_SCHEDULE_RECEIPT_FIELD_INVALID",
+                    f"{field} must be an integer",
+                    lane_id=lane_error_id,
+                )
+
+        spawned_at = _parse_schedule_timestamp(
+            lane.get("spawned_at"),
+            errors,
+            field="spawned_at",
+            lane_id=lane_error_id,
+        )
+        exited_at = _parse_schedule_timestamp(
+            lane.get("exited_at"),
+            errors,
+            field="exited_at",
+            lane_id=lane_error_id,
+        )
+        spawned_ns = _schedule_monotonic_ns(
+            lane.get("spawned_monotonic_ns"),
+            errors,
+            field="spawned_monotonic_ns",
+            lane_id=lane_error_id,
+        )
+        exited_ns = _schedule_monotonic_ns(
+            lane.get("exited_monotonic_ns"),
+            errors,
+            field="exited_monotonic_ns",
+            lane_id=lane_error_id,
+        )
+        if (
+            spawned_at is not None
+            and exited_at is not None
+            and exited_at < spawned_at
+        ):
+            _append_schedule_lane_error(
+                errors,
+                "ERR_TEAM_SCHEDULE_RECEIPT_INTERVAL_INVALID",
+                "exited_at must be greater than or equal to spawned_at",
+                lane_id=lane_error_id,
+            )
+        if spawned_ns is not None and exited_ns is not None:
+            if exited_ns < spawned_ns:
+                _append_schedule_lane_error(
+                    errors,
+                    "ERR_TEAM_SCHEDULE_RECEIPT_INTERVAL_INVALID",
+                    "exited_monotonic_ns must be greater than or equal to spawned_monotonic_ns",
+                    lane_id=lane_error_id,
+                )
+            else:
+                intervals.append((spawned_ns, exited_ns))
+
+    summary["lane_ids"] = sorted(set(lane_ids))
+    summary["derived_max_overlap"] = _derive_max_overlap(intervals)
+    return summary
+
+
+def _append_schedule_lane_error(
+    errors: list[dict[str, str]],
+    code: str,
+    message: str,
+    *,
+    lane_id: str | None,
+) -> None:
+    record = {"code": code, "message": message}
+    if lane_id is not None:
+        record["lane_id"] = lane_id
+    errors.append(record)
+
+
+def _parse_schedule_timestamp(
+    value: Any,
+    errors: list[dict[str, str]],
+    *,
+    field: str,
+    lane_id: str | None = None,
+) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        _append_schedule_lane_error(
+            errors,
+            "ERR_TEAM_SCHEDULE_RECEIPT_TIMESTAMP_INVALID",
+            f"{field} must be a non-empty ISO timestamp",
+            lane_id=lane_id,
+        )
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        _append_schedule_lane_error(
+            errors,
+            "ERR_TEAM_SCHEDULE_RECEIPT_TIMESTAMP_INVALID",
+            f"{field} must be parseable as an ISO timestamp",
+            lane_id=lane_id,
+        )
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        _append_schedule_lane_error(
+            errors,
+            "ERR_TEAM_SCHEDULE_RECEIPT_TIMESTAMP_INVALID",
+            f"{field} must include a timezone offset",
+            lane_id=lane_id,
+        )
+        return None
+    return parsed
+
+
+def _schedule_monotonic_ns(
+    value: Any,
+    errors: list[dict[str, str]],
+    *,
+    field: str,
+    lane_id: str | None,
+) -> int | None:
+    if not _is_int_not_bool(value) or value < 0:
+        _append_schedule_lane_error(
+            errors,
+            "ERR_TEAM_SCHEDULE_RECEIPT_MONOTONIC_INVALID",
+            f"{field} must be a non-negative integer",
+            lane_id=lane_id,
+        )
+        return None
+    return value
+
+
+def _is_int_not_bool(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _derive_max_overlap(intervals: list[tuple[int, int]]) -> int:
+    events: list[tuple[int, int]] = []
+    for start, end in intervals:
+        events.append((start, 1))
+        events.append((end, -1))
+
+    current = 0
+    max_overlap = 0
+    for _, delta in sorted(events, key=lambda item: (item[0], item[1])):
+        current += delta
+        if current > max_overlap:
+            max_overlap = current
+    return max_overlap
 
 
 def _validate_team_merge_attempt_receipt(

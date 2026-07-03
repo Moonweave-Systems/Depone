@@ -11,6 +11,7 @@ from pathlib import Path
 from depone.agent_fabric.team_ledger import (
     build_sample_team_ledger,
     build_team_ledger_verdict,
+    validate_team_schedule_receipt,
 )
 
 
@@ -170,6 +171,62 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
                 sort_keys=True,
             )
             + "\n",
+            encoding="utf-8",
+        )
+        return relative_path
+
+    def _write_schedule_receipt(
+        self,
+        relative_path: str = "team-schedule-receipt.json",
+        *,
+        lanes: list[dict[str, object]] | None = None,
+        extra: dict[str, object] | None = None,
+    ) -> str:
+        receipt_path = self.root / relative_path
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt: dict[str, object] = {
+            "kind": "depone-team-schedule-receipt",
+            "schema_version": "0.1",
+            "observed_by": "leader-fixed",
+            "captured_at": "2026-07-03T00:00:03Z",
+            "lanes": lanes
+            or [
+                {
+                    "lane_id": "lane-docs",
+                    "spawned_at": "2026-07-03T00:00:00Z",
+                    "exited_at": "2026-07-03T00:00:02Z",
+                    "spawned_monotonic_ns": 1_000,
+                    "exited_monotonic_ns": 3_000,
+                    "pid": 101,
+                    "pid_start_token": "101:1000",
+                    "exit_code": 0,
+                    "worktree": "worktrees/lane-docs",
+                    "state_root": "state/lane-docs",
+                },
+                {
+                    "lane_id": "lane-tests",
+                    "spawned_at": "2026-07-03T00:00:01Z",
+                    "exited_at": "2026-07-03T00:00:03Z",
+                    "spawned_monotonic_ns": 2_000,
+                    "exited_monotonic_ns": 4_000,
+                    "pid": 102,
+                    "pid_start_token": "102:1001",
+                    "exit_code": 0,
+                    "worktree": "worktrees/lane-tests",
+                    "state_root": "state/lane-tests",
+                },
+            ],
+            "boundary": {
+                "executes_commands": False,
+                "launches_agents": False,
+                "raises_assurance": False,
+                "proves_single_host_process_overlap": True,
+            },
+        }
+        if extra:
+            receipt.update(extra)
+        receipt_path.write_text(
+            json.dumps(receipt, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
         return relative_path
@@ -963,6 +1020,172 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         self.assertEqual(verdict["decision"], "pass")
         self.assertEqual(verdict["merge_receipt"]["decision"], "pass")
         self.assertEqual(verdict["merge_receipt"]["overlap_count"], 1)
+
+    def test_schedule_receipt_derives_overlap_for_team_ledger(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["lanes"][1]["touched_files"] = ["tests/test_agent_fabric_team_ledger.py"]
+        ledger["schedule_receipt"] = self._write_schedule_receipt()
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(verdict["errors"], [])
+        self.assertEqual(verdict["schedule_receipt"]["derived_max_overlap"], 2)
+        self.assertEqual(
+            verdict["schedule_receipt"]["lane_ids"],
+            ["lane-docs", "lane-tests"],
+        )
+
+    def test_schedule_receipt_ignores_self_declared_overlap(self) -> None:
+        receipt_path = self._write_schedule_receipt(extra={"max_overlap": 99})
+        receipt = json.loads((self.root / receipt_path).read_text(encoding="utf-8"))
+
+        errors = validate_team_schedule_receipt(receipt)
+
+        self.assertEqual(errors, [])
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        ledger["lanes"][1]["touched_files"] = ["tests/test_agent_fabric_team_ledger.py"]
+        ledger["schedule_receipt"] = receipt_path
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+        self.assertEqual(verdict["schedule_receipt"]["derived_max_overlap"], 2)
+
+    def test_schedule_receipt_validator_rejects_non_object(self) -> None:
+        errors = validate_team_schedule_receipt(["not", "an", "object"])
+
+        self.assertEqual(
+            {error["code"] for error in errors},
+            {"ERR_TEAM_SCHEDULE_RECEIPT_INVALID"},
+        )
+
+    def test_schedule_receipt_rejects_timezone_naive_timestamps(self) -> None:
+        receipt_path = self._write_schedule_receipt(
+            lanes=[
+                {
+                    "lane_id": "lane-docs",
+                    "spawned_at": "2026-07-03T00:00:00",
+                    "exited_at": "2026-07-03T00:00:02Z",
+                    "spawned_monotonic_ns": 1_000,
+                    "exited_monotonic_ns": 3_000,
+                    "pid": 101,
+                    "pid_start_token": "101:1000",
+                    "exit_code": 0,
+                    "worktree": "worktrees/lane-docs",
+                    "state_root": "state/lane-docs",
+                }
+            ]
+        )
+        receipt = json.loads((self.root / receipt_path).read_text(encoding="utf-8"))
+
+        errors = validate_team_schedule_receipt(receipt)
+
+        self.assertIn(
+            "ERR_TEAM_SCHEDULE_RECEIPT_TIMESTAMP_INVALID",
+            {error["code"] for error in errors},
+        )
+
+    def test_schedule_receipt_blocks_impossible_interval(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["schedule_receipt"] = self._write_schedule_receipt(
+            lanes=[
+                {
+                    "lane_id": "lane-docs",
+                    "spawned_at": "2026-07-03T00:00:02Z",
+                    "exited_at": "2026-07-03T00:00:01Z",
+                    "spawned_monotonic_ns": 3_000,
+                    "exited_monotonic_ns": 2_000,
+                    "pid": 101,
+                    "pid_start_token": "101:1000",
+                    "exit_code": 0,
+                    "worktree": "worktrees/lane-docs",
+                    "state_root": "state/lane-docs",
+                }
+            ]
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_SCHEDULE_RECEIPT_INTERVAL_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_schedule_receipt_path_must_stay_under_base_dir(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["schedule_receipt"] = "../team-schedule-receipt.json"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_PATH_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_missing_schedule_receipt_file_blocks(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["schedule_receipt"] = "missing-schedule-receipt.json"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_MISSING",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_malformed_schedule_receipt_file_blocks(self) -> None:
+        receipt_path = self.root / "malformed-schedule-receipt.json"
+        receipt_path.write_text("{", encoding="utf-8")
+        ledger = self._ledger_with_evidence_next()
+        ledger["schedule_receipt"] = "malformed-schedule-receipt.json"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_SCHEDULE_RECEIPT_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_committed_schedule_receipt_fixture_revalidates(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        fixture_root = repo_root / "docs" / "team-schedule-receipt"
+        ledger = json.loads(
+            (fixture_root / "team-ledger.json").read_text(encoding="utf-8")
+        )
+        expected_verdict = json.loads(
+            (fixture_root / "team-ledger-verdict.json").read_text(encoding="utf-8")
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=fixture_root)
+
+        self.assertEqual(verdict["decision"], expected_verdict["decision"])
+        self.assertEqual(verdict["errors"], expected_verdict["errors"])
+        self.assertEqual(
+            verdict["schedule_receipt"],
+            expected_verdict["schedule_receipt"],
+        )
+
+    def test_committed_negative_schedule_receipt_fixture_is_rejected(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        receipt = json.loads(
+            (
+                repo_root
+                / "docs"
+                / "team-schedule-receipt"
+                / "negative-impossible-interval.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        errors = validate_team_schedule_receipt(receipt)
+
+        self.assertIn(
+            "ERR_TEAM_SCHEDULE_RECEIPT_INTERVAL_INVALID",
+            {error["code"] for error in errors},
+        )
 
     def test_merge_attempt_receipt_allows_overlapping_passed_lanes(self) -> None:
         ledger = self._ledger_with_evidence_next()

@@ -1,0 +1,38 @@
+{
+  "boundary": {
+    "executes_commands": false,
+    "launches_agents": false,
+    "proves_single_host_process_overlap": true,
+    "raises_assurance": false
+  },
+  "captured_at": "2026-07-03T00:00:03Z",
+  "kind": "depone-team-schedule-receipt",
+  "lanes": [
+    {
+      "exit_code": 0,
+      "exited_at": "2026-07-03T00:00:02Z",
+      "exited_monotonic_ns": 3000,
+      "lane_id": "lane-docs",
+      "pid": 101,
+      "pid_start_token": "101:1000",
+      "spawned_at": "2026-07-03T00:00:00Z",
+      "spawned_monotonic_ns": 1000,
+      "state_root": "state/lane-docs",
+      "worktree": "worktrees/lane-docs"
+    },
+    {
+      "exit_code": 0,
+      "exited_at": "2026-07-03T00:00:03Z",
+      "exited_monotonic_ns": 4000,
+      "lane_id": "lane-tests",
+      "pid": 102,
+      "pid_start_token": "102:1001",
+      "spawned_at": "2026-07-03T00:00:01Z",
+      "spawned_monotonic_ns": 2000,
+      "state_root": "state/lane-tests",
+      "worktree": "worktrees/lane-tests"
+    }
+  ],
+  "observed_by": "leader-fixed",
+  "schema_version": "0.1"
+}

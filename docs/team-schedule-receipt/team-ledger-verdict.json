@@ -1,0 +1,37 @@
+{
+  "blocked_lane_count": 0,
+  "boundary": {
+    "approves_merge": false,
+    "calls_live_models": false,
+    "executes_commands": false,
+    "inspects_cloud_runtime": false,
+    "launches_agents": false,
+    "raises_assurance": false
+  },
+  "decision": "pass",
+  "errors": [],
+  "kind": "depone-team-ledger-verdict",
+  "lane_count": 2,
+  "leader_objective": "Validate W15 schedule receipt fan-in before witnessd integration",
+  "merge_receipt": {
+    "decision": null,
+    "overlap_count": 0,
+    "path": null,
+    "required": false
+  },
+  "overlapping_touched_files": [],
+  "passed_lane_count": 2,
+  "schedule_receipt": {
+    "derived_max_overlap": 2,
+    "lane_ids": [
+      "lane-docs",
+      "lane-tests"
+    ],
+    "path": "team-schedule-receipt.json",
+    "present": true
+  },
+  "schema_version": "0.1",
+  "source_hashes": {
+    "team_ledger": "4dd048e2ce3b3ec2fecd702902df96dab15a336babea90e151d69ff04e8849f5"
+  }
+}

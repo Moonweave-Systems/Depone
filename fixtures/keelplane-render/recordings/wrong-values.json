@@ -1,5 +1,0 @@
-{
-  "writes": {
-    "fixtures/keelplane-render/generated/chart_generator.py": "#!/usr/bin/env python3\nfrom __future__ import annotations\n\nimport argparse\nimport json\nimport sys\nfrom pathlib import Path\n\nROOT = Path(__file__).resolve().parents[3]\nsys.path.insert(0, str(ROOT / \"scripts\"))\n\nfrom dwm_dogfood_chart_render import render_svg  # noqa: E402\n\n\ndef main() -> int:\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--input\", required=True)\n    parser.add_argument(\"--out\", required=True)\n    args = parser.parse_args()\n    data = json.loads(Path(args.input).read_text(encoding=\"utf-8\"))\n    rows = []\n    for row in data[\"rows\"]:\n        changed = dict(row)\n        changed[\"delta_seconds\"] = float(row[\"delta_seconds\"]) + 10.0\n        rows.append(changed)\n    svg = render_svg({\"rows\": rows})\n    out_path = Path(args.out)\n    out_path.parent.mkdir(parents=True, exist_ok=True)\n    out_path.write_text(svg + \"\\n\", encoding=\"utf-8\")\n    return 0\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())\n"
-  }
-}

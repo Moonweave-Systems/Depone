@@ -21,10 +21,23 @@
 - `scripts/check_contract.py`(~5k줄) = 스크립트 99개를 시퀀스 실행하는 **DWM 릴리스 계약 엔진**. CI 게이트.
 - `scripts/execute_packet.py` 등은 subprocess 실행 → **비실행 불변식과 충돌하는 유산**.
 
+> **개정 1 (2026-07-03, 1차 실행의 ambiguity gate 발견 반영):** 최초 경계 감사는 리터럴
+> `scripts/x.py` 패턴만 grep해서 **조립식 경로 참조**(`ROOT / "scripts" / "install_smoke.py"` 류)를
+> 놓쳤다. 조립식 전수 재감사로 아래 5개를 REMOVE→KEEP으로 이동했다. 근거:
+> `scripts/install_smoke.py`(tests/test_install_smoke.py가 로드 — 설치 위생 검증),
+> `scripts/evaluate_plan.py`(**패키지가 호출**: depone/cli/validate.py:197, core/plan_schema.py:121 — ②의 일부),
+> `fixtures/v105-verify-wedge/`(**패키지 cli 기본값**: cli/advance.py, cli/evidence_run.py),
+> `docs/cloud-lane-artifact/`(tests/test_agent_fabric_team_ledger.py:835),
+> `packaging/dwm-roles.json`(**패키지가 읽음**: agent_fabric/agent_operating_contract.py DWM_ROLES_PATH).
+> packaging의 다른 dwm-*.json 4종(adapters/benchmark-attempts/benchmark-tasks/benchmarks/package)은
+> 재확인 결과 무참조 → REMOVE 유지.
+
 ### KEEP (건드리지 않음)
 - `depone/` 패키지 전체(①+②), `tests/` 43개 전체, `pyproject.toml`, `LICENSE`, `AGENTS.md`, `CLAUDE.md`.
 - `SKILL.md`, `templates/`, `references/` (워크플로우 설계 스킬 표면).
-- `fixtures/agent_fabric/`, `fixtures/capabilities/`.
+- **[개정1] `scripts/install_smoke.py`, `scripts/evaluate_plan.py`.**
+- `fixtures/agent_fabric/`, `fixtures/capabilities/`, **[개정1] `fixtures/v105-verify-wedge/`**.
+- **[개정1] `packaging/dwm-roles.json`, `docs/cloud-lane-artifact/`.**
 - docs 중 tests/패키지 참조 10경로: `docs/spec.md`, `docs/command-reference.md`, `docs/only.md`,
   `docs/depone-advance-one-step/`, `docs/depone-cloud-team-control.md`, `docs/depone-run-receipt-frontdoor/`,
   `docs/team-dry-run/`, `docs/worktree-lane-receipt/`, `docs/v107-agent-fabric-control-plane-spec.md`,
@@ -53,6 +66,11 @@
 ## Tasks
 
 ### Task 0: 브랜치 + 베이스라인
+- [ ] **[개정1] Task 0.5 조립식 참조 재감사 (제거 전 필수):** 아래를 실행해 나온 모든 경로가
+  KEEP에 있는지 대조. KEEP에 없는 참조가 나오면 **제거하지 말고 멈추고 보고**(경계 추가 개정 필요 신호):
+```bash
+grep -rhnE '"(docs|fixtures|samples|scripts|packaging|assets)"\s*/' tests/ depone/ | grep -v __pycache__
+```
 - [ ] `git checkout -b dwm-retirement`. 베이스라인 그린 기록:
   `uv run python3 -m unittest discover -s tests -p 'test_*.py'`(333 OK 예상) +
   witnessd 역방향(`cd /home/ubuntu/moonweave/witnessd && PYTHONPATH=/home/ubuntu/moonweave/depone uv run python3 scripts/revalidate_w1.py`).

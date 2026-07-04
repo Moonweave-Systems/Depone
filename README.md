@@ -23,16 +23,18 @@ with `docs/spec.md`, the spec wins. For the documentation map, see
 
 Depone owns the evidence contract for capture manifests, observer captures,
 isolation facts, runner receipts, DSSE envelopes, evidence contracts, schedules,
-team ledgers, policies, and verifier error codes. Runtimes such as
-[`witnessd`](https://github.com/Moonweave-Systems/witnessd) execute work and emit
-evidence; Depone re-derives the verdict from those bytes.
+team ledgers, policies, verification recipes, MCP/tool receipts, and verifier
+error codes. Runtimes such as [`witnessd`](https://github.com/Moonweave-Systems/witnessd)
+execute work and emit evidence; Depone re-derives the verdict from those bytes.
 
 | Public surface | User intent | Depone role |
 | --- | --- | --- |
-| `superflow` | plan -> run -> evidence -> verifier summary | re-derive after witnessd emits bytes |
+| `superflow` | scout -> plan -> run -> evidence -> verifier summary -> handoff | re-derive after witnessd emits bytes |
+| `superflow scout` | read-only repo exploration | verify bound planning artifacts only |
 | `flowplan` | plan-only workflow design | validate plan/contract gates |
 | `proofrun` | evidence-backed execution alias | verify emitted evidence when requested |
 | `proofcheck` | offline evidence verification | primary public verifier alias |
+| `superflow handoff` | maintainer review package | validate evidence links, not approval |
 | `superflow auto` | continuation behind evidence gates | revalidate and gate next action |
 | `superflow ultra` | future high-autonomy profile | same verifier rules, stricter policies |
 
@@ -98,12 +100,17 @@ agent-session evidence. It can re-derive assurance from:
 - isolation facts,
 - signed evidence bundles,
 - evidence-contract artifacts,
-- schedule/team-ledger artifacts.
+- schedule/team-ledger artifacts,
+- verification recipes and receipts,
+- repo-profile/context-pack bindings,
+- skillpack-lock hashes,
+- MCP/tool receipts,
+- PR handoff evidence.
 
 It cannot turn a weak capture into a stronger one. If the bytes only support A0,
 the verifier must report A0. If observer capture or isolation evidence is
-missing, the verifier must not infer it from prose, model claims, or operator
-intent.
+missing, the verifier must not infer it from prose, model claims, skill text, MCP
+output, or operator intent.
 
 ## Command taxonomy
 
@@ -114,22 +121,24 @@ intent.
 | Gate commands | `next`, `team-launch-preflight` | Non-executing gates for wrapper workflows. |
 | Compatibility/demo commands | `demo`, `observe`, `evidence-substrate`, internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
 
-Commands that launch workers, own sessions, retry, or mutate active worktrees
-belong in witnessd or in the future Superflow wrapper calling witnessd. Commands
-that consume bytes and emit verifier results belong in Depone.
+Commands that launch workers, own sessions, retry, call external MCP/tools, or
+mutate active worktrees belong in witnessd or in the future Superflow wrapper
+calling witnessd. Commands that consume bytes and emit verifier results belong in
+Depone.
 
 ## Normal Superflow loop
 
 ```text
 1. Superflow receives the user goal.
-2. witnessd executes work and emits evidence bytes.
-3. Depone reads the artifact bytes offline.
-4. Depone re-derives the verdict and assurance grade.
-5. Superflow summarizes the result without upgrading the verdict.
+2. Superflow scouts repo context when useful.
+3. witnessd executes work and emits evidence bytes.
+4. Depone reads the artifact bytes offline.
+5. Depone re-derives the verdict and assurance grade.
+6. Superflow summarizes and prepares handoff without upgrading the verdict.
 ```
 
-For direct verifier use, steps 1 and 2 are skipped: `proofcheck` or `depone`
-reads existing evidence and reports what the bytes support.
+For direct verifier use, steps 1, 2, 3, and 6 are skipped: `proofcheck` or
+`depone` reads existing evidence and reports what the bytes support.
 
 ## Quality
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 EXIT_SUCCESS = 0
 EXIT_FAILED = 1
@@ -34,9 +34,17 @@ def emit_error(
     code: str,
     message: str,
     path: str | Path | None = None,
+    legacy_code: str | None = None,
     exit_code: int = EXIT_USAGE,
-) -> None:
-    payload = {"error": {"code": code, "message": message, "path": str(path) if path else None}}
+) -> NoReturn:
+    payload = {
+        "error": {
+            "code": code,
+            "message": message,
+            "path": str(path) if path else None,
+            **({"legacy_code": legacy_code} if legacy_code else {}),
+        }
+    }
     if wants_json(args):
         emit_json(payload)
     else:

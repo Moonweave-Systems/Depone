@@ -1,6 +1,6 @@
 # Depone
 
-> Non-executing verifier and evidence-contract source of truth for Superflow.
+> Non-executing verifier and evidence-contract source of truth for ORRO.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F46E5.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Moonweave-Systems/Depone?color=4F46E5)](https://github.com/Moonweave-Systems/Depone/releases)
@@ -8,12 +8,16 @@
 
 ![Depone hero](assets/dwm-hero.svg)
 
-**Depone** is the verifier engine inside Superflow, published under the
-Moonweave account. It re-derives A0/A1/A2, blocked, or refuted from signed
-evidence bytes, offline, and cannot raise the grade beyond what those bytes
-support.
+**Depone** is the verifier engine inside ORRO, the Observed Run & Review
+Orchestrator, published under the Moonweave account. It re-derives A0/A1/A2,
+blocked, or refuted from signed evidence bytes, offline, and cannot raise the
+grade beyond what those bytes support.
 
-Depone verifies; witnessd executes; Superflow exposes the workflow.
+Depone verifies; witnessd executes; ORRO exposes the workflow.
+
+`Superflow` was the earlier product-surface name. New public docs should use
+ORRO. Existing `superflow-*` fixture paths, schema kinds, or compatibility aliases
+may remain during migration.
 
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md).
 README, agent context files, skill text, command references, release notes, and
@@ -31,14 +35,16 @@ execute work and emit evidence; Depone re-derives the verdict from those bytes.
 
 | Public surface | User intent | Depone role |
 | --- | --- | --- |
-| `superflow` | scout -> plan -> run -> evidence -> verifier summary -> handoff | re-derive after witnessd emits bytes |
-| `superflow scout` | read-only repo exploration | verify bound planning artifacts only |
+| ORRO | flagship product/tool | published by Moonweave |
+| ORRO Flow | scout -> flowplan -> proofrun -> proofcheck -> handoff | workflow naming |
+| `orro` | scout -> plan -> run -> evidence -> verifier summary -> handoff | re-derive after witnessd emits bytes |
+| `orro scout` | read-only repo exploration | verify bound planning artifacts only |
 | `flowplan` | plan-only workflow design | validate plan/contract gates |
 | `proofrun` | evidence-backed execution alias | verify emitted evidence when requested |
 | `proofcheck` | offline evidence verification | primary public verifier alias |
-| `superflow handoff` | maintainer review package | validate evidence links, not approval |
-| `superflow auto` | continuation behind evidence gates | revalidate and gate next action |
-| `superflow ultra` | future high-autonomy profile | same verifier rules, stricter policies |
+| `orro handoff` | maintainer review package | validate evidence links, not approval |
+| `orro auto` | continuation behind evidence gates | revalidate and gate next action |
+| `orro ultra` | future high-autonomy profile | same verifier rules, stricter policies |
 
 Direct `depone` CLI and `SKILL.md` usage remain developer, verifier, CI, and
 compatibility surfaces. They are not the final flagship user UX beside a separate
@@ -53,15 +59,15 @@ Depone   = verifier engine and evidence contract
 witnessd = execution engine and evidence emitter
 ```
 
-The user-facing install should still be one product: Superflow. Normal users
-should not be told to install separate Depone and witnessd skills for one
-workflow. In the near term, the thin `superflow` command/skill may live in the
-witnessd repo because Superflow starts execution and witnessd owns execution.
-Depone is consumed as a pinned verifier dependency.
+The user-facing install should still be one product: ORRO. Normal users should
+not be told to install separate Depone and witnessd skills for one workflow. In
+the near term, the thin `orro` command/skill may live in the witnessd repo because
+ORRO starts execution and witnessd owns execution. Depone is consumed as a pinned
+verifier dependency.
 
-A future standalone `Superflow` repo is only for distribution: marketplace
-manifests, host-specific plugin bundles, examples, product docs, version locks,
-and end-to-end integration tests. It is not a third engine and must not duplicate
+A future standalone `ORRO` repo is only for distribution: marketplace manifests,
+host-specific plugin bundles, examples, product docs, version locks, and
+end-to-end integration tests. It is not a third engine and must not duplicate
 Depone verifier logic or witnessd runtime logic.
 
 ## Quickstart
@@ -81,6 +87,9 @@ depone evidence-chain --self-test
 depone team-ledger --self-test
 depone proofcheck --evidence-dir depone/fixtures/superflow/positive --json
 ```
+
+The `depone/fixtures/superflow/*` path is a historical fixture path retained
+until the artifact migration lands. It is not the canonical product name.
 
 Source installation smoke is:
 
@@ -116,7 +125,7 @@ missing, the verifier must not infer it from prose, model claims, skill text, MC
 output, or operator intent.
 
 `proofcheck` is fail-closed. Missing directories, non-directories, empty evidence
-directories, malformed artifacts, missing required Superflow artifacts, scout-only
+directories, malformed artifacts, missing required ORRO artifacts, scout-only
 planning artifacts without a verification receipt, and all-zero runner receipt
 hash placeholders block instead of passing.
 
@@ -130,19 +139,18 @@ hash placeholders block instead of passing.
 | Compatibility/demo commands | `demo`, `observe`, `evidence-substrate`, internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
 
 Commands that launch workers, own sessions, retry, call external MCP/tools, or
-mutate active worktrees belong in witnessd or in the future Superflow wrapper
-calling witnessd. Commands that consume bytes and emit verifier results belong in
-Depone.
+mutate active worktrees belong in witnessd or in the future ORRO wrapper calling
+witnessd. Commands that consume bytes and emit verifier results belong in Depone.
 
-## Normal Superflow loop
+## Normal ORRO loop
 
 ```text
-1. Superflow receives the user goal.
-2. Superflow scouts repo context when useful.
+1. ORRO receives the user goal.
+2. ORRO scouts repo context when useful.
 3. witnessd executes work and emits evidence bytes.
 4. Depone reads the artifact bytes offline.
 5. Depone re-derives the verdict and assurance grade.
-6. Superflow summarizes and prepares handoff without upgrading the verdict.
+6. ORRO summarizes and prepares handoff without upgrading the verdict.
 ```
 
 Scout artifacts are planning evidence only. A scout-only directory is useful for
@@ -165,10 +173,10 @@ python scripts/check_readme_quality.py README.md
 
 ## Documentation
 
-- [`docs/spec.md`](docs/spec.md) — authoritative Depone repository spec.
-- [`docs/README.md`](docs/README.md) — documentation map and legacy policy.
-- [`docs/command-reference.md`](docs/command-reference.md) — command inventory and compatibility reference.
-- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) — compatibility planning and skill surfaces derived from the spec.
+- [`docs/spec.md`](docs/spec.md) - authoritative Depone repository spec.
+- [`docs/README.md`](docs/README.md) - documentation map and legacy policy.
+- [`docs/command-reference.md`](docs/command-reference.md) - command inventory and compatibility reference.
+- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) - compatibility planning and skill surfaces derived from the spec.
 
 ## License
 

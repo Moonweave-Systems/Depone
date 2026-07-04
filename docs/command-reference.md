@@ -5,10 +5,10 @@ source of truth for product direction. The authoritative Depone spec is
 [`docs/spec.md`](spec.md).
 
 Depone commands are grouped by boundary class. New user-facing work should prefer
-Superflow surfaces (`superflow`, `superflow scout`, `flowplan`, `proofrun`,
-`proofcheck`, `superflow handoff`) instead of teaching users this full engine
-surface. Moonweave is the publisher/account namespace; Superflow is the
-product/tool name.
+ORRO surfaces (`orro`, `orro scout`, `flowplan`, `proofrun`, `proofcheck`,
+`orro handoff`) instead of teaching users this full engine surface. Moonweave is
+the publisher/account namespace; ORRO is the product/tool name. `Superflow` is
+historical compatibility naming.
 
 ---
 
@@ -32,9 +32,9 @@ A1, or A2 according to the evidence contract. They must not upgrade assurance
 from prose, model claims, skill text, MCP output, or operator intent.
 
 `proofcheck` is fail-closed. Missing directories, non-directory evidence paths,
-empty evidence directories, malformed artifacts, missing required Superflow
-artifacts, scout-only planning artifacts without a verification receipt, and
-all-zero runner receipt hashes produce `blocked`, not `pass`.
+empty evidence directories, malformed artifacts, missing required ORRO artifacts,
+scout-only planning artifacts without a verification receipt, and all-zero runner
+receipt hashes produce `blocked`, not `pass`.
 
 Verifier artifact families now include:
 
@@ -47,6 +47,9 @@ Verifier artifact families now include:
 | skillpack-lock | Knowledge selection evidence, not proof of correctness. |
 | MCP/tool receipts | Hash-bound external observations, not remote truth. |
 | PR handoff | Human review package, not approval or merge evidence. |
+
+New artifact kinds should use `orro-*`. Existing `superflow-*` kinds may remain
+accepted as compatibility aliases until fixtures and code migrate.
 
 ---
 
@@ -61,7 +64,7 @@ python -m depone compile plan.json --target conductor --out workflow.yaml --json
 ```
 
 `design` remains available as a compatibility planning helper when installed, but
-Superflow's final plan-only user surface should be `flowplan`.
+ORRO's final plan-only user surface should be `flowplan`.
 
 ---
 
@@ -76,8 +79,8 @@ python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry
 ```
 
 A gate that would spawn, retry, mutate worktrees, call MCP servers, or call a live
-model belongs in witnessd or the future Superflow wrapper, not in Depone
-verifier-core paths.
+model belongs in witnessd or the future ORRO wrapper, not in Depone verifier-core
+paths.
 
 ---
 
@@ -99,7 +102,7 @@ python -m depone codex-local-capability --repo . --codex-binary definitely-missi
 
 Important boundary: these commands may exist to create deterministic receipts or
 compatibility fixtures, but the flagship runtime path belongs in witnessd. Do not
-present these helpers as a full Superflow engine.
+present these helpers as a full ORRO engine.
 
 ---
 

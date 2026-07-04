@@ -4,15 +4,17 @@ Depone is the **non-executing verifier and evidence-contract engine** inside
 Moonweave. It re-derives what signed/hash-bound evidence bytes actually support.
 It must not become the runtime that launched the workers it is judging.
 
-The user-facing product surface is planned as **Moonweave** with purpose-named
-skills: `ProofPlan`, `ProofRun`, `ProofVerify`, and `ProofFlow`. Direct `depone`
-CLI and `SKILL.md` usage remains developer, verifier, CI, and compatibility
-surface. See [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md).
+The source of truth for this repository is [`docs/spec.md`](docs/spec.md). This
+file is a short agent orientation derived from that spec. If there is a conflict,
+`docs/spec.md` wins.
 
-This file exists so an agent that clones the repo with no other context knows how
-to work here. Keep it short and current.
+Moonweave's two-engine sentence is:
 
-## Current direction (read first)
+```text
+Depone verifies; witnessd executes; Moonweave exposes the workflow.
+```
+
+## Current direction
 
 Depone should stay narrow and valuable:
 
@@ -24,12 +26,6 @@ Depone should stay narrow and valuable:
   from bytes,
 - avoid presenting compatibility/demo execution helpers as the flagship product
   surface.
-
-Moonweave's two-engine sentence is:
-
-```text
-Depone verifies; witnessd executes; Moonweave exposes the workflow.
-```
 
 ## Boundary rules
 

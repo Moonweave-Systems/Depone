@@ -1,10 +1,11 @@
-# Depone Spec — Moonweave Superflow Verifier Contract
+# Depone Spec — Superflow Verifier Contract
 
 Status: source-of-truth spec, 2026-07-04.
 
 One-line decision: **Depone is the non-executing verifier and evidence-contract
-engine for Moonweave Superflow. It is not the flagship user-facing automation
-skill and not the runtime that launched the workers it judges.**
+engine for Superflow. It is not the flagship user-facing automation skill and not
+the runtime that launched the workers it judges.** Moonweave is the
+publisher/account name, not the product surface.
 
 This file is the authoritative Depone repo spec. README, CLAUDE.md, AGENTS.md,
 SKILL.md, command references, release notes, and historical DWM documents are
@@ -15,12 +16,12 @@ wins.
 
 ## 1. Product boundary
 
-Moonweave has two engines and one product surface:
+Superflow has two engines and one product surface:
 
 ```text
 witnessd  = executing runtime and evidence emitter
 Depone    = non-executing verifier and evidence-contract authority
-Moonweave Superflow = user-facing product/workflow surface
+Superflow = user-facing product/workflow surface, published by Moonweave
 ```
 
 User-facing names:
@@ -78,7 +79,7 @@ Depone verifier-core paths must not:
 
 If a feature needs to spawn, supervise, retry, route adapters, create active lane
 worktrees, or emit runtime evidence, it belongs in witnessd. If a feature needs
-to bundle both engines for end users, it belongs in the future Moonweave wrapper.
+to bundle both engines for end users, it belongs in the future Superflow wrapper.
 
 ---
 
@@ -94,7 +95,7 @@ All Depone commands must be classified as one of these surfaces:
 | Fixture/demo | Deterministic local fixture generation or compatibility workflows. | `demo`, `observe`, `evidence-substrate`, `run`/`evidence-run`, `advance`, internal `agent-fabric-*` surfaces |
 
 Fixture/demo and compatibility commands may remain for existing automation, but
-docs must label them as such. They are not the canonical Moonweave user surface.
+docs must label them as such. They are not the canonical Superflow user surface.
 
 ---
 
@@ -147,16 +148,16 @@ Update this file first, then derive summaries elsewhere.
 
 ---
 
-## 7. Integration with witnessd and Moonweave
+## 7. Integration with witnessd and Superflow
 
 The flagship product path is:
 
 ```text
-Moonweave Superflow
+Superflow
   -> flowplan creates/validates plan gates
   -> witnessd executes and emits evidence
   -> proofcheck/Depone verifies the emitted bytes
-  -> Moonweave summarizes without upgrading the verdict
+  -> Superflow summarizes without upgrading the verdict
 ```
 
 The offline verification path is:
@@ -226,5 +227,5 @@ Every new verifier capability needs:
 ## 10. Final invariant
 
 ```text
-Depone verifies; witnessd executes; Moonweave Superflow exposes the workflow.
+Depone verifies; witnessd executes; Superflow exposes the workflow.
 ```

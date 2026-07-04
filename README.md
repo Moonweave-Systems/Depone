@@ -40,6 +40,26 @@ Direct `depone` CLI and `SKILL.md` usage remain developer, verifier, CI, and
 compatibility surfaces. They are not the final flagship user UX beside a separate
 `witnessd` skill.
 
+## Repository and install boundary
+
+The engines remain separate repositories:
+
+```text
+Depone   = verifier engine and evidence contract
+witnessd = execution engine and evidence emitter
+```
+
+The user-facing install should still be one product: Superflow. Normal users
+should not be told to install separate Depone and witnessd skills for one
+workflow. In the near term, the thin `superflow` command/skill may live in the
+witnessd repo because Superflow starts execution and witnessd owns execution.
+Depone is consumed as a pinned verifier dependency.
+
+A future standalone `Superflow` repo is only for distribution: marketplace
+manifests, host-specific plugin bundles, examples, product docs, version locks,
+and end-to-end integration tests. It is not a third engine and must not duplicate
+Depone verifier logic or witnessd runtime logic.
+
 ## Quickstart
 
 ```bash

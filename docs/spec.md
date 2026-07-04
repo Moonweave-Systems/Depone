@@ -1,10 +1,10 @@
-# Depone Spec
+# Depone Spec — Moonweave Superflow Verifier Contract
 
 Status: source-of-truth spec, 2026-07-04.
 
 One-line decision: **Depone is the non-executing verifier and evidence-contract
-engine for Moonweave. It is not the flagship user-facing automation skill and not
-the runtime that launched the workers it judges.**
+engine for Moonweave Superflow. It is not the flagship user-facing automation
+skill and not the runtime that launched the workers it judges.**
 
 This file is the authoritative Depone repo spec. README, CLAUDE.md, AGENTS.md,
 SKILL.md, command references, release notes, and historical DWM documents are
@@ -20,17 +20,19 @@ Moonweave has two engines and one product surface:
 ```text
 witnessd  = executing runtime and evidence emitter
 Depone    = non-executing verifier and evidence-contract authority
-Moonweave = user-facing product/plugin surface
+Moonweave Superflow = user-facing product/workflow surface
 ```
 
-The planned Moonweave skills are purpose-named:
+User-facing names:
 
-| Skill | User intent | Depone role |
+| Name | User intent | Depone role |
 | --- | --- | --- |
-| `ProofPlan` | Plan a workflow without running workers. | Validate plan/contract shape and evidence gates. |
-| `ProofRun` | Run through witnessd, emit evidence, then verify when possible. | Re-derive the verdict after evidence exists. |
-| `ProofVerify` | Re-check existing evidence offline. | Primary engine. |
-| `ProofFlow` | Continue long-running work behind evidence gates. | Revalidate state and gate the next action. |
+| `superflow` | plan -> run -> evidence -> verifier summary | Re-derive the evidence result after witnessd emits bytes. |
+| `flowplan` | plan-only workflow design | Validate plan/contract shape and gates. |
+| `proofrun` | precise evidence-backed execution alias | Verify the emitted evidence when called after runtime. |
+| `proofcheck` | offline evidence verification | Primary Depone-facing public alias. |
+| `superflow auto` | continuation behind evidence gates | Revalidate current state and gate next action. |
+| `superflow ultra` | future high-autonomy profile | Same verifier rules; stricter policy requirements. |
 
 Direct `depone` CLI and `SKILL.md` usage remains a developer, verifier, CI, and
 compatibility surface. It is not the final flagship user experience beside a
@@ -50,7 +52,9 @@ Depone owns the evidence contract:
 - trusted-observer provenance validation,
 - DSSE/in-toto-shaped evidence bundle validation,
 - evidence-contract validation,
+- schedule and concurrency receipt validation,
 - team-ledger validation,
+- declarative verifier policies,
 - verifier error codes,
 - offline verdict derivation.
 
@@ -74,8 +78,7 @@ Depone verifier-core paths must not:
 
 If a feature needs to spawn, supervise, retry, route adapters, create active lane
 worktrees, or emit runtime evidence, it belongs in witnessd. If a feature needs
-to bundle both engines for end users, it belongs in the future `moonweave-plugin`
-wrapper.
+to bundle both engines for end users, it belongs in the future Moonweave wrapper.
 
 ---
 
@@ -85,7 +88,7 @@ All Depone commands must be classified as one of these surfaces:
 
 | Class | Meaning | Examples |
 | --- | --- | --- |
-| Verifier | Stable engine calls for `ProofVerify`; bytes in, verdict out. | `evidence-ingest`, `evidence-chain`, `team-ledger`, capture/receipt validation library calls |
+| Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `evidence-ingest`, `evidence-chain`, `team-ledger`, capture/receipt validation library calls |
 | Contract | Plan or evidence-contract validation without worker launch. | `validate`, `compile`, evidence-contract validators |
 | Gate | Non-executing next-action or preflight decisions. | `next`, non-executing preflight checks |
 | Fixture/demo | Deterministic local fixture generation or compatibility workflows. | `demo`, `observe`, `evidence-substrate`, `run`/`evidence-run`, `advance`, internal `agent-fabric-*` surfaces |
@@ -132,10 +135,11 @@ This repo uses this hierarchy:
 2. Code constants and validators under `depone/agent_fabric/*` and
    `depone/verify/*` — executable contract implementation.
 3. Committed fixtures and tests — revalidation evidence for the contract.
-4. `README.md`, `CLAUDE.md`, `AGENTS.md`, `SKILL.md` — short derived orientation
+4. `docs/README.md` — documentation map and legacy policy.
+5. `README.md`, `CLAUDE.md`, `AGENTS.md`, `SKILL.md` — short derived orientation
    documents.
-5. `docs/command-reference.md` — command inventory and compatibility reference.
-6. Historical DWM roadmap, release, benchmark, and automation documents — context
+6. `docs/command-reference.md` — command inventory and compatibility reference.
+7. Historical DWM roadmap, release, benchmark, and automation documents — context
    and implementation history only, not current product-boundary authority.
 
 When editing docs, do not introduce a second competing product source of truth.
@@ -145,19 +149,20 @@ Update this file first, then derive summaries elsewhere.
 
 ## 7. Integration with witnessd and Moonweave
 
-The final product path is:
+The flagship product path is:
 
 ```text
-Moonweave ProofRun
+Moonweave Superflow
+  -> flowplan creates/validates plan gates
   -> witnessd executes and emits evidence
-  -> Depone verifies the emitted bytes
+  -> proofcheck/Depone verifies the emitted bytes
   -> Moonweave summarizes without upgrading the verdict
 ```
 
 The offline verification path is:
 
 ```text
-Moonweave ProofVerify or depone CLI
+proofcheck or depone CLI
   -> read existing evidence bytes and public key
   -> Depone re-derives the verdict
 ```
@@ -165,14 +170,49 @@ Moonweave ProofVerify or depone CLI
 The plan-only path is:
 
 ```text
-Moonweave ProofPlan
+flowplan
   -> produce or validate a plan/contract
   -> no worker launch
 ```
 
+The automation path is:
+
+```text
+superflow auto
+  -> proofcheck current evidence
+  -> gate the next action
+  -> witnessd executes one approved step
+  -> repeat only while gates pass
+```
+
 ---
 
-## 8. Non-goals
+## 8. Development plan
+
+Depone development should follow witnessd `SPEC3.md` when runtime waves need new
+contract capability. Contract work lands here first, then witnessd consumes it.
+
+Near-term verifier work:
+
+1. schedule/concurrency receipt validation for W15,
+2. merge-lane and conflict evidence validation for W16,
+3. resume receipt validation for W17,
+4. workflow-plan conformance validation for W17.5,
+5. policy layer and keyless anchor validation for W20/W21,
+6. published conformance kit for W22.
+
+Every new verifier capability needs:
+
+- schema or contract text in this file or a referenced versioned schema,
+- validator implementation,
+- positive fixture,
+- negative fixture,
+- revalidator script or test,
+- witnessd integration only after the Depone contract is merged.
+
+---
+
+## 9. Non-goals
 
 - Do not merge Depone and witnessd just for installation convenience.
 - Do not expose separate end-user Depone and witnessd skills as the final UX.
@@ -183,8 +223,8 @@ Moonweave ProofPlan
 
 ---
 
-## 9. Final sentence
+## 10. Final invariant
 
 ```text
-Depone verifies; witnessd executes; Moonweave exposes the workflow.
+Depone verifies; witnessd executes; Moonweave Superflow exposes the workflow.
 ```

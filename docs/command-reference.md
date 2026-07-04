@@ -5,16 +5,18 @@ source of truth for product direction. The authoritative Depone spec is
 [`docs/spec.md`](spec.md).
 
 Depone commands are grouped by boundary class. New user-facing work should prefer
-Superflow surfaces (`superflow`, `flowplan`, `proofrun`, `proofcheck`) instead of
-teaching users this full engine surface. Moonweave is the publisher/account
-namespace; Superflow is the product/tool name.
+Superflow surfaces (`superflow`, `superflow scout`, `flowplan`, `proofrun`,
+`proofcheck`, `superflow handoff`) instead of teaching users this full engine
+surface. Moonweave is the publisher/account namespace; Superflow is the
+product/tool name.
 
 ---
 
 ## 1. Verifier commands
 
 Stable engine calls for proofcheck-style workflows. These commands consume
-existing artifacts and emit verifier results. They must not launch workers.
+existing artifacts and emit verifier results. They must not launch workers, call
+MCP servers, inspect live SaaS state, or mutate worktrees.
 
 ```bash
 python -m depone doctor --json
@@ -26,7 +28,19 @@ python -m depone verify plan.json --evidence ./evidence --out report.json --oper
 
 Verifier commands may return `pass`, `blocked`, `refuted`, `inconclusive`, A0,
 A1, or A2 according to the evidence contract. They must not upgrade assurance
-from prose or model claims.
+from prose, model claims, skill text, MCP output, or operator intent.
+
+Verifier artifact families now include:
+
+| Artifact family | Depone interpretation |
+| --- | --- |
+| capture/observer/runner receipts | Observed execution evidence when bound correctly. |
+| verification recipes | Intended checks; not evidence by themselves. |
+| verification receipts | Evidence that declared commands ran, with exit codes and output hashes. |
+| repo-profile/context-pack | Planning/context-selection evidence, not proof of correctness. |
+| skillpack-lock | Knowledge selection evidence, not proof of correctness. |
+| MCP/tool receipts | Hash-bound external observations, not remote truth. |
+| PR handoff | Human review package, not approval or merge evidence. |
 
 ---
 
@@ -55,8 +69,9 @@ python -m depone next --evidence-dir ../observer/evidence-run --previous-capture
 python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
 ```
 
-A gate that would spawn, retry, mutate worktrees, or call a live model belongs in
-witnessd or the future Superflow wrapper, not in Depone verifier-core paths.
+A gate that would spawn, retry, mutate worktrees, call MCP servers, or call a live
+model belongs in witnessd or the future Superflow wrapper, not in Depone
+verifier-core paths.
 
 ---
 

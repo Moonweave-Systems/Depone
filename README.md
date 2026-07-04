@@ -1,6 +1,6 @@
 # Depone
 
-> Non-executing verifier and evidence-contract source of truth for Moonweave Superflow.
+> Non-executing verifier and evidence-contract source of truth for Superflow.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F46E5.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Moonweave-Systems/Depone?color=4F46E5)](https://github.com/Moonweave-Systems/Depone/releases)
@@ -8,9 +8,10 @@
 
 ![Depone hero](assets/dwm-hero.svg)
 
-**Depone** is the verifier engine inside Moonweave Superflow. It re-derives
-A0/A1/A2, blocked, or refuted from signed evidence bytes, offline, and cannot
-raise the grade beyond what those bytes support.
+**Depone** is the verifier engine inside Superflow, published under the
+Moonweave account. It re-derives A0/A1/A2, blocked, or refuted from signed
+evidence bytes, offline, and cannot raise the grade beyond what those bytes
+support.
 
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md).
 README, agent context files, skill text, command references, release notes, and
@@ -94,17 +95,17 @@ intent.
 | Compatibility/demo commands | `demo`, `observe`, `evidence-substrate`, internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
 
 Commands that launch workers, own sessions, retry, or mutate active worktrees
-belong in witnessd or in the future Moonweave wrapper calling witnessd. Commands
+belong in witnessd or in the future Superflow wrapper calling witnessd. Commands
 that consume bytes and emit verifier results belong in Depone.
 
 ## Normal Superflow loop
 
 ```text
-1. Moonweave Superflow receives the user goal.
+1. Superflow receives the user goal.
 2. witnessd executes work and emits evidence bytes.
 3. Depone reads the artifact bytes offline.
 4. Depone re-derives the verdict and assurance grade.
-5. Moonweave summarizes the result without upgrading the verdict.
+5. Superflow summarizes the result without upgrading the verdict.
 ```
 
 For direct verifier use, steps 1 and 2 are skipped: `proofcheck` or `depone`

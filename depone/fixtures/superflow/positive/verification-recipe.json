@@ -1,0 +1,19 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "expected_exit_code": 0,
+      "id": "unit-tests",
+      "required": true
+    }
+  ],
+  "kind": "superflow-verification-recipe",
+  "schema_version": "1.0"
+}

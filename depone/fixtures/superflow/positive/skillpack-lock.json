@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "frontmatter": {
+        "name": "superflow-fixture"
+      },
+      "path": "skillpacks/superflow-fixture.md",
+      "sha256": "1069ed05e6ef9867bb36cf4734df6759aae1e8e6a5587968151e0282a4bf5b2a"
+    }
+  ],
+  "kind": "superflow-skillpack-lock",
+  "schema_version": "1.0"
+}

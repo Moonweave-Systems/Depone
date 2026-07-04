@@ -1,0 +1,24 @@
+{
+  "approves_merge": false,
+  "boundary": {
+    "approves_merge": false,
+    "raises_assurance": false
+  },
+  "changed_files": [
+    "depone/agent_fabric/superflow_artifacts.py"
+  ],
+  "evidence_dir": "depone/fixtures/superflow/positive",
+  "human_required_actions": [
+    "review PR"
+  ],
+  "kind": "superflow-pr-handoff",
+  "mcp_tool_receipt_hashes": [
+    "39bd3ad89d3bd0a00433f8dcad2910399d4c4ccab0eb9d1dbf627c6fe3ecff28"
+  ],
+  "run_id": "run-superflow-fixture",
+  "schema_version": "1.0",
+  "unresolved_risks": [],
+  "verification_receipt_hashes": [
+    "e0ca1c9dc393840b818ae04dff05a70911e2cdbf1f1a534b1a8b790da77671c8"
+  ]
+}

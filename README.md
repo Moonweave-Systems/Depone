@@ -13,6 +13,8 @@ Moonweave account. It re-derives A0/A1/A2, blocked, or refuted from signed
 evidence bytes, offline, and cannot raise the grade beyond what those bytes
 support.
 
+Depone verifies; witnessd executes; Superflow exposes the workflow.
+
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md).
 README, agent context files, skill text, command references, release notes, and
 historical DWM documents are derived or compatibility documents. If they conflict

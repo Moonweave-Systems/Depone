@@ -1,0 +1,12 @@
+{
+  "branch": "docs/moonweave-surface-spec",
+  "files": [
+    "README.md",
+    "witnessd/__main__.py",
+    "tests/test_superflow.py"
+  ],
+  "head_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "kind": "superflow-repo-profile",
+  "repo_root": ".",
+  "schema_version": "1.0"
+}

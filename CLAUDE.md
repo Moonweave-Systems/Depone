@@ -1,18 +1,28 @@
 # Depone — Agent Context
 
 Depone is the **non-executing verifier and evidence-contract engine** inside
-Moonweave. It re-derives what signed/hash-bound evidence bytes actually support.
-It must not become the runtime that launched the workers it is judging.
+Moonweave Superflow. It re-derives what signed/hash-bound evidence bytes actually
+support. It must not become the runtime that launched the workers it is judging.
 
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md). This
 file is a short agent orientation derived from that spec. If there is a conflict,
 `docs/spec.md` wins.
 
-Moonweave's two-engine sentence is:
-
 ```text
-Depone verifies; witnessd executes; Moonweave exposes the workflow.
+Depone verifies; witnessd executes; Moonweave Superflow exposes the workflow.
 ```
+
+## Public surfaces
+
+| Name | Meaning |
+| --- | --- |
+| `superflow` | flagship goal -> plan -> run -> evidence -> verifier summary |
+| `flowplan` | plan-only workflow design |
+| `proofrun` | precise evidence-backed execution alias |
+| `proofcheck` | offline evidence verification alias |
+| `superflow auto` | continuation loop behind evidence gates |
+| `superflow ultra` | future high-autonomy profile with stricter policies |
+| `depone` | verifier engine CLI / compatibility surface |
 
 ## Current direction
 
@@ -21,7 +31,7 @@ Depone should stay narrow and valuable:
 - own the evidence contract,
 - validate plans/contracts when no execution is required,
 - verify capture manifests, receipts, isolation facts, DSSE bundles, evidence
-  contracts, and team ledgers,
+  contracts, schedules, and team ledgers,
 - emit honest `pass`, `blocked`, `refuted`, `inconclusive`, A0, A1, or A2 results
   from bytes,
 - avoid presenting compatibility/demo execution helpers as the flagship product
@@ -36,7 +46,7 @@ Depone should stay narrow and valuable:
 | Plan/contract validation | yes | No worker launch. |
 | Next-action gate | yes, if non-executing | Gate from verified evidence only. |
 | Worker spawn / retry / session / worktree runtime | no | Belongs in witnessd. |
-| End-user plugin packaging | no | Belongs in future `moonweave-plugin`. |
+| End-user plugin packaging | no | Belongs in future Moonweave wrapper. |
 
 If a change needs to launch Codex, Claude, OpenCode, shell workers, own durable
 sessions, retry work, or mutate active worktrees, put it in witnessd or the
@@ -45,12 +55,12 @@ it here.
 
 ## Verify after any change
 
-Run before claiming work is done or opening a PR:
+Run before claiming work is ready or opening a PR:
 
 ```bash
-python scripts/check_contract.py --tier changed   # release contract (changed tier)
-python scripts/dwm.py doctor                       # operator-state sanity
-python scripts/check_readme_quality.py README.md   # if README changed
+python scripts/check_contract.py --tier changed
+python scripts/dwm.py doctor
+python scripts/check_readme_quality.py README.md
 ```
 
 Full contract sweep:
@@ -63,19 +73,14 @@ Many scripts also carry a `--self-test`; run the one for any script you touch.
 
 ## Invariants
 
-- **No external dependencies.** Scripts use the Python standard library only.
-  Never add a third-party package or runtime dependency to make something work.
-- Type hints on all new function signatures; prefer `str | None` over
-  `Optional[str]`. Use f-strings, not `.format()` or `%`.
-- Artifacts and source hashes are the source of truth. Never hand-edit generated
-  files under `out/` or fixtures under `fixtures/` to make a check pass.
-- Keep planned work and executed work separate. Never present an unrun step as
-  done.
+- No external runtime dependencies for verifier core.
+- Artifacts and source hashes are the source of truth.
+- Keep planned work and executed work separate.
 - Do not upgrade assurance from prose, model confidence, or operator intent.
 - Do not add a new witnessd-facing schema field unless the Depone contract and
   tests define it first.
 
 ## Commit style
 
-Imperative subject focused on *why*, not what. One commit per logical change. Do
+Imperative subject focused on why, not what. One commit per logical change. Do
 not amend existing commits.

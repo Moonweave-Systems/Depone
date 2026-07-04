@@ -28,10 +28,14 @@ The public Superflow surfaces are:
 
 | Name | User intent |
 | --- | --- |
-| `superflow` | goal -> plan -> run -> evidence -> verifier summary |
+| `superflow` | scout -> plan -> run -> evidence -> verifier summary -> handoff |
+| `superflow scout` | read-only repo exploration |
 | `flowplan` | plan-only workflow design |
 | `proofrun` | precise evidence-backed execution alias |
 | `proofcheck` | offline evidence verification alias |
+| `superflow handoff` | maintainer review package bound to evidence |
+| `superflow skillpack` | knowledge-as-code support |
+| `superflow doctor` | engine/verifier/adapter/key/MCP/policy readiness check |
 | `superflow auto` | continuation loop behind evidence gates |
 | `superflow ultra` | future high-autonomy profile with stricter policies |
 
@@ -57,9 +61,27 @@ Depone verifies; witnessd executes; Superflow exposes the workflow.
 ```
 
 If the task needs worker spawn, retry, session ownership, active worktree
-mutation, Codex/Claude/OpenCode execution, or team orchestration, hand it to
-witnessd or the Superflow wrapper. If the task needs to decide what evidence
+mutation, Codex/Claude/OpenCode execution, MCP calls, or team orchestration, hand
+it to witnessd or the Superflow wrapper. If the task needs to decide what evidence
 bytes support, use Depone.
+
+## What proofcheck may verify
+
+proofcheck may verify:
+
+- capture manifests,
+- observer captures,
+- runner receipts,
+- verification recipes and receipts,
+- skillpack-lock hashes,
+- repo-profile/context-pack bindings,
+- MCP/tool receipts,
+- team ledger and schedule receipts,
+- PR handoff evidence,
+- declarative policy requirements.
+
+proofcheck must not execute worker commands, call MCP servers, inspect live SaaS
+state, mutate worktrees, retry work, or infer success from skill text.
 
 ## Safe Depone tasks
 

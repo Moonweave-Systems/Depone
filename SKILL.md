@@ -1,95 +1,78 @@
 ---
 name: depone
-description: Depone skill entrypoint. Design large, situation-aware multi-agent workflows for broad tasks that are too big for one normal agent turn. Use when a user asks for dynamic workflows, ultracode-style orchestration, large workflow design, multi-agent decomposition, codebase-wide audits, migrations, research sweeps, verification harnesses, or a plan that should scale across phases, subagents, gates, budgets, and resumable execution.
+description: Compatibility entrypoint for the Depone verifier and evidence-contract engine. Use for ProofVerify-style evidence revalidation, contract/schema inspection, and plan-only gates. Do not use as the flagship Moonweave automation runner or as proof that a model verified its own work.
 ---
 
-# Depone Skill Entrypoint
+# Depone Compatibility Skill
 
-DWM means Deterministic Workflow Machine. Use this skill entrypoint to turn a
-large objective into an executable workflow design. It is not a thin router. It
-designs the workflow itself: phases, workers, parallelization, handoff
-contracts, gates, budgets, evidence, and stop rules.
+Depone is the non-executing verifier and evidence-contract engine inside
+Moonweave. The source of truth for this repository is `docs/spec.md`; this skill
+text is a compatibility surface derived from that spec.
 
-Do not run a large workflow just because a task is broad. First produce a
-workflow design the user can inspect or that the current environment can execute.
+Use this skill when the user or host agent needs to:
 
-## Start Here
+- inspect or validate a workflow/evidence contract,
+- re-check existing evidence bytes,
+- explain why evidence is A0, A1, A2, blocked, refuted, or inconclusive,
+- prepare a plan-only gate before execution,
+- call the `depone` CLI for verifier/developer workflows.
 
-1. Restate the objective, scope, constraints, and success criteria.
-2. Inspect local context when the workflow depends on a repo, files, tools,
-   branches, installed skills, or runtime state.
-3. Decide the delivery layer:
-   - Skill-only design when the current system lacks a workflow runtime.
-   - Plugin when the workflow needs packaged skills, agents, scripts, or hooks.
-   - Runtime/MCP when execution must be resumable, inspectable, and script-held.
-4. Choose one or more patterns from `references/workflow-patterns.md`.
-5. Write the workflow as phases with explicit worker prompts, inputs, outputs,
-   verification gates, retry limits, and budget caps.
-6. Identify which parts can run in parallel and which barriers are truly needed.
-7. End with an execution path: direct Codex work, subagent plan, plugin
-   scaffold, runtime execution, or backlog.
+Do **not** use this skill as the final Moonweave product surface. The planned
+user-facing Moonweave skills are:
 
-## Design Contract
+| Skill | User intent |
+| --- | --- |
+| `ProofPlan` | Plan a workflow without running workers. |
+| `ProofRun` | Run through witnessd, emit evidence, then verify when possible. |
+| `ProofVerify` | Re-check existing evidence offline. |
+| `ProofFlow` | Continue long-running work behind evidence gates. |
 
-Every workflow design must include:
+## Core rule
 
-- `objective`: the outcome, not the implementation guess.
-- `surface`: repositories, paths, systems, or sources in scope.
-- `assumptions`: guesses that affect the workflow and how to verify them.
-- `phases`: ordered stages with clear entry and exit criteria.
-- `workers`: roles, tool permissions, context limits, and ownership boundaries.
-- `handoffs`: the exact artifacts passed between phases.
-- `parallelism`: fan-out count, concurrency cap, and fan-in rules.
-- `verification`: independent checks that can falsify the result.
-- `risk gates`: approval points for destructive, external, costly, public API,
-  dependency, database, production, secret, or history-rewrite actions.
-- `budget`: time, token, model, retry, and file-touch limits.
-- `resume plan`: what can be cached, replayed, skipped, or restarted.
-- `execution path`: direct Codex work, subagent plan, plugin, runtime, or backlog.
+```text
+Depone verifies; witnessd executes; Moonweave exposes the workflow.
+```
 
-## Pattern Rules
+If the task needs worker spawn, retry, session ownership, active worktree
+mutation, Codex/Claude/OpenCode execution, or team orchestration, hand it to
+witnessd or the Moonweave wrapper. If the task needs to decide what evidence
+bytes support, use Depone.
 
-Prefer pipelines over barriers. A barrier is justified only when the next step
-needs the complete prior set, such as global deduplication, cross-item ranking,
-or final synthesis.
+## Safe Depone tasks
 
-Use adversarial verification for claims, findings, migrations, and reviews.
-A result is not trusted because a worker found it; it is trusted because an
-independent verifier failed to refute it with evidence.
+1. Restate the evidence or contract being checked.
+2. Identify the exact files or byte artifacts involved.
+3. Validate schema and canonical hashes.
+4. Re-derive the verdict from the artifacts.
+5. Report the exact status without upgrading it.
 
-Use diverse reviewers when correctness depends on multiple failure modes:
-correctness, security, performance, compatibility, UX, or reproducibility.
+Allowed status language:
 
-Use a loop-until-dry pattern for open-ended discovery, but cap the loop with
-max rounds and a "no new findings" stop condition.
+```text
+A0-claims-only
+A1-local-observed
+A2-isolated-observed
+blocked
+refuted
+inconclusive
+pass
+```
 
-For every risk gate, state the safe default. When unsure, stop, preserve
-completed artifacts, and ask the user before continuing.
+Do not print standalone success-theater labels such as `VERIFIED`, `DONE`, or
+`COMPLETE` as the source of truth. If verification has not run, say
+`evidence-pending`.
 
-## Output Format
+## Common commands
 
-For short requests, provide a compact workflow blueprint in the conversation.
-For substantial work, emit both:
+```bash
+python -m depone doctor --json
+python -m depone validate plan.json --json
+python -m depone evidence-ingest ...
+python -m depone evidence-chain ...
+python -m depone team-ledger ...
+python -m depone next --evidence-dir <dir> --out evidence-next.json --json
+```
 
-- `workflow.plan.json`: the machine-readable source of truth following
-  `references/workflow-plan-schema.md`.
-- rendered blueprint: a human-readable view derived from the same JSON.
-
-The JSON and blueprint must agree on activation, the first wave containing one
-or more slices, handoffs, verification, risk gates, budgets, and resume points.
-Keep `first_slice` only as a compatibility alias when emitting JSON. If the
-router-first rule does not justify activation, emit a downgrade artifact that
-names the target: direct Codex, `workflow-router`, or a simple plan.
-
-When writing a spec file, include:
-
-1. Research and prior art.
-2. Product position and non-goals.
-3. Workflow architecture.
-4. Execution model.
-5. Safety and verification gates.
-6. Evaluation fixtures.
-7. Release or implementation plan.
-
-If implementation follows, keep the first wave small enough to verify with real
-slice reports, receipts, commands, fixtures, or generated workflow artifacts.
+Compatibility/demo commands such as `demo`, `observe`, `run`/`evidence-run`,
+`advance`, and internal `agent-fabric-*` surfaces may exist for fixtures and
+legacy automation. They are not the canonical Moonweave end-user skill surface.

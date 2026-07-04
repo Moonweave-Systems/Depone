@@ -20,6 +20,7 @@ MCP servers, inspect live SaaS state, or mutate worktrees.
 
 ```bash
 python -m depone doctor --json
+python -m depone proofcheck --evidence-dir ./evidence --json
 python -m depone evidence-ingest ...
 python -m depone evidence-chain ...
 python -m depone team-ledger --ledger team-ledger.json --json
@@ -29,6 +30,11 @@ python -m depone verify plan.json --evidence ./evidence --out report.json --oper
 Verifier commands may return `pass`, `blocked`, `refuted`, `inconclusive`, A0,
 A1, or A2 according to the evidence contract. They must not upgrade assurance
 from prose, model claims, skill text, MCP output, or operator intent.
+
+`proofcheck` is fail-closed. Missing directories, non-directory evidence paths,
+empty evidence directories, malformed artifacts, missing required Superflow
+artifacts, scout-only planning artifacts without a verification receipt, and
+all-zero runner receipt hashes produce `blocked`, not `pass`.
 
 Verifier artifact families now include:
 

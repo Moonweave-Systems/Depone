@@ -7,20 +7,49 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 from depone.agent_fabric.team_ledger import (
     build_sample_team_ledger,
     build_team_ledger_verdict,
+    validate_team_resume_receipt,
     validate_team_schedule_receipt,
 )
 
 
 class AgentFabricTeamLedgerTests(unittest.TestCase):
+    FIXTURE_ROOT = (
+        Path(__file__).resolve().parents[1]
+        / "depone"
+        / "fixtures"
+        / "agent_fabric"
+        / "resume_receipt"
+    )
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
         (self.root / "lane-evidence").mkdir()
+
+    def _load_resume_fixture(self, name: str) -> dict[str, object]:
+        value = json.loads((self.FIXTURE_ROOT / name).read_text(encoding="utf-8"))
+        self.assertIsInstance(value, dict)
+        return value
+
+    def _write_resume_fixture(
+        self,
+        name: str,
+        relative_path: str = "team-resume-receipt.json",
+    ) -> str:
+        receipt = self._load_resume_fixture(name)
+        receipt_path = self.root / relative_path
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt_path.write_text(
+            json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return relative_path
 
     def _write_evidence_next_verdict(
         self,
@@ -64,6 +93,11 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
             "lane-evidence-2/evidence-next-verdict.json"
         )
         ledger["lanes"].append(second)
+
+    def _ledger_lane(
+        self, ledger: dict[str, object], index: int
+    ) -> dict[str, object]:
+        return cast(list[dict[str, object]], ledger["lanes"])[index]
 
     def _write_merge_receipt(
         self,
@@ -231,6 +265,54 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         )
         return relative_path
 
+    def _write_resume_receipt(
+        self,
+        relative_path: str = "team-resume-receipt.json",
+        *,
+        decisions: list[dict[str, object]] | None = None,
+        extra: dict[str, object] | None = None,
+    ) -> str:
+        receipt_path = self.root / relative_path
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt: dict[str, object] = {
+            "kind": "depone-team-resume-receipt",
+            "schema_version": "0.1",
+            "observed_by": "leader-fixed",
+            "captured_at": "2026-07-04T00:00:00Z",
+            "decisions": decisions
+            or [
+                {
+                    "lane_id": "lane-docs",
+                    "decision": "skipped_as_proven",
+                    "reason": "surviving lane evidence rederived as pass",
+                    "attempt": 1,
+                    "evidence_dir": "lane-evidence",
+                    "attempts": [
+                        {
+                            "attempt": 1,
+                            "status": "completed",
+                            "preserved": True,
+                        }
+                    ],
+                }
+            ],
+            "boundary": {
+                "executes_commands": False,
+                "launches_agents": False,
+                "raises_assurance": False,
+                "trusts_journal_completion": False,
+                "skip_requires_rederivation": True,
+                "append_only_attempt_history": True,
+            },
+        }
+        if extra:
+            receipt.update(extra)
+        receipt_path.write_text(
+            json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return relative_path
+
     def _write_team_merge_attempt_receipt(
         self,
         *,
@@ -347,6 +429,75 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         self.assertEqual(verdict["passed_lane_count"], 1)
         self.assertFalse(verdict["boundary"]["executes_commands"])
         self.assertFalse(verdict["boundary"]["raises_assurance"])
+
+    def test_resume_receipt_skipped_lane_requires_rederived_pass(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["resume_receipt"] = self._write_resume_receipt()
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(
+            verdict["resume_receipt"]["decision_counts"],
+            {"skipped_as_proven": 1},
+        )
+        self.assertFalse(verdict["resume_receipt"]["trusts_journal_completion"])
+
+    def test_resume_receipt_reexecuted_lane_allows_fresh_later_attempt(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        self._add_second_passing_lane(ledger)
+        self._ledger_lane(ledger, 1)["touched_files"] = [
+            "tests/test_agent_fabric_team_ledger.py"
+        ]
+        ledger["resume_receipt"] = self._write_resume_fixture(
+            "conformance-skip-and-reexecute.json"
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(
+            verdict["resume_receipt"]["decision_counts"],
+            {"re_executed": 1, "skipped_as_proven": 1},
+        )
+
+    def test_resume_receipt_rejects_tampered_completed_lane_claimed_skipped(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["resume_receipt"] = self._write_resume_fixture(
+            "negative-forged-skipped.json"
+        )
+        self._write_evidence_next_verdict(
+            decision="blocked",
+            blocking_reasons=["tampered after journal claimed completion"],
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        codes = {error["code"] for error in verdict["errors"]}
+        self.assertIn("ERR_TEAM_LEDGER_EVIDENCE_NEXT_NOT_CONTINUE", codes)
+        self.assertIn("ERR_TEAM_RESUME_RECEIPT_SKIP_NOT_REDERIVED", codes)
+        self.assertEqual(verdict["decision"], "blocked")
+
+    def test_resume_receipt_rejects_attempt_regression(self) -> None:
+        receipt = self._load_resume_fixture("negative-attempt-regression.json")
+
+        codes = {error["code"] for error in validate_team_resume_receipt(receipt)}
+
+        self.assertIn("ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_REGRESSION", codes)
+
+    def test_resume_receipt_rejects_attempt_gap(self) -> None:
+        receipt = self._load_resume_fixture("negative-attempt-gap.json")
+
+        codes = {error["code"] for error in validate_team_resume_receipt(receipt)}
+
+        self.assertIn("ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_REGRESSION", codes)
+
+    def test_resume_receipt_rejects_partial_overwrite_trace(self) -> None:
+        receipt = self._load_resume_fixture("negative-partial-overwrite.json")
+
+        codes = {error["code"] for error in validate_team_resume_receipt(receipt)}
+
+        self.assertIn("ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_OVERWRITTEN", codes)
 
     def test_commit_scope_documents_observed_subject_commit(self) -> None:
         ledger = self._ledger_with_evidence_next()

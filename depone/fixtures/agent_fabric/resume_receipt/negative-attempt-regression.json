@@ -1,0 +1,34 @@
+{
+  "boundary": {
+    "append_only_attempt_history": true,
+    "executes_commands": false,
+    "launches_agents": false,
+    "raises_assurance": false,
+    "skip_requires_rederivation": true,
+    "trusts_journal_completion": false
+  },
+  "captured_at": "2026-07-04T00:00:00Z",
+  "decisions": [
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 2,
+          "preserved": true,
+          "status": "partial"
+        },
+        {
+          "attempt": 1,
+          "preserved": true,
+          "status": "completed"
+        }
+      ],
+      "decision": "re_executed",
+      "lane_id": "lane-docs",
+      "reason": "attempt number regressed"
+    }
+  ],
+  "kind": "depone-team-resume-receipt",
+  "observed_by": "leader-fixed",
+  "schema_version": "0.1"
+}

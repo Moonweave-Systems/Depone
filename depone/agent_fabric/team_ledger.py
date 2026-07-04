@@ -12,7 +12,7 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, TypeGuard
 
 from depone.agent_fabric.claim_gate import canonical_hash
 from depone.agent_fabric.team_merge_attempt import (
@@ -30,6 +30,7 @@ TEAM_LEDGER_VERDICT_KIND = "depone-team-ledger-verdict"
 TEAM_LEDGER_PR_ARTIFACT_KIND = "depone-team-ledger-pr-artifact"
 TEAM_LEDGER_CLOUD_ARTIFACT_KIND = "depone-team-ledger-cloud-artifact"
 TEAM_SCHEDULE_RECEIPT_KIND = "depone-team-schedule-receipt"
+TEAM_RESUME_RECEIPT_KIND = "depone-team-resume-receipt"
 TEAM_LEDGER_MERGE_ATTEMPT_KIND = TEAM_MERGE_ATTEMPT_KIND
 TEAM_LEDGER_SUBJECT_COMMIT_SEMANTICS = "observed_subject_commit"
 VALID_ENV_KINDS = frozenset({"local", "container", "cloud"})
@@ -48,6 +49,7 @@ VALID_ADAPTER_KINDS = frozenset(
 )
 VALID_LANE_VERIFICATION_STATES = frozenset({"pass", "blocked"})
 VALID_PASSING_PR_MERGE_STATES = frozenset({"CLEAN", "HAS_HOOKS"})
+VALID_RESUME_DECISIONS = frozenset({"skipped_as_proven", "re_executed"})
 
 
 class TeamLedgerError(ValueError):
@@ -119,6 +121,12 @@ def build_team_ledger_verdict(
             if isinstance(lane.get("lane_id"), str)
         ],
     )
+    resume_receipt = _validate_resume_receipt(
+        ledger.get("resume_receipt"),
+        root,
+        errors,
+        lane_results=lane_results,
+    )
 
     blocked = sum(1 for lane in lane_results if lane["decision"] != "pass")
     passed = len(lane_results) - blocked
@@ -141,6 +149,7 @@ def build_team_ledger_verdict(
         "overlapping_touched_files": overlapping_touched_files,
         "merge_receipt": merge_receipt,
         "schedule_receipt": schedule_receipt,
+        "resume_receipt": resume_receipt,
         "errors": errors,
         "source_hashes": {"team_ledger": canonical_hash(ledger)},
         "boundary": {
@@ -177,6 +186,26 @@ def validate_team_schedule_receipt(receipt: Any) -> list[dict[str, str]]:
             }
         ]
     _validate_team_schedule_receipt_object(receipt, errors)
+    return errors
+
+
+def validate_team_resume_receipt(receipt: Any) -> list[dict[str, str]]:
+    """Return validation errors for a team resume receipt object."""
+
+    errors: list[dict[str, str]] = []
+    if not isinstance(receipt, dict):
+        return [
+            {
+                "code": "ERR_TEAM_RESUME_RECEIPT_INVALID",
+                "message": "resume receipt root must be an object",
+            }
+        ]
+    _validate_team_resume_receipt_object(
+        receipt,
+        errors,
+        lane_results=None,
+        expected_lane_ids=None,
+    )
     return errors
 
 
@@ -1920,6 +1949,413 @@ def _validate_schedule_receipt(
     return summary
 
 
+def _validate_resume_receipt(
+    resume_receipt: Any,
+    base_dir: Path,
+    errors: list[dict[str, str]],
+    *,
+    lane_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "path": resume_receipt if isinstance(resume_receipt, str) else None,
+        "present": False,
+        "lane_ids": [],
+        "decision_counts": {},
+        "trusts_journal_completion": None,
+    }
+    if resume_receipt is None:
+        return summary
+    if not isinstance(resume_receipt, str) or not resume_receipt.strip():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_RESUME_RECEIPT_PATH_INVALID",
+                "message": "resume_receipt must be a relative JSON path when present",
+            }
+        )
+        return summary
+
+    receipt_path = Path(resume_receipt)
+    if receipt_path.is_absolute():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_RESUME_RECEIPT_PATH_INVALID",
+                "message": "resume_receipt must be relative to the ledger base directory",
+            }
+        )
+        return summary
+
+    resolved = (base_dir / receipt_path).resolve(strict=False)
+    base_resolved = base_dir.resolve(strict=False)
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_RESUME_RECEIPT_PATH_INVALID",
+                "message": "resume_receipt must stay under the ledger base directory",
+            }
+        )
+        return summary
+
+    if not resolved.is_file():
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_RESUME_RECEIPT_MISSING",
+                "message": "resume_receipt file must exist",
+            }
+        )
+        return summary
+
+    try:
+        receipt = json.loads(resolved.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_RESUME_RECEIPT_INVALID",
+                "message": f"resume_receipt must be readable JSON: {exc}",
+            }
+        )
+        return summary
+    if not isinstance(receipt, dict):
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_RESUME_RECEIPT_INVALID",
+                "message": "resume_receipt root must be an object",
+            }
+        )
+        return summary
+
+    receipt_summary = _validate_team_resume_receipt_object(
+        receipt,
+        errors,
+        lane_results=lane_results,
+        expected_lane_ids=[
+            str(lane["lane_id"])
+            for lane in lane_results
+            if isinstance(lane.get("lane_id"), str)
+        ],
+    )
+    summary.update(receipt_summary)
+    summary["present"] = True
+    return summary
+
+
+def _validate_team_resume_receipt_object(
+    receipt: dict[str, Any],
+    errors: list[dict[str, str]],
+    *,
+    lane_results: list[dict[str, Any]] | None,
+    expected_lane_ids: list[str] | None,
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "lane_ids": [],
+        "decision_counts": {},
+        "trusts_journal_completion": None,
+    }
+    if receipt.get("kind") != TEAM_RESUME_RECEIPT_KIND:
+        errors.append(
+            {
+                "code": "ERR_TEAM_RESUME_RECEIPT_KIND_INVALID",
+                "message": f"kind must be {TEAM_RESUME_RECEIPT_KIND}",
+            }
+        )
+    if receipt.get("schema_version") != TEAM_LEDGER_SCHEMA_VERSION:
+        errors.append(
+            {
+                "code": "ERR_TEAM_RESUME_RECEIPT_SCHEMA_VERSION_INVALID",
+                "message": f"schema_version must be {TEAM_LEDGER_SCHEMA_VERSION}",
+            }
+        )
+    for field in ("observed_by", "captured_at"):
+        if (
+            not isinstance(receipt.get(field), str)
+            or not str(receipt.get(field)).strip()
+        ):
+            errors.append(
+                {
+                    "code": "ERR_TEAM_RESUME_RECEIPT_REQUIRED_FIELD_MISSING",
+                    "message": f"{field} must be a non-empty string",
+                }
+            )
+    _parse_schedule_timestamp(
+        receipt.get("captured_at"),
+        errors,
+        field="captured_at",
+    )
+
+    boundary = receipt.get("boundary")
+    if isinstance(boundary, dict):
+        summary["trusts_journal_completion"] = boundary.get("trusts_journal_completion")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("executes_commands") is not False
+        or boundary.get("launches_agents") is not False
+        or boundary.get("raises_assurance") is not False
+        or boundary.get("trusts_journal_completion") is not False
+        or boundary.get("skip_requires_rederivation") is not True
+        or boundary.get("append_only_attempt_history") is not True
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_RESUME_RECEIPT_BOUNDARY_INVALID",
+                "message": (
+                    "boundary must record non-execution, trusts_journal_completion=false, "
+                    "skip_requires_rederivation=true, and append_only_attempt_history=true"
+                ),
+            }
+        )
+
+    decisions = receipt.get("decisions")
+    if not isinstance(decisions, list) or not decisions:
+        errors.append(
+            {
+                "code": "ERR_TEAM_RESUME_RECEIPT_DECISIONS_REQUIRED",
+                "message": "decisions must be a non-empty list",
+            }
+        )
+        return summary
+
+    lane_results_by_id = {
+        str(lane["lane_id"]): lane
+        for lane in lane_results or []
+        if isinstance(lane.get("lane_id"), str)
+    }
+    seen_lane_ids: set[str] = set()
+    decision_counts: dict[str, int] = {}
+    lane_ids: list[str] = []
+    for index, raw_decision in enumerate(decisions):
+        if not isinstance(raw_decision, dict):
+            errors.append(
+                {
+                    "code": "ERR_TEAM_RESUME_RECEIPT_DECISION_INVALID",
+                    "message": f"decisions[{index}] must be an object",
+                }
+            )
+            continue
+        lane_id = raw_decision.get("lane_id")
+        lane_error_id = lane_id if isinstance(lane_id, str) and lane_id else None
+        if not isinstance(lane_id, str) or not lane_id.strip():
+            errors.append(
+                {
+                    "code": "ERR_TEAM_RESUME_RECEIPT_LANE_ID_INVALID",
+                    "message": "lane_id must be a non-empty string",
+                }
+            )
+            lane_id = ""
+        else:
+            lane_id = lane_id.strip()
+            if lane_id in seen_lane_ids:
+                _append_resume_lane_error(
+                    errors,
+                    "ERR_TEAM_RESUME_RECEIPT_LANE_ID_DUPLICATE",
+                    "lane_id must be unique",
+                    lane_id=lane_id,
+                )
+            seen_lane_ids.add(lane_id)
+            lane_ids.append(lane_id)
+
+        decision = raw_decision.get("decision")
+        if not isinstance(decision, str) or decision not in VALID_RESUME_DECISIONS:
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_DECISION_INVALID",
+                f"decision must be one of {sorted(VALID_RESUME_DECISIONS)}",
+                lane_id=lane_error_id,
+            )
+            decision = None
+        else:
+            decision_counts[decision] = decision_counts.get(decision, 0) + 1
+
+        if (
+            not isinstance(raw_decision.get("reason"), str)
+            or not str(raw_decision.get("reason")).strip()
+        ):
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_REASON_REQUIRED",
+                "reason must be a non-empty string",
+                lane_id=lane_error_id,
+            )
+
+        attempt = raw_decision.get("attempt")
+        if not _is_int_not_bool(attempt) or attempt <= 0:
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_INVALID",
+                "attempt must be a positive integer",
+                lane_id=lane_error_id,
+            )
+            attempt = None
+
+        _validate_resume_attempt_history(
+            raw_decision.get("attempts"),
+            attempt=attempt,
+            decision=decision,
+            errors=errors,
+            lane_id=lane_error_id,
+        )
+        _validate_resume_evidence_reference(
+            raw_decision,
+            lane_results_by_id.get(lane_id),
+            errors,
+            lane_id=lane_error_id,
+        )
+
+    summary["lane_ids"] = sorted(set(lane_ids))
+    summary["decision_counts"] = {
+        key: decision_counts[key] for key in sorted(decision_counts)
+    }
+    if expected_lane_ids is not None and set(summary["lane_ids"]) != set(
+        expected_lane_ids
+    ):
+        errors.append(
+            {
+                "code": "ERR_TEAM_RESUME_RECEIPT_COVERAGE_MISSING",
+                "message": "resume_receipt must cover exactly the ledger lane ids",
+            }
+        )
+    return summary
+
+
+def _validate_resume_attempt_history(
+    attempts: Any,
+    *,
+    attempt: int | None,
+    decision: str | None,
+    errors: list[dict[str, str]],
+    lane_id: str | None,
+) -> None:
+    if not isinstance(attempts, list) or not attempts:
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_REQUIRED",
+            "attempts must be a non-empty append-only list",
+            lane_id=lane_id,
+        )
+        return
+
+    numbers: list[int] = []
+    for index, raw_attempt in enumerate(attempts):
+        if not isinstance(raw_attempt, dict):
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_INVALID",
+                f"attempts[{index}] must be an object",
+                lane_id=lane_id,
+            )
+            continue
+        number = raw_attempt.get("attempt")
+        if not _is_int_not_bool(number) or number <= 0:
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_INVALID",
+                "attempt history entries must have positive integer attempt",
+                lane_id=lane_id,
+            )
+            continue
+        numbers.append(number)
+        if raw_attempt.get("preserved") is not True:
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_OVERWRITTEN",
+                "attempt history entries must be preserved=true",
+                lane_id=lane_id,
+            )
+        if (
+            not isinstance(raw_attempt.get("status"), str)
+            or not str(raw_attempt.get("status")).strip()
+        ):
+            _append_resume_lane_error(
+                errors,
+                "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_INVALID",
+                "attempt history entries must include non-empty status",
+                lane_id=lane_id,
+            )
+
+    if not numbers:
+        return
+    expected_numbers = list(range(1, numbers[-1] + 1))
+    if (
+        numbers != sorted(numbers)
+        or len(numbers) != len(set(numbers))
+        or numbers != expected_numbers
+    ):
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_REGRESSION",
+            "attempt history must be strictly increasing and contiguous",
+            lane_id=lane_id,
+        )
+    if attempt is not None and numbers[-1] != attempt:
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_REGRESSION",
+            "decision attempt must match the newest preserved attempt",
+            lane_id=lane_id,
+        )
+    if decision == "re_executed" and len(numbers) < 2:
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_ATTEMPT_HISTORY_REQUIRED",
+            "re_executed lanes must retain at least one prior attempt",
+            lane_id=lane_id,
+        )
+
+
+def _validate_resume_evidence_reference(
+    decision: dict[str, Any],
+    lane_result: dict[str, Any] | None,
+    errors: list[dict[str, str]],
+    *,
+    lane_id: str | None,
+) -> None:
+    if lane_result is None:
+        return
+
+    evidence_dir = decision.get("evidence_dir")
+    if evidence_dir is not None and (
+        not isinstance(evidence_dir, str) or not evidence_dir.strip()
+    ):
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_EVIDENCE_DIR_INVALID",
+            "evidence_dir must be a non-empty string when present",
+            lane_id=lane_id,
+        )
+    elif isinstance(evidence_dir, str) and evidence_dir != lane_result.get(
+        "evidence_dir"
+    ):
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_EVIDENCE_DIR_MISMATCH",
+            "evidence_dir must match the rederived ledger lane evidence_dir",
+            lane_id=lane_id,
+        )
+
+    if decision.get("decision") == "skipped_as_proven" and lane_result.get(
+        "decision"
+    ) != "pass":
+        _append_resume_lane_error(
+            errors,
+            "ERR_TEAM_RESUME_RECEIPT_SKIP_NOT_REDERIVED",
+            "skipped_as_proven requires rederived passing lane evidence",
+            lane_id=lane_id,
+        )
+
+
+def _append_resume_lane_error(
+    errors: list[dict[str, str]],
+    code: str,
+    message: str,
+    *,
+    lane_id: str | None,
+) -> None:
+    record = {"code": code, "message": message}
+    if lane_id is not None:
+        record["lane_id"] = lane_id
+    errors.append(record)
+
+
 def _validate_team_schedule_receipt_object(
     receipt: dict[str, Any],
     errors: list[dict[str, str]],
@@ -2159,7 +2595,7 @@ def _schedule_monotonic_ns(
     return value
 
 
-def _is_int_not_bool(value: Any) -> bool:
+def _is_int_not_bool(value: Any) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
@@ -2280,7 +2716,7 @@ def _validate_team_merge_attempt_receipt(
         )
 
 
-def _is_string_list(value: Any) -> bool:
+def _is_string_list(value: Any) -> TypeGuard[list[str]]:
     return isinstance(value, list) and all(
         isinstance(item, str) and item for item in value
     )
@@ -2345,6 +2781,54 @@ def _self_test() -> None:
         verdict = build_team_ledger_verdict(ledger, base_dir=root)
         if verdict["decision"] != "pass":
             raise AssertionError("valid ledger must pass")
+
+        resume_receipt = root / "team-resume-receipt.json"
+        resume_receipt.write_text(
+            json.dumps(
+                {
+                    "kind": TEAM_RESUME_RECEIPT_KIND,
+                    "schema_version": TEAM_LEDGER_SCHEMA_VERSION,
+                    "observed_by": "leader-fixed",
+                    "captured_at": "2026-07-04T00:00:00Z",
+                    "decisions": [
+                        {
+                            "lane_id": "lane-docs",
+                            "decision": "skipped_as_proven",
+                            "reason": "surviving lane evidence rederived as pass",
+                            "attempt": 1,
+                            "evidence_dir": "lane-evidence",
+                            "attempts": [
+                                {
+                                    "attempt": 1,
+                                    "status": "completed",
+                                    "preserved": True,
+                                }
+                            ],
+                        }
+                    ],
+                    "boundary": {
+                        "executes_commands": False,
+                        "launches_agents": False,
+                        "raises_assurance": False,
+                        "trusts_journal_completion": False,
+                        "skip_requires_rederivation": True,
+                        "append_only_attempt_history": True,
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        resumed = build_sample_team_ledger("lane-evidence")
+        resumed["lanes"][0]["evidence_next_verdict"] = (
+            "lane-evidence/evidence-next-verdict.json"
+        )
+        resumed["resume_receipt"] = "team-resume-receipt.json"
+        resumed_verdict = build_team_ledger_verdict(resumed, base_dir=root)
+        if resumed_verdict["decision"] != "pass":
+            raise AssertionError("valid resume receipt must pass")
 
         pr_artifact = evidence / "pr-artifact.json"
         pr_artifact.write_text(

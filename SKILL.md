@@ -19,8 +19,12 @@ Use this skill when the user or host agent needs to:
 - prepare a plan-only gate before execution,
 - call the `depone` CLI for verifier/developer workflows.
 
-Do **not** use this skill as the final product surface. The public Superflow
-surfaces are:
+Do **not** use this skill as the final product surface. Normal users should not
+be asked to install both a Depone skill and a witnessd skill for one workflow. The
+public Superflow surface should be one install and one primary skill; Depone is
+consumed behind that surface as the pinned verifier engine.
+
+The public Superflow surfaces are:
 
 | Name | User intent |
 | --- | --- |
@@ -30,6 +34,21 @@ surfaces are:
 | `proofcheck` | offline evidence verification alias |
 | `superflow auto` | continuation loop behind evidence gates |
 | `superflow ultra` | future high-autonomy profile with stricter policies |
+
+## Repository boundary
+
+The engines stay in two repositories:
+
+```text
+Depone   = verifier engine and evidence contract
+witnessd = execution engine and evidence emitter
+```
+
+The thin `superflow` command/skill may live in the witnessd repo while the product
+surface is small, because Superflow starts execution and witnessd owns execution.
+A future standalone `Superflow` repo is only a wrapper/distribution repo for
+plugin manifests, examples, version locks, and product docs. It must not duplicate
+Depone verifier logic or witnessd runtime logic.
 
 ## Core rule
 

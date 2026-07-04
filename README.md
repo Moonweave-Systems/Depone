@@ -12,16 +12,21 @@
 blocked, or refuted from signed evidence bytes, offline, and cannot raise the
 grade beyond what those bytes support.
 
+The source of truth for this repository is [`docs/spec.md`](docs/spec.md). README,
+agent context files, skill text, command references, and historical DWM documents
+are derived or compatibility documents. If they conflict with `docs/spec.md`, the
+spec wins.
+
+## Product boundary
+
 Depone owns the evidence contract for capture manifests, observer captures,
 isolation facts, runner receipts, DSSE envelopes, evidence contracts, team
 ledgers, and verifier error codes. Runtimes such as
 [`witnessd`](https://github.com/Moonweave-Systems/witnessd) execute work and emit
 evidence; Depone re-derives the verdict from those bytes.
 
-## Product surface decision
-
 Depone and witnessd remain separate engines, but the end-user install surface
-should be one product: **Moonweave**. The planned user-facing skills are:
+should be one product: **Moonweave**.
 
 | Skill | User intent | Depone role |
 | --- | --- | --- |
@@ -30,9 +35,9 @@ should be one product: **Moonweave**. The planned user-facing skills are:
 | `ProofVerify` | Re-check existing evidence offline. | Primary engine. |
 | `ProofFlow` | Continue long-running work behind evidence gates. | Revalidate state and gate the next action. |
 
-The direct `depone` CLI and `SKILL.md` remain developer, verifier, CI, and
+Direct `depone` CLI and `SKILL.md` usage remain developer, verifier, CI, and
 compatibility surfaces. They are not the final flagship user UX beside a separate
-`witnessd` skill. See [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md).
+`witnessd` skill.
 
 ## Quickstart
 
@@ -79,9 +84,9 @@ the verifier must report A0. If observer capture or isolation evidence is
 missing, the verifier must not infer it from prose, model claims, or operator
 intent.
 
-Historical DWM tooling was retired to git history. Compatibility commands remain
-available where needed, but the release claim for this repo is the verifier and
-evidence-contract role, not a new agent runtime.
+Historical DWM tooling remains in git history and some compatibility commands,
+but the release claim for this repo is the verifier and evidence-contract role,
+not a new agent runtime.
 
 ## Command taxonomy
 
@@ -121,17 +126,6 @@ The verifier must not upgrade assurance from self-report alone. A1/A2 report
 assurance depends on evidence that can be re-derived from signed or hash-bound
 artifact bytes. A3/keyless transparency-log attestation is not implemented.
 
-## Honest limits
-
-- Depone claims **no direct-agent superiority**. It is a verification and
-  evidence-contract engine, not a benchmark graph or agent runtime.
-- HMAC-backed provenance remains dependent on operator policy. Ed25519-only
-  deployments are preferred for report-level trusted-observer provenance.
-- Transparency-log and Sigstore-style A3/keyless attestation are not implemented.
-- Some historical DWM/skill wording remains in deeper docs and compatibility
-  commands; [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md)
-  is the current boundary interpretation.
-
 ## Quality
 
 Release readiness is checked with:
@@ -145,9 +139,9 @@ python scripts/check_readme_quality.py README.md
 
 ## Documentation
 
-- [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md) — Depone role in the final Moonweave product surface.
-- [`docs/command-reference.md`](docs/command-reference.md) and [`docs/spec.md`](docs/spec.md) — command and product references.
-- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) — compatibility plan schema and installed skill surface.
+- [`docs/spec.md`](docs/spec.md) — authoritative Depone repository spec.
+- [`docs/command-reference.md`](docs/command-reference.md) — command inventory and compatibility reference.
+- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) — compatibility planning and skill surfaces derived from the spec.
 
 ## License
 

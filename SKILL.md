@@ -1,13 +1,13 @@
 ---
 name: depone
-description: Compatibility entrypoint for the Depone verifier and evidence-contract engine. Use for ProofVerify-style evidence revalidation, contract/schema inspection, and plan-only gates. Do not use as the flagship Moonweave automation runner or as proof that a model verified its own work.
+description: Compatibility entrypoint for the Depone verifier and evidence-contract engine. Use for proofcheck-style evidence revalidation, contract/schema inspection, and plan-only gates. Do not use as the flagship Moonweave Superflow runner or as proof that a model verified its own work.
 ---
 
 # Depone Compatibility Skill
 
 Depone is the non-executing verifier and evidence-contract engine inside
-Moonweave. The source of truth for this repository is `docs/spec.md`; this skill
-text is a compatibility surface derived from that spec.
+Moonweave Superflow. The source of truth for this repository is `docs/spec.md`;
+this skill text is a compatibility surface derived from that spec.
 
 Use this skill when the user or host agent needs to:
 
@@ -17,20 +17,22 @@ Use this skill when the user or host agent needs to:
 - prepare a plan-only gate before execution,
 - call the `depone` CLI for verifier/developer workflows.
 
-Do **not** use this skill as the final Moonweave product surface. The planned
-user-facing Moonweave skills are:
+Do **not** use this skill as the final Moonweave product surface. The public
+Moonweave surfaces are:
 
-| Skill | User intent |
+| Name | User intent |
 | --- | --- |
-| `ProofPlan` | Plan a workflow without running workers. |
-| `ProofRun` | Run through witnessd, emit evidence, then verify when possible. |
-| `ProofVerify` | Re-check existing evidence offline. |
-| `ProofFlow` | Continue long-running work behind evidence gates. |
+| `superflow` | goal -> plan -> run -> evidence -> verifier summary |
+| `flowplan` | plan-only workflow design |
+| `proofrun` | precise evidence-backed execution alias |
+| `proofcheck` | offline evidence verification alias |
+| `superflow auto` | continuation loop behind evidence gates |
+| `superflow ultra` | future high-autonomy profile with stricter policies |
 
 ## Core rule
 
 ```text
-Depone verifies; witnessd executes; Moonweave exposes the workflow.
+Depone verifies; witnessd executes; Moonweave Superflow exposes the workflow.
 ```
 
 If the task needs worker spawn, retry, session ownership, active worktree
@@ -58,9 +60,7 @@ inconclusive
 pass
 ```
 
-Do not print standalone success-theater labels such as `VERIFIED`, `DONE`, or
-`COMPLETE` as the source of truth. If verification has not run, say
-`evidence-pending`.
+If verification has not run, say `evidence-pending`.
 
 ## Common commands
 
@@ -75,4 +75,4 @@ python -m depone next --evidence-dir <dir> --out evidence-next.json --json
 
 Compatibility/demo commands such as `demo`, `observe`, `run`/`evidence-run`,
 `advance`, and internal `agent-fabric-*` surfaces may exist for fixtures and
-legacy automation. They are not the canonical Moonweave end-user skill surface.
+legacy automation. They are not the canonical Moonweave user surface.

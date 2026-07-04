@@ -28,10 +28,14 @@ User-facing names:
 
 | Name | User intent | Depone role |
 | --- | --- | --- |
-| `superflow` | plan -> run -> evidence -> verifier summary | Re-derive the evidence result after witnessd emits bytes. |
+| `superflow` | scout -> plan -> run -> evidence -> verifier summary -> handoff | Re-derive the evidence result after witnessd emits bytes. |
+| `superflow scout` | read-only repo exploration | Validate any produced planning artifacts when bound into evidence. |
 | `flowplan` | plan-only workflow design | Validate plan/contract shape and gates. |
 | `proofrun` | precise evidence-backed execution alias | Verify the emitted evidence when called after runtime. |
 | `proofcheck` | offline evidence verification | Primary Depone-facing public alias. |
+| `superflow handoff` | maintainer review package | Validate handoff evidence; never approve merge. |
+| `superflow skillpack` | knowledge-as-code support | Validate skillpack-lock hashes when part of evidence. |
+| `superflow doctor` | readiness check | Validate declared proof artifacts only; no runtime readiness ownership. |
 | `superflow auto` | continuation behind evidence gates | Revalidate current state and gate next action. |
 | `superflow ultra` | future high-autonomy profile | Same verifier rules; stricter policy requirements. |
 
@@ -78,6 +82,11 @@ Depone owns the evidence contract:
 - evidence-contract validation,
 - schedule and concurrency receipt validation,
 - team-ledger validation,
+- verification-recipe schema and receipt validation,
+- repo-profile and context-pack hash binding,
+- skillpack-lock validation,
+- MCP/tool receipt validation as observed external facts,
+- PR handoff evidence validation,
 - declarative verifier policies,
 - verifier error codes,
 - offline verdict derivation.
@@ -96,13 +105,17 @@ Depone verifier-core paths must not:
 - own durable runtime sessions,
 - retry work,
 - mutate active user worktrees,
+- execute verification recipes,
+- call MCP servers, SaaS systems, databases, or live monitoring APIs,
 - approve merges or deployments,
-- upgrade assurance from prose, model confidence, or operator intent,
+- upgrade assurance from prose, model confidence, skill text, MCP output, or
+  operator intent,
 - present compatibility/demo execution helpers as the product UX.
 
 If a feature needs to spawn, supervise, retry, route adapters, create active lane
-worktrees, or emit runtime evidence, it belongs in witnessd. If a feature needs
-to bundle both engines for end users, it belongs in the future Superflow wrapper.
+worktrees, call external tools, or emit runtime evidence, it belongs in witnessd.
+If a feature needs to bundle both engines for end users, it belongs in the future
+Superflow wrapper.
 
 ---
 
@@ -112,8 +125,8 @@ All Depone commands must be classified as one of these surfaces:
 
 | Class | Meaning | Examples |
 | --- | --- | --- |
-| Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `evidence-ingest`, `evidence-chain`, `team-ledger`, capture/receipt validation library calls |
-| Contract | Plan or evidence-contract validation without worker launch. | `validate`, `compile`, evidence-contract validators |
+| Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `evidence-ingest`, `evidence-chain`, `team-ledger`, verification-receipt validation, capture/receipt validation library calls |
+| Contract | Plan or evidence-contract validation without worker launch. | `validate`, `compile`, evidence-contract validators, verification-recipe schema checks |
 | Gate | Non-executing next-action or preflight decisions. | `next`, non-executing preflight checks |
 | Fixture/demo | Deterministic local fixture generation or compatibility workflows. | `demo`, `observe`, `evidence-substrate`, `run`/`evidence-run`, `advance`, internal `agent-fabric-*` surfaces |
 
@@ -122,7 +135,44 @@ docs must label them as such. They are not the canonical Superflow user surface.
 
 ---
 
-## 5. Evidence verdict contract
+## 5. Verification recipes and knowledge artifacts
+
+Depone verifies whether declared checks were actually run and whether their
+receipts match the evidence. Depone does not run the checks.
+
+Required object families:
+
+```text
+superflow-verification-recipe
+superflow-verification-receipt
+superflow-repo-profile
+superflow-context-pack
+superflow-skillpack-lock
+superflow-mcp-tool-receipt
+superflow-pr-handoff
+```
+
+Rules:
+
+- A verification recipe is intent, not evidence.
+- A verification receipt is evidence only when bound to a runner receipt,
+  transcript/output hashes, and expected exit codes.
+- A skillpack can explain domain rules but cannot raise assurance by itself.
+- A skillpack-lock can prove which knowledge files were selected, not that the
+  work is correct.
+- Repo-profile and context-pack artifacts can prove what context was selected,
+  not that the selected context was sufficient.
+- MCP output is an observed external fact; Depone verifies hashes and policy
+  flags, not remote truth.
+- PR handoff records what evidence should accompany human review; it is not merge
+  approval.
+- Skill text, CLAUDE.md, AGENTS.md, MCP output, IDE terminal views, tmux panes,
+  and session transcripts are not final truth unless bound into a
+  verifier-recognized receipt.
+
+---
+
+## 6. Evidence verdict contract
 
 Depone re-derives a verdict from bytes. It cannot make weak evidence stronger.
 
@@ -144,14 +194,15 @@ Rules:
 - A2 requires A1 plus a re-derived isolation boundary.
 - Operator DSSE signing is report-level provenance; it does not create A3.
 - Missing, stale, mismatched, or unverifiable subjects fail closed.
-- Out-of-region touched files, forbidden edits, and required merge evidence
-  failures are refuted/blocked according to the validating contract.
+- Out-of-region touched files, forbidden edits, failed verification receipts, and
+  required merge evidence failures are refuted/blocked according to the validating
+  contract.
 - Depone verdict boundaries must keep `raises_assurance=false` unless a future
   contract explicitly defines a new verifier-recognized model.
 
 ---
 
-## 6. Source-of-truth hierarchy
+## 7. Source-of-truth hierarchy
 
 This repo uses this hierarchy:
 
@@ -171,16 +222,17 @@ Update this file first, then derive summaries elsewhere.
 
 ---
 
-## 7. Integration with witnessd and Superflow
+## 8. Integration with witnessd and Superflow
 
 The flagship product path is:
 
 ```text
 Superflow
-  -> flowplan creates/validates plan gates
+  -> scout creates repo-profile/context-pack/discovery-notes when useful
+  -> flowplan creates/validates plan gates and verification recipes
   -> witnessd executes and emits evidence
   -> proofcheck/Depone verifies the emitted bytes
-  -> Superflow summarizes without upgrading the verdict
+  -> Superflow prepares handoff without upgrading the verdict
 ```
 
 The offline verification path is:
@@ -211,7 +263,7 @@ superflow auto
 
 ---
 
-## 8. Development plan
+## 9. Development plan
 
 Depone development should follow witnessd `SPEC3.md` when runtime waves need new
 contract capability. Contract work lands here first, then witnessd consumes it.
@@ -223,7 +275,11 @@ Near-term verifier work:
 3. resume receipt validation for W17,
 4. workflow-plan conformance validation for W17.5,
 5. policy layer and keyless anchor validation for W20/W21,
-6. published conformance kit for W22.
+6. published conformance kit for W22,
+7. verification-recipe and verification-receipt validation,
+8. skillpack-lock and repo-profile/context-pack binding,
+9. MCP/tool receipt validation,
+10. PR handoff evidence validation.
 
 Every new verifier capability needs:
 
@@ -236,19 +292,23 @@ Every new verifier capability needs:
 
 ---
 
-## 9. Non-goals
+## 10. Non-goals
 
 - Do not merge Depone and witnessd just for installation convenience.
 - Do not create a third engine repo for the Superflow user surface.
 - Do not expose separate end-user Depone and witnessd skills as the final UX.
 - Do not duplicate witnessd runtime logic here.
 - Do not duplicate Depone verifier logic in the future wrapper.
+- Do not call MCP servers, SaaS systems, databases, or live monitoring APIs from
+  verifier core.
+- Do not treat skill text, CLAUDE.md, AGENTS.md, or MCP output as final truth
+  unless it is bound into a verifier-recognized receipt.
 - Do not claim keyless transparency-log trust until implemented and verified.
 - Do not revive DWM Product Shell language as the current public product surface.
 
 ---
 
-## 10. Final invariant
+## 11. Final invariant
 
 ```text
 Depone verifies; witnessd executes; Superflow exposes the workflow.

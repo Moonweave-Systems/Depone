@@ -1,16 +1,18 @@
 # Depone — Agent Context
 
 Depone is the **non-executing verifier and evidence-contract engine** inside
-Moonweave Superflow. It re-derives what signed/hash-bound evidence bytes actually
-support. It must not become the runtime that launched the workers it is judging.
+Superflow. It re-derives what signed/hash-bound evidence bytes actually support.
+It must not become the runtime that launched the workers it is judging.
 
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md). This
 file is a short agent orientation derived from that spec. If there is a conflict,
 `docs/spec.md` wins.
 
 ```text
-Depone verifies; witnessd executes; Moonweave Superflow exposes the workflow.
+Depone verifies; witnessd executes; Superflow exposes the workflow.
 ```
+
+Moonweave is the publisher/account namespace. Superflow is the product/tool name.
 
 ## Public surfaces
 
@@ -46,11 +48,11 @@ Depone should stay narrow and valuable:
 | Plan/contract validation | yes | No worker launch. |
 | Next-action gate | yes, if non-executing | Gate from verified evidence only. |
 | Worker spawn / retry / session / worktree runtime | no | Belongs in witnessd. |
-| End-user plugin packaging | no | Belongs in future Moonweave wrapper. |
+| End-user plugin packaging | no | Belongs in future Superflow wrapper. |
 
 If a change needs to launch Codex, Claude, OpenCode, shell workers, own durable
 sessions, retry work, or mutate active worktrees, put it in witnessd or the
-Moonweave wrapper. If a change decides what assurance evidence bytes support, put
+Superflow wrapper. If a change decides what assurance evidence bytes support, put
 it here.
 
 ## Verify after any change

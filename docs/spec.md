@@ -125,7 +125,7 @@ All Depone commands must be classified as one of these surfaces:
 
 | Class | Meaning | Examples |
 | --- | --- | --- |
-| Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `evidence-ingest`, `evidence-chain`, `team-ledger`, verification-receipt validation, capture/receipt validation library calls |
+| Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `proofcheck`, `evidence-ingest`, `evidence-chain`, `team-ledger`, verification-receipt validation, capture/receipt validation library calls |
 | Contract | Plan or evidence-contract validation without worker launch. | `validate`, `compile`, evidence-contract validators, verification-recipe schema checks |
 | Gate | Non-executing next-action or preflight decisions. | `next`, non-executing preflight checks |
 | Fixture/demo | Deterministic local fixture generation or compatibility workflows. | `demo`, `observe`, `evidence-substrate`, `run`/`evidence-run`, `advance`, internal `agent-fabric-*` surfaces |
@@ -155,8 +155,17 @@ superflow-pr-handoff
 Rules:
 
 - A verification recipe is intent, not evidence.
-- A verification receipt is evidence only when bound to a runner receipt,
-  transcript/output hashes, and expected exit codes.
+- A verification receipt is evidence only when bound to a non-placeholder runner
+  receipt, transcript/output hashes, and expected exit codes.
+- A complete executable Superflow proofcheck pass requires the required artifact
+  set: repo-profile, context-pack, skillpack-lock, verification-recipe,
+  verification-receipt, and pr-handoff. MCP/tool receipts are validated when
+  present.
+- `proofcheck` is fail-closed for missing, non-directory, empty, incomplete, or
+  malformed evidence directories.
+- A missing verification receipt blocks proofcheck. A scout-only directory is
+  planning evidence and must not become execution proof.
+- An all-zero runner receipt hash is a placeholder and blocks proofcheck.
 - A skillpack can explain domain rules but cannot raise assurance by itself.
 - A skillpack-lock can prove which knowledge files were selected, not that the
   work is correct.
@@ -193,7 +202,11 @@ Rules:
 - A1 requires observer capture that satisfies the contract.
 - A2 requires A1 plus a re-derived isolation boundary.
 - Operator DSSE signing is report-level provenance; it does not create A3.
-- Missing, stale, mismatched, or unverifiable subjects fail closed.
+- Missing, stale, mismatched, malformed, unverifiable, or incomplete subjects fail
+  closed.
+- Empty evidence directories, missing required Superflow artifacts, scout-only
+  planning artifacts, and placeholder runner receipt hashes are blocked, not
+  successful proof.
 - Out-of-region touched files, forbidden edits, failed verification receipts, and
   required merge evidence failures are refuted/blocked according to the validating
   contract.
@@ -234,6 +247,11 @@ Superflow
   -> proofcheck/Depone verifies the emitted bytes
   -> Superflow prepares handoff without upgrading the verdict
 ```
+
+Scout alone is intentionally planning-only. A scout artifact directory may be
+useful input for planning, but `proofcheck` must block it until a later witnessd
+execution step emits a verifier-recognized verification receipt and other required
+execution evidence.
 
 The offline verification path is:
 

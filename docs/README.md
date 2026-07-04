@@ -23,13 +23,19 @@ Use these names in new user-facing docs:
 
 | Name | Meaning |
 | --- | --- |
-| Superflow | flagship product/tool, published by Moonweave |
-| `superflow` | plan -> run -> evidence -> verifier summary |
+| Moonweave / Moonweave Systems | publisher/account namespace |
+| ORRO | flagship product/tool, published by Moonweave |
+| Observed Run & Review Orchestrator | ORRO full name |
+| ORRO Flow | scout -> flowplan -> proofrun -> proofcheck -> handoff |
+| `orro` | primary command/skill surface |
+| `orro scout` | read-only repo exploration and context packaging |
 | `flowplan` | plan-only workflow design |
 | `proofrun` | evidence-backed execution alias |
 | `proofcheck` | offline evidence verification alias |
-| `superflow auto` | continuation mode behind evidence gates |
-| `superflow ultra` | future high-autonomy profile |
+| `orro handoff` | maintainer review package bound to evidence |
+| `orro auto` | continuation mode behind evidence gates |
+| `orro ultra` | future high-autonomy profile |
+| Superflow | historical/compatibility name, superseded by ORRO |
 
 Use `Depone` or `depone` only when discussing the verifier engine, CLI, package,
 or compatibility skill. Use `Moonweave` only when discussing the publisher/account
@@ -45,7 +51,8 @@ The following categories are historical or compatibility material unless
 - old release-history and wave-planning docs,
 - generated `out/` artifacts,
 - fixture notes that explain a committed evidence case,
-- compatibility command docs for older automation.
+- compatibility command docs for older automation,
+- Superflow naming, schema kinds, and fixture paths during ORRO migration.
 
 Do not start new work from a legacy doc. Start from `docs/spec.md`; if runtime
 changes are needed, check witnessd `SPEC3.md`.

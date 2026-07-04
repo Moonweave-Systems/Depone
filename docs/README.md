@@ -23,7 +23,7 @@ Use these names in new user-facing docs:
 
 | Name | Meaning |
 | --- | --- |
-| Moonweave Superflow | flagship product workflow |
+| Superflow | flagship product/tool, published by Moonweave |
 | `superflow` | plan -> run -> evidence -> verifier summary |
 | `flowplan` | plan-only workflow design |
 | `proofrun` | evidence-backed execution alias |
@@ -32,7 +32,8 @@ Use these names in new user-facing docs:
 | `superflow ultra` | future high-autonomy profile |
 
 Use `Depone` or `depone` only when discussing the verifier engine, CLI, package,
-or compatibility skill.
+or compatibility skill. Use `Moonweave` only when discussing the publisher/account
+namespace.
 
 ## Legacy docs
 

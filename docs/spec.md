@@ -1,792 +1,355 @@
-# Depone / DWM Core Spec
+# Depone Spec - ORRO Verifier Contract
 
-Status: V1 implemented, V2 release candidate, V2.5 first loop implemented, V3 entry runtime implemented, V12-V20 product slices implemented, V87 brand boundary audit implemented, V88 roadmap reconciliation, V89 command safety, V90 activation v2, V91 contract tiering, V92 evidence oracle, V93 workflow narrative, V94 control deck score, V95 score history, V96 metric ladder, V97 benchmark readiness, V98 wave operator, V99 wave receipt, V100 promotion evidence, V101 promotion route, V102 deterministic live-proof recorder, V103 live-proof comparison schema, V104 product direction, V105 verify wedge, V106 multi-wave validation, V107 Agent Fabric compiler, V108 reference adapter fixture, V109 capture bridge, V110 report assurance, V111 operator view, V112 lifecycle smoke, V116 Agent Fabric smoke CLI, V117 Agent Fabric harness snapshot, V118 Agent Fabric adapter smoke, V119 Agent Fabric claim gate, V120 paired evidence gate, V121 paired evidence CLI, V122 dogfood evidence CLI, V123 controlled capture corpus, V126 real paired Codex capture, V127 verify-claim honesty, V128 first evidence substrate, Last updated: 2026-06-28
+Status: source-of-truth spec, 2026-07-04.
 
-## Purpose
+One-line decision: **Depone is the non-executing verifier and evidence-contract
+engine for ORRO. It is not the flagship user-facing automation skill and not the
+runtime that launched the workers it judges.** Moonweave is the publisher/account
+name, not the product surface.
 
-Depone is the public product brand. DWM Core, the Deterministic Workflow
-Machine, helps Codex design and operate large, situation-aware workflows for
-work that is too broad for a single normal agent turn. The installed skill
-entrypoint is `depone`. Depone
-fills the gap between a thin route selector and a full workflow runtime.
+This file is the authoritative Depone repo spec. README, CLAUDE.md, AGENTS.md,
+SKILL.md, command references, release notes, and historical DWM documents are
+derived or compatibility documents. If they conflict with this file, this file
+wins.
 
-The skill entrypoint should produce a concrete workflow architecture: phases,
-workers, parallelism, handoff artifacts, verification gates, safety gates,
-budgets, and resume strategy. The broader DWM control-plane now also compiles,
-dispatches, records, reviews, ingests, and resumes workflow artifacts.
+---
 
-## Product Position
+## 1. Product boundary
 
-The existing `workflow-router` skill chooses the smallest suitable workflow and
-keeps execution bounded. This skill does a different job: it designs the
-workflow itself for a very large task.
-
-Positioning:
-
-- `workflow-router`: classify and route ordinary broad work.
-- DWM / `depone`: design an ultracode-style workflow for
-  major work before execution, then move through deterministic control-plane
-  artifacts.
-- DWM Runner: execute approved packets through bounded adapters while returning
-  normalized evidence to DWM Core.
-- DWM Product Shell: expose `run`, `resume`, `status`, `next`, installation,
-  HUD, and approval workflows without making any harness the source of truth.
-- Optional harness adapters: Codex CLI, Claude Code, OpenCode/OMO, local shell,
-  fixtures, or future tools may execute work only through declared adapter
-  capabilities and DWM gates.
-- V0.5 continuation gate: prove the machine-readable `workflow.plan.json`
-  contract, deterministic fixture corpus, and evaluator before plugin/runtime
-  work begins. V0.5 validates tracked sample artifacts; it does not run a live
-  model against `SKILL.md`.
-- V1 compiler gate: prove deterministic first-slice packet generation, blocked
-  risk gates, and resume invalidation before execution work begins.
-- V2 execution-adapter gate: execute exactly one trusted first-slice packet in a
-  controlled backend, record evidence, and derive packet-scoped verification
-  status without claiming a full runtime.
-- V2.5 review/repair gate: consume one trusted V2 packet attempt, store
-  structured review findings, optionally prepare or run one bounded repair, and
-  hand only trusted terminal states to V3.
-- V3 runtime-entry gate: consume trusted V2.5 terminal states, write a runtime
-  journal and next-packet candidate, and reject stale or unsafe continuation
-  states without executing later packets.
-- V12-V20 product gate: make the product usable as a local control-plane over
-  real tools without copying a full agent harness. The product path is command
-  planning, runner execution, session/worktree durability, review/repair,
-  bounded fanout, HUD, install packaging, adapter registry, and release
-  hardening.
-- V86-V100 brand, roadmap, command safety, activation, contract tier, evidence oracle, narrative, score, history, and metric gates:
-  make Depone the public product brand, preserve DWM Core and
-  the `depone` skill name, keep the spec, roadmap, and
-  release history aligned through audit artifacts, prevent command planning from
-  trusting declared `risk_codes` alone, require that evidence before
-  next-workflow activation, and keep iterative verification fast enough to use.
-
-## Users
-
-Primary user: a local power user who wants Codex to structure large tasks
-across repos, artifacts, research, and verification without losing control of
-scope or evidence.
-
-Secondary user: another agent instance that needs a compact design contract
-before running many agents or starting a long implementation.
-
-## Prior Art
-
-See `docs/github-research.md`.
-
-Key conclusions:
-
-- Claude Dynamic Workflows move orchestration out of chat and into a script.
-- Community repos already explore JavaScript harnesses, MCP runtimes, viewers,
-  journals, and workflow command distribution.
-- Oh-My-OpenAgent/OMO shows that agent harnesses become useful when they provide
-  low-friction commands, role presets, hooks, LSP/AST tools, background workers,
-  and a persistent "keep going" execution loop.
-- OMO also shows the cost of a harness-first approach: install footprint,
-  provider/model drift, hook compatibility issues, scratch-space leakage,
-  telemetry and global-config concerns, and difficulty separating model claims
-  from verified state transitions.
-- DWM should not become an OMO clone. It should treat OMO, Codex, Claude Code,
-  OpenCode, shell, and local fixtures as optional execution backends behind a
-  deterministic control-plane whose source of truth remains plans, packets,
-  evidence, reviews, hashes, gates, and resume state.
-
-## Scope
-
-### V0: Skill And Spec
-
-Deliver a Codex skill that designs workflows and writes inspectable specs.
-
-Required behavior:
-
-1. Identify when a task deserves dynamic workflow design instead of direct work.
-2. Inspect relevant local context before designing repo-specific workflows.
-3. Choose patterns from `references/workflow-patterns.md`.
-4. Produce workflow blueprints with phases, workers, handoffs, gates, budgets,
-   and verification.
-5. Distinguish skill-only execution from plugin/runtime requirements.
-6. Include evaluation fixtures for the generated designs.
-
-### V1: First-Slice Compiler
-
-Implement the first-slice compiler specified in
-`docs/v1-first-slice-compiler-spec.md`: compile an activated
-`workflow.plan.json` into one inspectable first-slice packet, prompt, gate
-state, and resume/status files without claiming full automatic orchestration.
-
-V1 may package reusable helper assets only when they support this compiler
-contract. It must remain useful without a durable runtime, plugin daemon, or
-automatic subagent dispatcher.
-
-### V2: First-Slice Execution Adapter
-
-Implement the execution adapter specified in
-`docs/v2-execution-adapter-spec.md`: accept a trustworthy V1 run directory,
-refuse stale or blocked packets, execute exactly one first-slice packet through
-a controlled backend, and record append-only evidence.
-
-V2 is not a multi-slice workflow runtime. It is the first real automation bridge
-between the compiler and Codex/OMX/local backends. Current V2 slices support
-dry-run evidence, manifest-scoped local-shell execution, worktree isolation,
-dirty-worktree blocking, manifest-scoped verification commands, and Codex CLI
-fixture-command execution with transcript/evidence capture. The installed Codex
-path exists as optional live-smoke evidence, not as part of the fixture keep
-gate. The V2 release fixture gate also covers stale source-plan invalidation,
-malformed attempt evidence, append-only attempts, and required-fixture failure
-policy.
-
-### V2.5: Execute-Review-Repair Loop
-
-Implement the review and repair loop specified in
-`docs/v2.5-review-repair-spec.md` and planned in
-`docs/v2.5-to-v3.workflow.plan.json`.
-
-V2.5 consumes exactly one trusted V2 packet attempt. The first implemented loop
-stores deterministic structured review artifacts, derives `review-approved`,
-`changes-requested`, `repair-prepared`, `needs-human`, or `invalid` from
-evidence, and preserves parent-level review and repair contract ledgers. It does
-not select later packets, execute backend repairs, or claim full workflow
-completion.
-
-### V3: Runtime Entry
-
-Implement the runtime entry specified in `docs/v3-runtime-entry-spec.md`: accept
-only trusted V2.5 terminal states, write a deterministic runtime journal,
-prepare the next packet candidate, and make resume invalidation explicit.
-
-V3 entry accepts only `review-approved` and `repair-verified`. It rejects
-`failed`, `invalid`, `review-pending`, `changes-requested`, `repair-prepared`,
-and `needs-human`, even when `--human-approved` is present, until a later slice
-defines a stronger human override contract.
-
-V3 entry still does not execute later packets. Full runtime work remains future
-scope:
-
-- generated workflow scripts or JSON plans
-- phase graph and status file
-- subagent spawn adapters
-- durable journal
-- resume from completed phase outputs
-- viewer or textual progress map
-
-See `docs/automation-roadmap.md` for the full roadmap from V0 through product
-packaging.
-
-### V12-V20: Product Control-Plane Extension
-
-V12-V20 extend the early workflow contract into a product-level control-plane.
-The extension is not a new product thesis; it is the operational form of the
-same DWM rule: agents may act, but artifacts decide.
-
-The product stack is:
+ORRO has two engines and one product surface:
 
 ```text
-DWM Product Shell
--> DWM Core
--> DWM Runner
--> optional execution adapters
--> normalized evidence, review, gates, resume
+witnessd  = executing runtime and evidence emitter
+Depone    = non-executing verifier and evidence-contract authority
+ORRO      = user-facing product/workflow surface, published by Moonweave
+ORRO Flow = scout -> flowplan -> proofrun -> proofcheck -> handoff
 ```
 
-Layer ownership:
+`ORRO` means **Observed Run & Review Orchestrator**. `Superflow` is the previous
+product-surface name and is now historical/compatibility naming. New public docs
+should use ORRO. Existing `superflow-*` schema kinds, fixture paths, or commands
+may remain accepted during migration, but they are not the canonical product
+name.
 
-- DWM Core owns plans, packets, gates, hash ledgers, review state, ingestion,
-  and next-action decisions.
-- DWM Runner owns process launch, session IDs, worktree/runtime directories,
-  stdout/stderr/transcript capture, timeouts, retries, and runner-local logs.
-- DWM Product Shell owns human commands, installation, HUD, approval queues, and
-  evidence browsing.
-- Adapters own harness-specific invocation only. They do not decide whether
-  work is trusted.
+User-facing names:
 
-The required operator commands are:
-
-```bash
-dwm run "<objective>"
-dwm plan "<objective>"
-dwm resume <run>
-dwm status <run>
-dwm next <run>
-```
-
-Each command must preserve the same safety contract as earlier slices: no
-destructive, networked, dependency-installing, secret-reading, external-message,
-database, production, or history-rewrite action occurs without a matching DWM
-gate and a safe default.
-
-### V86-V106: Brand, Roadmap, Command Safety, Activation, Contract Tiers, Evidence Oracle, Narrative, Score, History, Metrics, Live Proof, And Verifier Contracts
-
-V86-V106 align the product surface after the control-plane became broader than a
-single skill, harden the command boundary that follows next-action selection,
-make next-workflow activation consume those later evidence gates, and split
-verification into practical tiers. V92 adds a read-only evidence oracle so later
-scores and graphs can be tied to specific artifact assertions instead of status
-strings alone. V93 renders those signals as a Depone Control Deck so users
-can see chart, gate, activation, oracle, and next-move state without treating
-evocative labels as source truth. V94 derives a Control Deck readiness score
-from those same artifacts while explicitly blocking public benchmark and upward
-trend claims. V94-V101 are frozen as the meta layer and remain bounded to
-artifact status, internal readiness, and human-gated publication routing. V95
-records those scores as internal readiness history and can
-render a local SVG without treating it as a public benchmark graph. V96 adds a
-Metric Ladder so process, operator-readiness, and public-benchmark graph levels
-stay separate. V97 adds a Benchmark Readiness report so internal readiness
-can be scored without becoming a public benchmark graph. V98 adds a Wave
-Operator that selects the next source-only product wave from readiness and
-activation evidence. V99 adds a Wave Receipt that verifies the selected dogfood
-evidence wave has usable acquisition evidence. V100 adds Promotion Evidence so
-source artifacts can be recorded before any human review for README graph
-publication. V101 adds Promotion Route so that evidence becomes either a
-dogfood acquisition command plan or a README publication human gate. The V102
-deterministic live-proof recorder now records one bounded live Codex-backed n=1
-proof that passed red-green verification and independent review. V103 adds a
-deterministic two-arm comparison schema for direct-codex versus dwm-controlled
-evidence richness; the live comparison remains opt-in and makes no pass-rate,
-speed, cost, or direct-agent superiority claim. V104 repositions Depone as a
-workflow designer plus cross-platform evidence verifier. V105 adds the
-evidence-contract verify wedge for harness-captured logs, diffs, and root
-control files. V106 adds optional multi-wave execution-path validation while
-preserving first-slice compatibility. The public
-product brand is Depone. DWM Core remains the internal
-deterministic engine. The skill name is now `depone`. The `dwm_*.py`
-file prefix and GitHub repository slug remain legacy/internal and
-intentionally deferred until a separate migration gate proves a rename will
-not break install surfaces.
-
-V87 added a brand boundary audit so README, command reference, release history,
-and hero surfaces do not drift back to ambiguous public DWM naming or overclaim
-autonomous execution.
-
-V88 roadmap reconciliation keeps `docs/spec.md`, `docs/automation-roadmap.md`,
-and `docs/release-history.md` aligned with the current implementation state.
-This is still audit-only: it does not execute queued commands, run live
-adapters, publish benchmark claims, rename packages, or claim autonomous
-execution. Later Agent Fabric documentation syncs are part of this same
-source-of-truth discipline: specs may describe implemented compiler, capture,
-and verification surfaces, but generated `out/` evidence remains derived.
-
-V89 command safety adds shared command-shape and inferred-risk checks for V75,
-V76, and V77. Candidate-declared `risk_codes` are no longer authoritative on
-their own; supported commands can still be blocked or gated.
-
-V90 activation v2 makes V87 brand boundary, V88 roadmap reconciliation, and V89
-command safety part of the readiness decision before DWM says the next workflow
-can proceed.
-
-V91 contract tiering adds `smoke`, `changed`, and `full` verification paths
-while keeping full release verification as the publishing boundary.
-
-V92 evidence oracle verifies JSON fields, text evidence, artifact existence,
-and source-hash links across existing artifacts. It is read-only and does not
-execute queued commands, create worktrees, run live adapters, or publish
-benchmark claims.
-
-V93 workflow narrative renders a `workflow-narrative.json` and
-`workflow-narrative.md` from V88, V89, V90, and V92 artifacts. It may use
-Depone-flavored labels such as Chart, Gate, Oracle, and Next move, but those
-labels are status rendering only. Artifact assertions and source hashes remain
-the source of truth.
-
-V94 control deck score renders `control-deck-score.json` and
-`control-deck-score.md` from the narrative plus its source artifacts. It scores
-Chart, Gate, Activation, Oracle, source integrity, and voice policy for operator
-readiness only. It is not a public benchmark score and does not claim upward
-trend performance.
-
-V95 control deck score history renders `control-deck-score-history.json`,
-`control-deck-score-history.md`, and `control-deck-score-history.svg` from one
-or more V94 score artifacts. It records operator readiness history only. It is
-not a public benchmark graph and does not claim upward product quality.
-
-V96 metric ladder renders `metric-ladder.json` and `metric-ladder.md` from V95
-readiness history, optional graph timing, and optional benchmark promotion
-evidence. It treats readiness history as a real operator metric while blocking
-public benchmark claims until promotion evidence exists.
-
-V97 benchmark readiness renders `benchmark-readiness.json` and
-`benchmark-readiness.md` from the V96 metric ladder. It records an internal
-readiness score and the current public benchmark publication gate. The score is
-not a public benchmark graph, and README benchmark publication still requires
-promotion evidence plus human review.
-
-V98 wave operator renders `wave-operator.json` and `wave-operator.md` from
-benchmark readiness and workflow activation evidence. It chooses the next
-source-only product wave, currently dogfood evidence acquisition while public
-benchmark publication remains blocked. It does not execute commands, create
-worktrees, use the network, or publish benchmark claims.
-
-V99 wave receipt renders `wave-receipt.json` and `wave-receipt.md` from the
-selected wave and dogfood acquisition evidence. It verifies that the selected
-dogfood evidence wave has usable acquisition evidence. It does not execute
-commands or publish benchmark claims.
-
-V100 promotion evidence renders `promotion-evidence.json` and
-`promotion-evidence.md` from V99 wave receipt and V97 benchmark readiness
-evidence. It records whether source evidence can enter human review for README
-graph publication while keeping public benchmark publication disabled by
-default. It does not execute commands, publish assets, or claim upward
-benchmark progress.
-
-V101 promotion route renders `promotion-route.json` and `promotion-route.md`
-from V100 promotion evidence. It plans the next dogfood acquisition command
-when promotion evidence is not ready, or emits a human gate when README graph
-publication can enter review. It does not execute commands, publish assets, or
-approve public benchmark publication.
-
-### V107-V128: Agent Fabric Compiler, Capture, Real Run, Claim Honesty, And Evidence Substrate
-
-V107-V123 add the first implemented Agent Fabric control-plane layer without
-turning Depone into an agent runtime. V107 validates role, toolbelt, profile,
-harness, compile-report, invocation, and result contracts, then compiles
-profile roles into deterministic invocation packets and compile reports. V108
-adds a fixture-only shell reference adapter shape. V109 bridges that shape into
-Depone capture manifests with `A0-claims-only` and `A1-local-observed`
-assurance labels. V110 surfaces capture checks in verification reports. V111
-renders those report fields as a deterministic operator Markdown view. V112
-threads the V107-V111 path together as a source-only lifecycle smoke helper. V116 exposes that source-only smoke as `depone agent-fabric-smoke` so operators can export the JSON summary and optional Markdown view without writing Python. V117 exports static harness capability snapshots from shipped fixtures and tool mappings through `depone agent-fabric-harness-snapshot`. V118 binds the shell reference adapter fixture to a harness snapshot through `depone agent-fabric-adapter-smoke` so adapter readiness is source-hash-bound before live adapter work. V119 adds `depone agent-fabric-claim-gate`, which blocks public benefit claims until paired dogfood or explicitly approved live adapter-smoke evidence exists. V120 lets that same claim gate consume source-only paired evidence and move to `ready-for-public-claim-review` while still refusing automatic public-claim approval. V121 adds `depone agent-fabric-paired-evidence`, a source-only producer for that hash-bound paired evidence input. V122 adds `depone agent-fabric-dogfood-evidence`, which turns validated A1 local observed capture manifests into the dogfood evidence consumed by V121. V123 lets that command accept repeated capture manifests and emit a source-only controlled capture corpus over distinct observed captures without executing commands or upgrading trust.
-
-V126 breaks the source-only loop by capturing one real Codex direct-vs-governed
-dogfood run. The governed arm becomes an A1 observed capture fixture and the
-paired-evidence self-test consumes that observed capture rather than fabricated
-dogfood input. V127 makes verify claim evaluation fail closed: required
-unevaluated claims are inconclusive, declared deterministic support passes,
-refutation fails, and unsupported evaluators stay inconclusive. V128 emits the
-first standards-shaped evidence bundle from that capture: an in-toto Statement,
-an unsigned DSSE envelope, and static OTel GenAI-shaped spans. The substrate is
-`unsigned-content-addressed` and does not raise assurance.
-
-These slices do not call live models, execute arbitrary commands, hide harness
-permission limitations, or claim direct-agent superiority. Unsupported critical
-controls still block compilation, approximations stay visible in compile
-reports, and Depone verification remains evidence-contract based. The next Agent
-Fabric product step is not another role/profile layer. It is to harden V128
-external evidence ingest and run another real installed-`depone` dogfood loop
-with runner receipt, observer capture, and substrate bundle.
-
-### Harness Strategy
-
-DWM should learn from multi-agent harnesses without depending on one. The
-default product posture is:
-
-- start with one worker, one independent reviewer, and one verifier;
-- expand to two or three workers only when packets have independent ownership;
-- require deterministic fan-in before any synthesis or merge recommendation;
-- record backend, model/provider, prompt, cwd, files touched, commands,
-  verification output, transcript path, and adapter hash for every attempt;
-- keep all scratch, caches, worktrees, and downloaded assets under a declared
-  run-local or repo-local root unless the user approves another location;
-- disable or explicitly disclose telemetry in benchmark and release contexts;
-- prefer subscription-backed official provider paths when available, but do not
-  make API keys or third-party subscription workarounds required for DWM.
-
-Harness-specific decisions:
-
-- Codex CLI is the first native adapter target because it matches the primary
-  local operating environment.
-- Claude Code is an adapter target for direct Claude workflows, not a backend
-  that DWM should proxy through unofficial subscription workarounds.
-- OpenCode/OMO is optional prior art and a possible adapter target. DWM may
-  reuse its ideas around role presets, LSP/AST tooling, manual-QA loops, and
-  low-friction commands, but must not inherit global config mutation, opaque
-  hook chains, unrestricted team launch, or unbounded model fallback as product
-  defaults.
-- Shell and fixture adapters remain necessary for deterministic tests and local
-  smoke runs.
-
-### Role Pack
-
-DWM role presets are thin contracts, not personality branding. Each role must
-declare allowed tools, context limits, output schema, and evidence obligations.
-
-Required roles:
-
-| Role | Purpose | Trust boundary |
+| Name | User intent | Depone role |
 | --- | --- | --- |
-| `planner` | turn objective into packets, gates, budgets, and ownership | cannot mark execution complete |
-| `explorer` | inspect repo/docs/runtime state and produce evidence-backed maps | read-only unless explicitly upgraded |
-| `worker` | perform one bounded packet | result is untrusted until reviewed and verified |
-| `reviewer` | find bugs, regressions, missing tests, and contract drift | cannot repair its own findings without a repair packet |
-| `verifier` | run tests, browser checks, artifact renders, or command smokes | reports evidence, not product success |
-| `operator` | summarize status and next safe action | cannot bypass gates |
+| `orro` | scout -> plan -> run -> evidence -> verifier summary -> handoff | Re-derive the evidence result after witnessd emits bytes. |
+| `orro scout` | read-only repo exploration | Validate any produced planning artifacts when bound into evidence. |
+| `flowplan` | plan-only workflow design | Validate plan/contract shape and gates. |
+| `proofrun` | precise evidence-backed execution alias | Verify the emitted evidence when called after runtime. |
+| `proofcheck` | offline evidence verification | Primary Depone-facing public alias. |
+| `orro handoff` | maintainer review package | Validate handoff evidence; never approve merge. |
+| `orro skillpack` | knowledge-as-code support | Validate skillpack-lock hashes when part of evidence. |
+| `orro doctor` | readiness check | Validate declared proof artifacts only; no runtime readiness ownership. |
+| `orro auto` | continuation behind evidence gates | Revalidate current state and gate next action. |
+| `orro ultra` | future high-autonomy profile | Same verifier rules; stricter policy requirements. |
 
-The first useful DWM "ulw-like" mode is not an unrestricted keep-going loop. It
-is a bounded packet loop:
+Direct `depone` CLI and `SKILL.md` usage remains a developer, verifier, CI, and
+compatibility surface. It is not the final flagship user experience beside a
+separate `witnessd` skill.
+
+### 1.1 Repository and install strategy
+
+The engine repositories stay separate:
 
 ```text
-plan -> packet -> execute -> evidence -> review -> repair -> verify -> ingest -> next
+Depone   = verifier engine and evidence contract
+witnessd = execution engine and evidence emitter
 ```
 
-Every loop has max rounds, retry limits, file-touch limits, and a stop condition
-for repeated failures, missing credentials, unsafe actions, or unavailable
-verification.
+The user-facing install surface is still one product: ORRO. Normal users should
+not be told to install a Depone skill and a witnessd skill separately for a single
+workflow.
 
-## Non-Goals
+In the near term, the thin `orro` command/skill may live in the witnessd repo
+because ORRO starts execution and witnessd owns execution. Depone is then consumed
+as a pinned verifier dependency.
 
-- Do not replace `workflow-router`.
-- Do not vendor external runtime code.
-- Do not auto-spawn many subagents without explicit user authorization.
-- Do not hide destructive or costly actions behind workflow generation.
-- Do not treat a workflow blueprint as proof that work is complete.
-- Do not compete with Codex, Claude Code, OpenCode, or OMO as a monolithic
-  all-in-one harness.
-- Do not require API keys when an official subscription-backed local tool path
-  can be used directly.
-- Do not rely on unofficial subscription workarounds as a release requirement.
-- Do not use provider fallback, parallelism, or role count as a proxy for
-  quality.
+A future standalone `ORRO` repository is justified only when distribution needs
+it: marketplace manifests, host-specific plugin bundles, examples, product docs,
+engine version locks, and end-to-end integration tests. That repo must be a
+wrapper/distribution repo, not a third engine. It must not duplicate Depone
+verifier logic or witnessd runtime logic.
 
-## Activation Contract
+---
 
-The skill activates when:
+## 2. What Depone owns
 
-- the user names `$depone`
-- the user asks for dynamic workflows, ultracode-style orchestration, or a
-  workflow that can handle a very large task
-- the task clearly requires multi-phase, multi-agent design before execution
+Depone owns the evidence contract:
 
-The skill should not activate for ordinary small implementation, debugging, or
-review tasks. Those remain `workflow-router` or direct Codex work.
+- canonical hash convention,
+- capture-manifest schema,
+- observer-capture shape,
+- isolation boundary rules,
+- runner receipt validation,
+- trusted-observer provenance validation,
+- DSSE/in-toto-shaped evidence bundle validation,
+- evidence-contract validation,
+- schedule and concurrency receipt validation,
+- team-ledger validation,
+- verification-recipe schema and receipt validation,
+- repo-profile and context-pack hash binding,
+- skillpack-lock validation,
+- MCP/tool receipt validation as observed external facts,
+- PR handoff evidence validation,
+- declarative verifier policies,
+- verifier error codes,
+- offline verdict derivation.
 
-## Workflow Design Output
+Runtimes and wrappers consume this contract. They must not invent verifier fields
+or reinterpret verdicts.
 
-Every substantial design must include:
+---
 
-| Field | Meaning |
-| --- | --- |
-| Objective | Desired outcome, stated independently of implementation |
-| Surface | Repos, paths, systems, APIs, artifacts, or sources in scope |
-| Assumptions | Guesses that affect the workflow and must be verified |
-| Phases | Named stages with entry and exit criteria |
-| Workers | Roles, ownership, allowed tools, and context boundaries |
-| Handoffs | Artifacts and schemas passed between phases |
-| Parallelism | Fan-out shape, concurrency cap, and fan-in rules |
-| Verification | Checks designed to falsify claims or edits |
-| Gates | Human approval points and safe defaults |
-| Budget | Token, time, retry, agent-count, and file-touch limits |
-| Resume | Cacheable outputs and invalidation rules |
-| Execution path | Direct Codex, subagent plan, plugin, runtime, or backlog |
+## 3. What Depone must not own
 
-## Pattern Selection
+Depone verifier-core paths must not:
 
-Use these defaults:
+- launch agent workers,
+- call live models,
+- own durable runtime sessions,
+- retry work,
+- mutate active user worktrees,
+- execute verification recipes,
+- call MCP servers, SaaS systems, databases, or live monitoring APIs,
+- approve merges or deployments,
+- upgrade assurance from prose, model confidence, skill text, MCP output, or
+  operator intent,
+- present compatibility/demo execution helpers as the product UX.
 
-- Sequential for strict dependencies.
-- Pipeline for repeated item-level stages.
-- Parallel fan-out/fan-in for independent surfaces.
-- Adversarial verify for findings and claims.
-- Judge panel for alternatives.
-- Loop until dry for open-ended discovery.
-- Human gate for risky actions.
-- Resume/cache for expensive prefixes.
+If a feature needs to spawn, supervise, retry, route adapters, create active lane
+worktrees, call external tools, or emit runtime evidence, it belongs in witnessd.
+If a feature needs to bundle both engines for end users, it belongs in the ORRO
+wrapper.
 
-Prefer pipeline over a barrier unless the next phase needs the complete prior
-set. Barriers are allowed for global deduplication, ranking, cross-item
-comparison, and final synthesis.
+---
 
-## Safety
+## 4. Command taxonomy
 
-Workflow designs must explicitly gate:
+All Depone commands must be classified as one of these surfaces:
 
-- force push, hard reset, branch deletion, or history rewrite
-- deleting files or directories
-- dependency installation
-- database migrations
-- production deploys
-- public API changes
-- paid external API usage
-- secret access or external messages
+| Class | Meaning | Examples |
+| --- | --- | --- |
+| Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `proofcheck`, `evidence-ingest`, `evidence-chain`, `team-ledger`, verification-receipt validation, capture/receipt validation library calls |
+| Contract | Plan or evidence-contract validation without worker launch. | `validate`, `compile`, evidence-contract validators, verification-recipe schema checks |
+| Gate | Non-executing next-action or preflight decisions. | `next`, non-executing preflight checks |
+| Fixture/demo | Deterministic local fixture generation or compatibility workflows. | `demo`, `observe`, `evidence-substrate`, `run`/`evidence-run`, `advance`, internal `agent-fabric-*` surfaces |
 
-The safe default is to stop, preserve artifacts, and ask the user.
+Fixture/demo and compatibility commands may remain for existing automation, but
+docs must label them as such. They are not the canonical ORRO user surface.
 
-## Verification
+---
 
-A workflow design is acceptable only when it names how success can be checked.
+## 5. Verification recipes and knowledge artifacts
 
-Examples:
+Depone verifies whether declared checks were actually run and whether their
+receipts match the evidence. Depone does not run the checks.
 
-- Code migration: changed call sites plus tests, typecheck, and independent
-  review of missed call sites.
-- Research: sources gathered independently, claims extracted, claims verified
-  against sources, unsupported claims filtered.
-- Bug hunt: candidate findings, adversarial refutation, reproduction evidence,
-  and deduped confirmed findings.
-- Artifact work: rendered or parsed artifact evidence, not only file edits.
+Canonical object families:
 
-## Evaluation Fixtures
-
-Future changes should be tested against these prompts:
-
-| Prompt | Expected output focus |
-| --- | --- |
-| "Design a workflow to audit every API route for missing auth." | pipeline scan, adversarial verify, read-only safety |
-| "Plan a 500-file migration from legacyFetch to the new client." | discovery, batching, write gates, regression verification |
-| "Research the current state of on-device LLM inference." | multi-angle research, source verification, citation filtering |
-| "Stress-test three architecture options before we pick one." | judge panel, rubric, synthesis with tradeoffs |
-| "Find every unsupported claim in this PR description." | claim extraction, repo-grounded verification, proof ledger |
-| "Make a workflow runtime for this skill." | plugin/runtime boundary, small first slice, no overbuild |
-| "Benchmark OMO against DWM on a failing-test repo." | isolated install, adapter evidence, footprint, hook/provider risks |
-| "Run DWM over Codex and Claude Code without API keys." | subscription-aware adapter routing, no unofficial workaround dependency |
-| "Use three workers to migrate independent modules." | bounded fanout, ownership, deterministic fan-in, reviewer queue |
-
-For each fixture, record:
-
-- selected patterns
-- whether local context was inspected when needed
-- whether risky actions were gated
-- whether verification can falsify the result
-- whether the plan overclaims execution
-- which backend or adapter is in scope
-- whether scratch, cache, worktree, and downloaded artifacts stay inside the
-  declared sandbox
-- whether provider/model fallback changed the result or reproducibility
-
-### Harness Benchmark Gate
-
-Any claim that DWM improves over direct Codex, Claude Code, OpenCode/OMO, or a
-single-agent baseline must be backed by a small task corpus, not by narrative
-comparison.
-
-Minimum corpus:
-
-- failing test fix,
-- small refactor,
-- auth or permissions audit,
-- UI or rendered-artifact regression check,
-- docs/code consistency check,
-- multi-file migration with ownership conflicts.
-
-For each task, compare applicable modes:
-
-- direct Codex,
-- Codex through DWM,
-- Claude Code direct,
-- Claude Code through DWM when supported,
-- OpenCode/OMO when isolated and configured,
-- fixture or shell adapter for deterministic control cases.
-
-Record:
-
-- install/runtime footprint,
-- provider and model path,
-- commands run,
-- files touched,
-- test and verification output,
-- human interventions,
-- failed or missing hooks,
-- scratch locations,
-- telemetry state,
-- cost/time where observable,
-- final trusted DWM state.
-
-A benchmark passes only if DWM produces more inspectable evidence, safer resume,
-or fewer unreviewed changes without hiding failures behind synthesized success.
-
-### Fixture Smoke Gate
-
-Before calling v0 final, run at least two fixtures against the current skill
-instructions:
-
-1. one codebase-facing fixture, such as the API auth audit or 500-file migration
-2. one non-code or meta fixture, such as research, architecture judging, or
-   runtime planning
-
-Each smoke output passes only if it includes every field in
-`Workflow Design Output`, chooses patterns from `references/workflow-patterns.md`,
-names at least one falsifiable verification check, gates risky actions with a
-safe default, and does not imply the requested work has already been executed.
-
-Record the prompt, selected patterns, generated workflow output, failed
-criteria, and resulting spec/skill change if any under `docs/fixture-smoke/`. If
-a fixture fails, update `SKILL.md`, `docs/spec.md`, or
-`references/workflow-patterns.md`, then rerun the fixture category that failed.
-
-## Release Criteria
-
-V0 is releasable when:
-
-- `SKILL.md` has no placeholders.
-- `docs/spec.md` has fixtures and non-goals.
-- `references/workflow-patterns.md` gives enough pattern guidance for v0.
-- at least two fixture smoke checks pass, covering one codebase-facing fixture
-  and one non-code or meta fixture, with records in `docs/fixture-smoke/`.
-- V0.5 remains a separate continuation gate; V0 release does not claim the
-  evaluator slice is complete.
-- whitespace check passes.
-- secret scan finds no committed secrets.
-
-V0.5 is releasable when:
-
-- `references/workflow-plan-schema.md` documents `workflow.plan.json`.
-- `scripts/evaluate_plan.py --self-test` passes.
-- `fixtures/v0.5/manifest.json` includes four positive, four negative, three
-  borderline, and one meta/runtime fixture.
-- tracked candidate samples under `samples/v0.5/candidates/` validate as
-  schema-valid plans or valid downgrade artifacts.
-- tracked raw outputs under `samples/v0.5/raw/` are distinct from parsed plans
-  and contain `raw_kind`, `fixture_id`, the prompt, producer, current
-  `SKILL.md` hash, packet hashes, parsed `workflow_plan`, and rendered blueprint
-  that matches the parsed plan.
-- each fixture has a structured consumer report under `samples/v0.5/consumer/`.
-- both confirmed baseline snapshots, `workflow-router-skill` and
-  `claude-agent-workflow-designer`, are scored through fixture-indexed,
-  prompt-matched source-hashed normalization-failure records whose scores are
-  derived by the evaluator from structured source-snapshot observations.
-- `python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out
-  out/v0.5` regenerates scorecards, parsed plans, raw outputs, skill hashes, and
-  rendered blueprints, then validates and copies tracked consumer reports; the
-  command exits nonzero if the keep/kill decision is not `keep` or if
-  `docs/v0.5-decision.md` drifts from the regenerated summary.
-- `docs/v0.5-decision.md` records the keep/kill outcome.
-
-V1 is releasable when:
-
-- `docs/v1-first-slice-compiler-spec.md` defines the compile and resume-check
-  behavior.
-- V1 `source_plan_path` must be repository-relative in V1; off-repo
-  `workflow.plan.json` inputs are rejected at compile time.
-- `scripts/compile_workflow.py --self-test` passes.
-- `python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out
-  out/v1/final` passes and writes `summary.json`.
-- Existing V0/V0.5 release checks still pass.
-- required V1 compiler fixtures pass, covering activated plans, downgrade
-  refusal, output path safety, symlink escape rejection, risk gate blocking,
-  prompt/packet drift, and resume invalidation.
-- generated first-slice packet prompts structurally agree with packet JSON.
-- `docs/v1-decision.md` records the keep/kill outcome.
-
-V2 is releasable when:
-
-- `docs/v2-execution-adapter-spec.md` defines the one-packet execution adapter
-  behavior.
-- `python scripts/execute_packet.py --self-test` passes.
-- `python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out
-  out/v2/final` records `decision: "keep"`.
-- Existing V0.5 and V1 release checks still pass.
-- A manual smoke uses a ready V1 packet, performs a V2 dry run, and records
-  `repo_tracked_diff_unchanged: true`.
-- A manual smoke reuses the blocked V1 run generated by the V2 manifest command
-  and proves V2 refuses execution with `ERR_EXEC_BLOCKED_RISK`.
-- `docs/v2-decision.md` records the exact V2 manifest command and generated
-  summary values from `out/v2/final/summary.json`.
-- V2 remains a one-packet adapter: it does not advance beyond the first slice,
-  merge worktrees, or claim full large-task automation.
-
-V3 entry is releasable when:
-
-- `docs/v3-runtime-entry-spec.md` defines the trusted-entry behavior.
-- `python scripts/run_workflow.py --self-test` passes.
-- `python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out
-  out/v3/final` records `decision: "keep"`.
-- Existing V0.5, V1, V2, and V2.5 release checks still pass.
-- required V3 fixtures pass, covering approved advancement, rejected
-  `changes-requested`, rejected `repair-prepared`, `needs-human` approval being
-  insufficient without verified evidence, next phase candidate selection after
-  the reviewed first slice, clean resume,
-  stale V2.5 invalidation, tampered next-packet invalidation, tampered journal
-  invalidation, unmatched first-slice refusal, ownership sentinel refusal, and
-  malformed `human_approved` invalidation.
-- `docs/v3-decision.md` records the exact V3 manifest command and generated
-  summary values from `out/v3/final/summary.json`.
-- V3 entry remains a runtime entry loop: it does not execute later packets,
-  orchestrate parallel workers, merge worktrees, or claim full large-task
-  automation.
-
-### Reproducible Check
-
-Run from the repository root:
-
-```bash
-python scripts/quick_validate_skill.py .
-python scripts/quick_validate_skill.py --self-test
+```text
+orro-verification-recipe
+orro-verification-receipt
+orro-repo-profile
+orro-context-pack
+orro-skillpack-lock
+orro-mcp-tool-receipt
+orro-pr-handoff
 ```
 
-```bash
-python scripts/check_whitespace.py .
+Compatibility aliases accepted during migration:
+
+```text
+superflow-verification-recipe
+superflow-verification-receipt
+superflow-repo-profile
+superflow-context-pack
+superflow-skillpack-lock
+superflow-mcp-tool-receipt
+superflow-pr-handoff
 ```
 
-```bash
-python scripts/check_release_text.py .
+Rules:
+
+- A verification recipe is intent, not evidence.
+- A verification receipt is evidence only when bound to a non-placeholder runner
+  receipt, transcript/output hashes, and expected exit codes.
+- A complete executable ORRO proofcheck pass requires the required artifact set:
+  repo-profile, context-pack, skillpack-lock, verification-recipe,
+  verification-receipt, and pr-handoff. MCP/tool receipts are validated when
+  present.
+- `proofcheck` is fail-closed for missing, non-directory, empty, incomplete, or
+  malformed evidence directories.
+- A missing verification receipt blocks proofcheck. A scout-only directory is
+  planning evidence and must not become execution proof.
+- An all-zero runner receipt hash is a placeholder and blocks proofcheck.
+- A skillpack can explain domain rules but cannot raise assurance by itself.
+- A skillpack-lock can prove which knowledge files were selected, not that the
+  work is correct.
+- Repo-profile and context-pack artifacts can prove what context was selected,
+  not that the selected context was sufficient.
+- MCP output is an observed external fact; Depone verifies hashes and policy
+  flags, not remote truth.
+- PR handoff records what evidence should accompany human review; it is not merge
+  approval.
+- Skill text, CLAUDE.md, AGENTS.md, MCP output, IDE terminal views, tmux panes,
+  and session transcripts are not final truth unless bound into a
+  verifier-recognized receipt.
+
+---
+
+## 6. Evidence verdict contract
+
+Depone re-derives a verdict from bytes. It cannot make weak evidence stronger.
+
+Allowed assurance/verdict concepts:
+
+```text
+A0-claims-only
+A1-local-observed
+A2-isolated-observed
+blocked
+refuted
+inconclusive
+pass
 ```
 
-```bash
-python scripts/check_release_text.py --self-test
+Rules:
+
+- A1 requires observer capture that satisfies the contract.
+- A2 requires A1 plus a re-derived isolation boundary.
+- Operator DSSE signing is report-level provenance; it does not create A3.
+- Missing, stale, mismatched, malformed, unverifiable, or incomplete subjects fail
+  closed.
+- Empty evidence directories, missing required ORRO artifacts, scout-only planning
+  artifacts, and placeholder runner receipt hashes are blocked, not successful
+  proof.
+- Out-of-region touched files, forbidden edits, failed verification receipts, and
+  required merge evidence failures are refuted/blocked according to the validating
+  contract.
+- Depone verdict boundaries must keep `raises_assurance=false` unless a future
+  contract explicitly defines a new verifier-recognized model.
+
+---
+
+## 7. Source-of-truth hierarchy
+
+This repo uses this hierarchy:
+
+1. `docs/spec.md` - this file; Depone repo source of truth.
+2. Code constants and validators under `depone/agent_fabric/*` and
+   `depone/verify/*` - executable contract implementation.
+3. Committed fixtures and tests - revalidation evidence for the contract.
+4. `docs/README.md` - documentation map and legacy policy.
+5. `README.md`, `CLAUDE.md`, `AGENTS.md`, `SKILL.md` - short derived orientation
+   documents.
+6. `docs/command-reference.md` - command inventory and compatibility reference.
+7. Historical DWM roadmap, release, benchmark, automation, and Superflow naming
+   documents - context and implementation history only, not current
+   product-boundary authority.
+
+When editing docs, do not introduce a second competing product source of truth.
+Update this file first, then derive summaries elsewhere.
+
+---
+
+## 8. Integration with witnessd and ORRO
+
+The flagship product path is:
+
+```text
+ORRO
+  -> scout creates repo-profile/context-pack/discovery-notes when useful
+  -> flowplan creates/validates plan gates and verification recipes
+  -> witnessd executes and emits evidence
+  -> proofcheck/Depone verifies the emitted bytes
+  -> ORRO prepares handoff without upgrading the verdict
 ```
 
-```bash
-python scripts/check_contract.py
-python scripts/check_contract.py --self-test
+Scout alone is intentionally planning-only. A scout artifact directory may be
+useful input for planning, but `proofcheck` must block it until a later witnessd
+execution step emits a verifier-recognized verification receipt and other required
+execution evidence.
+
+The offline verification path is:
+
+```text
+proofcheck or depone CLI
+  -> read existing evidence bytes and public key
+  -> Depone re-derives the verdict
 ```
 
-```bash
-python scripts/evaluate_plan.py --self-test
-python scripts/evaluate_plan.py --manifest fixtures/v0.5/manifest.json --out out/v0.5
+The plan-only path is:
+
+```text
+flowplan
+  -> produce or validate a plan/contract
+  -> no worker launch
 ```
 
-V1 compiler checks:
+The automation path is:
 
-```bash
-python scripts/compile_workflow.py --plan workflow.plan.json --out out/v1/<run_id>
-python scripts/compile_workflow.py --resume out/v1/<run_id>
-python scripts/compile_workflow.py --self-test
-python scripts/compile_workflow.py --manifest fixtures/v1/manifest.json --out out/v1/final
+```text
+orro auto
+  -> proofcheck current evidence
+  -> gate the next action
+  -> witnessd executes one approved step
+  -> repeat only while gates pass
 ```
 
-V2 execution-adapter checks:
+---
 
-```bash
-python scripts/execute_packet.py --self-test
-python scripts/execute_packet.py --manifest fixtures/v2/manifest.json --out out/v2/final
+## 9. Development plan
+
+Depone development should follow witnessd `SPEC3.md` when runtime waves need new
+contract capability. Contract work lands here first, then witnessd consumes it.
+
+Near-term verifier work:
+
+1. schedule/concurrency receipt validation for W15,
+2. merge-lane and conflict evidence validation for W16,
+3. resume receipt validation for W17,
+4. workflow-plan conformance validation for W17.5,
+5. policy layer and keyless anchor validation for W20/W21,
+6. published conformance kit for W22,
+7. verification-recipe and verification-receipt validation,
+8. skillpack-lock and repo-profile/context-pack binding,
+9. MCP/tool receipt validation,
+10. PR handoff evidence validation,
+11. ORRO object-kind migration from legacy `superflow-*` aliases.
+
+Every new verifier capability needs:
+
+- schema or contract text in this file or a referenced versioned schema,
+- validator implementation,
+- positive fixture,
+- negative fixture,
+- revalidator script or test,
+- witnessd integration only after the Depone contract is merged.
+
+---
+
+## 10. Non-goals
+
+- Do not merge Depone and witnessd just for installation convenience.
+- Do not create a third engine repo for the ORRO user surface.
+- Do not expose separate end-user Depone and witnessd skills as the final UX.
+- Do not duplicate witnessd runtime logic here.
+- Do not duplicate Depone verifier logic in the future wrapper.
+- Do not call MCP servers, SaaS systems, databases, or live monitoring APIs from
+  verifier core.
+- Do not treat skill text, CLAUDE.md, AGENTS.md, or MCP output as final truth
+  unless it is bound into a verifier-recognized receipt.
+- Do not claim keyless transparency-log trust until implemented and verified.
+- Do not revive DWM Product Shell or Superflow language as the current public
+  product surface.
+
+---
+
+## 11. Final invariant
+
+```text
+Depone verifies; witnessd executes; ORRO exposes the workflow.
 ```
-
-V2.5 execute-review-repair checks:
-
-```bash
-python scripts/execute_packet.py --manifest fixtures/v2.5/manifest.json --out out/v2.5/final
-```
-
-V3 runtime-entry checks:
-
-```bash
-python scripts/run_workflow.py --self-test
-python scripts/run_workflow.py --manifest fixtures/v3/manifest.json --out out/v3/final
-```
-
-V2 manual smoke checks:
-
-```bash
-python scripts/execute_packet.py --run out/v1/v2-final-dry-run-ready-readonly --out out/v2/v2-ready-smoke
-```
-
-```bash
-python scripts/execute_packet.py --run out/v1/v2-final-dry-run-blocked-risk --out out/v2/v2-blocked-smoke-risk
-```
-
-These manual smokes depend on running the V2 manifest command first. The ready
-smoke must record `repo_tracked_diff_unchanged: true`. For the blocked smoke,
-the V2 command must refuse execution with `ERR_EXEC_BLOCKED_RISK` and create no
-attempt.
-
-The V0.5 manifest depends only on tracked baseline source snapshots named in
-`fixtures/v0.5/manifest.json`. The manifest evaluator regenerates `out/v0.5/`
-and verifies that `docs/v0.5-decision.md` matches the freshly generated summary.
-
-## Open Questions
-
-- Whether V2 should add Claude plugin packaging after the Codex-first
-  first-slice compiler proves useful.
-- Whether a future runtime should wrap existing projects such as
-  `claude-dynamic-workflows-codex` after the smaller local adapter proves useful.
-- Whether the V0.5 JSON schema should later compile to JavaScript workflow
-  scripts, MCP runtime plans, or both.
-- Whether forward-testing should use live subagents or fixture-only review for
-  the first release.
-
-## Current Direction
-
-`docs/v125-direction-check-roadmap.md` is the current product-direction source of
-truth. V126, V127, and the first V128 slice are implemented. The forward move is
-not to add another source-only Agent OS or profile milestone; it is to make the
-evidence substrate ingest real external statements/spans, verify digests against
-present artifacts, and dogfood the installed `depone` command on another real
-task. Agent Fabric profile/role/toolbelt expansion remains frozen until measured
-task-class benefit exists.

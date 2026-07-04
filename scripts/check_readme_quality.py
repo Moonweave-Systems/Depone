@@ -16,24 +16,24 @@ MAX_LINES = 190
 MAX_VERSION_MENTIONS = 8
 REQUIRED_SECTIONS = [
     "## Quickstart",
-    "## Normal Loop",
-    "## What Exists Today",
-    "## What Is Still Honest",
-    "## Safety Model",
+    "## Product boundary",
+    "## Repository and install boundary",
+    "## What exists today",
+    "## Command taxonomy",
+    "## Normal ORRO loop",
     "## Quality",
-    "## Command Reference",
     "## Documentation",
-    "## Position",
+    "## License",
 ]
 REQUIRED_TERMS = [
     "assets/dwm-hero.svg",
     "docs/command-reference.md",
     "docs/spec.md",
-    "retired to git history (tag v0.1.0 preserves the full surface)",
-    "not a public benchmark graph",
-    "does not claim upward performance",
-    "Public trend promotion requires real release history",
-    "Generated `out/` directories are verification evidence, not source of truth.",
+    "Depone verifies; witnessd executes; ORRO exposes the workflow.",
+    "separate Depone and witnessd skills",
+    "not the final flagship user UX",
+    "Commands that launch workers, own sessions, retry, call external MCP/tools",
+    "Depone reads the artifact bytes offline.",
 ]
 
 
@@ -80,25 +80,24 @@ def check_readme(path: Path = README) -> None:
 def self_test() -> None:
     good = "\n".join(
         [
-            "# Keelplane",
-            "DWM Core",
+            "# Depone",
+            "Depone verifies; witnessd executes; ORRO exposes the workflow.",
             "## Quickstart",
-            "## Normal Loop",
-            "## What Exists Today",
-            "## What Is Still Honest",
-            "## Safety Model",
+            "## Product boundary",
+            "## Repository and install boundary",
+            "separate Depone and witnessd skills",
+            "not the final flagship user UX",
+            "## What exists today",
+            "## Command taxonomy",
+            "Commands that launch workers, own sessions, retry, call external MCP/tools",
+            "## Normal ORRO loop",
+            "Depone reads the artifact bytes offline.",
             "## Quality",
             "assets/dwm-hero.svg",
-            "retired to git history (tag v0.1.0 preserves the full surface)",
-            "not a public benchmark graph",
-            "does not claim upward performance",
-            "Public trend promotion requires real release history",
-            "Generated `out/` directories are verification evidence, not source of truth.",
-            "## Command Reference",
             "docs/command-reference.md",
             "docs/spec.md",
             "## Documentation",
-            "## Position",
+            "## License",
             "",
         ]
     )

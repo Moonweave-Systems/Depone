@@ -1,0 +1,11 @@
+{
+  "kind": "superflow-context-pack",
+  "reason": "Superflow scout fixture paths",
+  "repo_profile_hash": "930d2d79856a4f57e43d68b80a23690213baef4cdb884c5557854d8bf83823dd",
+  "schema_version": "1.0",
+  "selected_paths": [
+    "README.md",
+    "witnessd/__main__.py",
+    "tests/test_superflow.py"
+  ]
+}

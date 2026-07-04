@@ -1,0 +1,28 @@
+{
+  "command_results": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "ended_at": "2026-07-04T00:00:01Z",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "id": "unit-tests",
+      "required": true,
+      "started_at": "2026-07-04T00:00:00Z",
+      "stderr_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "stdout_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "kind": "superflow-verification-receipt",
+  "raises_assurance": false,
+  "recipe_hash": "5d8584754539bff2088245cf608e71b5f1ea192b8a6218783c32202b67def3f6",
+  "runner_receipt_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "schema_version": "1.0",
+  "transcript_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

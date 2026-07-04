@@ -32,6 +32,7 @@ from depone.cli import (
     doctor,
     evidence_next,
     evidence_run,
+    proofcheck,
     team_dry_run,
     team_launch_preflight,
     team_shell_lane_launch,
@@ -722,6 +723,20 @@ def _add_evidence_next_args(parser: argparse.ArgumentParser) -> None:
     _add_json_arg(parser)
 
 
+def _add_proofcheck_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--evidence-dir",
+        default="",
+        help="Directory containing ORRO artifact JSON files to verify offline",
+    )
+    parser.add_argument(
+        "--out",
+        default="",
+        help="Optional output path for the proofcheck verdict JSON",
+    )
+    _add_json_arg(parser)
+
+
 def _add_advance_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--evidence-dir",
@@ -838,6 +853,13 @@ def main() -> None:
         "--self-test", action="store_true", help="Run self-test and exit"
     )
     _add_json_arg(verify_parser)
+
+    # proofcheck
+    proofcheck_parser = sub.add_parser(
+        "proofcheck",
+        help="Offline proofcheck for persisted ORRO artifacts",
+    )
+    _add_proofcheck_args(proofcheck_parser)
 
     # validate-contracts
     vc_parser = sub.add_parser(
@@ -1399,6 +1421,8 @@ def main() -> None:
             compile_mod.run(args)
         elif args.command == "verify":
             verify_mod.run(args)
+        elif args.command == "proofcheck":
+            proofcheck.run(args)
         elif args.command == "validate-contracts":
             validate_contracts.run(args)
         elif args.command == "mcp":

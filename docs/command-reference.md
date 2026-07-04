@@ -1,437 +1,171 @@
 # Depone Command Reference
 
-This file keeps the full CLI and artifact reference out of the README. The
-README should explain the product; this page preserves operator detail.
+This page is a command inventory and compatibility reference. It is not the
+source of truth for product direction. The authoritative Depone spec is
+[`docs/spec.md`](spec.md).
 
-## Agent-Facing Surface
+Depone commands are grouped by boundary class. New user-facing work should prefer
+ORRO surfaces (`orro`, `orro scout`, `flowplan`, `proofrun`, `proofcheck`,
+`orro handoff`) instead of teaching users this full engine surface. Moonweave is
+the publisher/account namespace; ORRO is the product/tool name. `Superflow` is
+historical compatibility naming.
 
-These commands are the supported surface for Codex, Claude, and other
-agent-session callers. They are stdlib-only, support source installs, and use
-`--json` for a single machine-readable stdout object. Prefer `python -m depone`
-so the same prompt works on Windows PowerShell, macOS shells, and Linux.
+---
 
-Core commands:
+## 1. Verifier commands
+
+Stable engine calls for proofcheck-style workflows. These commands consume
+existing artifacts and emit verifier results. They must not launch workers, call
+MCP servers, inspect live SaaS state, or mutate worktrees.
 
 ```bash
 python -m depone doctor --json
-python -m depone design "<objective>" --surface . --out plan.json --json
-python -m depone validate plan.json --json
-python -m depone compile plan.json --target conductor --out workflow.yaml --json
+python -m depone proofcheck --evidence-dir ./evidence --json
+python -m depone evidence-ingest ...
+python -m depone evidence-chain ...
+python -m depone team-ledger --ledger team-ledger.json --json
 python -m depone verify plan.json --evidence ./evidence --out report.json --operator-view-out operator-view.md --json
-python -m depone observe --runner-sandbox ./runner-worktree --source-fixture-hash <sha256> --out ../observer/observer-capture.json --log ../observer/verify-log.json -- python -m unittest
-python -m depone evidence-substrate --capture-manifest capture-manifest.json --out evidence-bundle.json --json
-python -m depone evidence-ingest --dsse evidence-bundle.json:dsse_envelope --artifact depone-capture-manifest=capture-manifest.json:json --out ingest-verdict.json --json
-python -m depone evidence-chain --capture capture-0.json --capture capture-1.json --out evidence-chain-verdict.json --json
-python -m depone team-dry-run --plan team-plan.json --out-dir out/team-dry-run --json
-python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
-python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
-python -m depone team-shell-lane-launch --allowlist docs/team-shell-lane-launch/allowlist.json --command-id fixture-echo --cwd . --out docs/team-shell-lane-launch/receipt.json --transcript docs/team-shell-lane-launch/transcript.json --agent-role-id worker --json
-python -m depone team-pr-artifact --input saved-pr.json --expected-head-sha <head_sha> --out docs/team-pr-artifact/pr-artifact.json --json
-python -m depone team-merge-attempt --repo . --base <base_sha> --head <head_sha> --out docs/team-merge-attempt/merge-attempt.json --json
-python -m depone codex-local-capability --repo . --codex-binary definitely-missing-codex-for-committed-fixture --instruction-file AGENTS.md --instruction-file CLAUDE.md --out docs/codex-local-capability/capability.json --json
-python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
-python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
-python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
-python -m depone next --evidence-dir ../observer/evidence-run --previous-capture ../observer/previous/capture-manifest.json --out evidence-next.json --json
-python -m depone advance --evidence-dir ../observer/evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run-next --advance-out advance-decision.json --json -- python -m unittest
-python -m depone mcp
-python -m depone demo --out out/depone-quickstart --json
 ```
 
-Convenience wrapper for the full local evidence loop:
+Verifier commands may return `pass`, `blocked`, `refuted`, `inconclusive`, A0,
+A1, or A2 according to the evidence contract. They must not upgrade assurance
+from prose, model claims, skill text, MCP output, or operator intent.
+
+`proofcheck` is fail-closed. Missing directories, non-directory evidence paths,
+empty evidence directories, malformed artifacts, missing required ORRO artifacts,
+scout-only planning artifacts without a verification receipt, and all-zero runner
+receipt hashes produce `blocked`, not `pass`.
+
+Verifier artifact families now include:
+
+| Artifact family | Depone interpretation |
+| --- | --- |
+| capture/observer/runner receipts | Observed execution evidence when bound correctly. |
+| verification recipes | Intended checks; not evidence by themselves. |
+| verification receipts | Evidence that declared commands ran, with exit codes and output hashes. |
+| repo-profile/context-pack | Planning/context-selection evidence, not proof of correctness. |
+| skillpack-lock | Knowledge selection evidence, not proof of correctness. |
+| MCP/tool receipts | Hash-bound external observations, not remote truth. |
+| PR handoff | Human review package, not approval or merge evidence. |
+
+New artifact kinds should use `orro-*`. Existing `superflow-*` kinds may remain
+accepted as compatibility aliases until fixtures and code migrate.
+
+---
+
+## 2. Contract commands
+
+Plan and contract helpers. These commands validate or transform declared plans;
+they do not prove that work was completed.
 
 ```bash
-python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --verify-plan plan.json --verify-evidence ./evidence --json -- python -m unittest
-python -m depone evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --verify-plan plan.json --verify-evidence ./evidence --json -- python -m unittest
+python -m depone validate plan.json --json
+python -m depone compile plan.json --target conductor --out workflow.yaml --json
 ```
 
-`run` is the native-runner entrypoint name for the existing evidence loop. It is
-kept behavior-compatible with `evidence-run` and does not add a team scheduler,
-agent execution engine, or higher assurance claim by itself.
+`design` remains available as a compatibility planning helper when installed, but
+ORRO's final plan-only user surface should be `flowplan`.
 
-`next` is the native operator entrypoint for `evidence-next`. It re-validates an
-existing evidence-run directory from the machine artifacts and emits
-`continue` or `blocked` with a concrete `next_action`. It does not execute the
-next action.
+---
 
-`advance` is the explicit one-step continuation gate. It runs `next` over the
-previous evidence-run directory and refuses before execution unless the decision
-is `continue` and blockers are empty. Only then does it invoke one existing
-`evidence-run` continuation, write `advance-decision.json`, and stop; it is not
-a queue, scheduler, or agent runtime.
+## 3. Non-executing gate commands
 
-`team-dry-run` turns a small team plan JSON into re-validatable planning
-artifacts: `team-dry-run.json`, `team-ledger.json`,
-`team-ledger-verdict.json`, and `next-commands.json`. It does not launch agents,
-create worktrees, execute commands, or raise assurance. Its Team Ledger verdict
-is expected to be `blocked-explicit` until real lane evidence exists.
+Gate commands inspect existing artifacts and recommend safe next action. They are
+allowed only while non-executing.
 
-`team-launch-preflight` consumes a `team-dry-run.json` artifact and writes a
-non-executing launch preflight. It validates planned lanes, base commit, adapter
-availability for `launch-ready`, and the same fail-closed boundary while still
-not launching agents, not creating worktrees, not executing commands, not
-calling live models, and not raising assurance. Optional `--team-ledger-out`
-generates a Team Ledger machine artifact from the preflight lane records for
-downstream validation; it is not worker launch or fan-in approval.
+```bash
+python -m depone next --evidence-dir ../observer/evidence-run --previous-capture ../observer/previous/capture-manifest.json --out evidence-next.json --json
+python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
+```
 
-`team-worktree-prep` consumes a passing `team-launch-preflight.json` and creates
-or selects local git worktrees for each planned lane. It runs
-`git worktree add --detach` only when `--create-worktree` is present, writes a
-machine receipt, and still does not launch agents, execute lane commands, call
-live models, delete worktrees, raise assurance, or prove task completion.
+A gate that would spawn, retry, mutate worktrees, call MCP servers, or call a live
+model belongs in witnessd or the future ORRO wrapper, not in Depone verifier-core
+paths.
 
-`team-shell-lane-launch` is the narrow local shell-lane adapter. It executes
-only an argv command selected by `command_id` from a JSON allowlist, invokes
-`subprocess.run(..., shell=False)`, and writes a command receipt containing the
-resolved cwd, argv, exit code, stdout/stderr SHA-256 hashes, and transcript
-path/hash plus an `agent_contract_hash` bound to `packaging/depone-agent-operating-contract.json` and a V22 role id. It is a shell-only command adapter with A1-style local evidence only:
-it does not accept arbitrary shell strings, concatenate shell commands, launch
-Codex/Claude/OpenCode, call live models, schedule teams, or raise assurance to
-A2.
+---
 
-`team-pr-artifact` converts saved GitHub PR JSON, or an explicitly selected live
-`gh` PR query, into a fail-closed machine artifact for Team Ledger fan-in. It
-works offline from `--input` saved JSON, binds the expected head SHA, blocks on
-malformed input, failed or pending checks, stale captures, unsafe URLs, bad PR
-state, and mergeability problems, and writes `pr-artifact.json` for downstream
-validation. It is an observation/validation adapter only: it does not launch
-agents, call live models, merge PRs, or raise assurance.
+## 4. Receipt and artifact helper commands
 
-`team-merge-attempt` runs a no-commit git merge attempt in a disposable worktree
-by default and writes `merge-attempt.json` with base/head commits, merged files,
-conflict files, git exit code, and cleanup state. It refuses dirty in-place
-target worktrees unless explicitly allowed. Team Ledger can consume the
-`depone-team-merge-attempt` receipt when overlapping passed lanes need real
-merge/conflict evidence. It does not launch agents, call live models, approve
-merges, or raise assurance.
+These commands produce or inspect local artifacts that Depone can later verify.
+Some are compatibility surfaces retained for existing fixtures.
 
-`codex-local-capability` detects whether a local Codex adapter is available for
-future lane launch work and writes a capability receipt. It records binary
-lookup/version, git worktree facts, requested sandbox/approval policy,
-instruction file hashes, `agent_contract_hash`, and explicit boundary flags. It
-does not launch a Codex model session, call live models, execute a coding task,
-schedule teams, prove A2/container isolation, or raise assurance. A blocked-safe
-capability receipt exits `2`.
+```bash
+python -m depone observe --runner-sandbox ./runner-worktree --source-fixture-hash <sha256> --out ../observer/observer-capture.json --log ../observer/verify-log.json -- python -m unittest
+python -m depone evidence-substrate --capture-manifest capture-manifest.json --out evidence-bundle.json --json
+python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
+python -m depone team-pr-artifact --input saved-pr.json --expected-head-sha <head_sha> --out docs/team-pr-artifact/pr-artifact.json --json
+python -m depone team-merge-attempt --repo . --base <base_sha> --head <head_sha> --out docs/team-merge-attempt/merge-attempt.json --json
+python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
+python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
+python -m depone codex-local-capability --repo . --codex-binary definitely-missing-codex-for-committed-fixture --instruction-file AGENTS.md --instruction-file CLAUDE.md --out docs/codex-local-capability/capability.json --json
+```
 
-`team-ledger-merge-receipt` writes the machine JSON merge receipt consumed by
-`team-ledger` when passed lanes touch the same file. It normalizes lane ids and
-repo-relative file paths, but it does not perform git merges or approve fan-in.
+Important boundary: these commands may exist to create deterministic receipts or
+compatibility fixtures, but the flagship runtime path belongs in witnessd. Do not
+present these helpers as a full ORRO engine.
 
-`worktree-lane-receipt` records read-only local git facts for a lane worktree:
-branch, base commit, head commit, dirty files, changed files, evidence dir, and
-operator-supplied command receipts. `team-ledger` can consume the receipt through
-lane `worktree_receipt`; a dirty receipt or a receipt whose head commit,
-evidence dir, or changed files do not match the lane blocks fan-in. This is a
-local worktree fact binding, not a cloud runtime attestation or worker launcher.
+---
 
-For `env_kind=cloud` lanes, `team-ledger` requires a `cloud_artifact` before a
-lane can pass. The artifact binds provider name, adapter kind, external run id,
-repo, base/head SHA, evidence hash, and captured time to local JSON. Its
-adapter kind must match the lane `runner_adapter_kind`, and `evidence_hash`
-must match the lane `evidence_next_verdict` file's SHA256. Its boundary must
-explicitly say `observed_external_facts_only=true` and
-`attests_runtime_isolation=false`; Depone does not treat an observed cloud lane
-artifact as proof of provider runtime isolation.
+## 5. Compatibility/demo commands
 
-When a committed evidence bundle necessarily advances git history after capture,
-optional ledger `commit_scope` records that `end_commit` is the observed subject
-commit and lists the only allowed post-subject artifact paths. `team-ledger`
-validates that metadata shape and echoes it into the verdict; reviewers can
-compare `subject_commit..HEAD` against that allowlist.
+These are retained for existing automation, fixtures, and developer inspection.
+They are not the canonical product UX.
 
-When the observer launches a uid runner through `--runner-user`, the output
-directory also contains `runner-receipt.json`. The evidence bundle binds that
-receipt as a rehashable statement subject and uses it to label the OTel
-GenAI-shaped root span.
+```bash
+python -m depone demo --out out/depone-quickstart --json
+python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
+python -m depone evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
+python -m depone advance --evidence-dir ../observer/evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run-next --advance-out advance-decision.json --json -- python -m unittest
+python -m depone mcp
+```
 
-Exit codes: `0` pass/success, `1` fail/refuted, `2`
-inconclusive/insufficient evidence/blocked-safe readiness, `3` usage/config/input error, and `4`
-internal/runtime error.
+`run`, `evidence-run`, and `advance` are compatibility evidence-loop surfaces.
+They do not make Depone the final runtime engine and must not be used to claim
+that Depone is the product shell.
 
-JSON errors use `{"error":{"code":"ERR_EXAMPLE","message":"what failed","path":null}}`.
+---
+
+## 6. Internal release and historical DWM commands
+
+The older `scripts/dwm*.py`, benchmark, dogfood, and release-history commands are
+internal process artifacts unless a current release note explicitly promotes a
+narrow verifier contract. They may be useful for maintainers, but they are below
+`docs/spec.md` in the source-of-truth hierarchy.
+
+Examples:
+
+```bash
+python scripts/check_contract.py --tier changed
+python scripts/dwm.py doctor
+python scripts/check_readme_quality.py README.md
+python scripts/dwm_demo.py run --out out/demo/quickstart
+python scripts/dwm_benchmark.py corpus
+python scripts/dwm_live_benchmark.py capture --out out/benchmarks-live/<capture_id>
+```
+
+Public superiority, trend, benchmark, or autonomous-runtime claims are blocked
+unless the current spec and release evidence explicitly support them.
+
+---
+
+## 7. JSON and exit-code convention
+
+Exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | pass/success |
+| `1` | fail/refuted |
+| `2` | inconclusive, insufficient evidence, or blocked-safe readiness |
+| `3` | usage/config/input error |
+| `4` | internal/runtime error |
+
+JSON errors use this shape:
+
+```json
+{"error":{"code":"ERR_EXAMPLE","message":"what failed","path":null}}
+```
+
 When `--json` is present, stdout is a single JSON object and human-readable logs
 belong on stderr. A result of `2` is an honest evidence verdict, not an internal
 runtime failure.
-
-## Human Demo
-
-```bash
-python -m depone doctor
-python -m depone demo --out out/depone-quickstart
-python -m depone design "<objective>" --surface . --out plan.json
-python -m depone validate plan.json
-python -m depone compile plan.json --target conductor --out workflow.yaml
-python -m depone verify plan.json --evidence ./evidence --out report.json --operator-view-out operator-view.md
-```
-
-The human demo is offline and deterministic. It demonstrates the design,
-compile, and verify shape; it does not execute an external agent.
-
-## Compatibility/Internal Shell
-
-The older Agent Fabric and release commands remain available for existing
-automation, but new agent integrations should prefer the agent-facing aliases.
-These commands are useful for release gates, fixture regeneration, and operator
-inspection; they are not the small contract a Codex or Claude session should
-learn first.
-
-```bash
-python -m depone validate-contracts --all
-python -m depone agent-fabric-smoke --profile profile.json --roles role.json --plan plan.json --out agent-fabric-smoke.json --operator-view-out operator-view.md
-python -m depone agent-fabric-harness-snapshot --harness shell --harness codex --out agent-fabric-harness-snapshot.json
-python -m depone agent-fabric-adapter-smoke --adapter-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out agent-fabric-adapter-smoke.json
-python -m depone agent-fabric-dogfood-evidence --capture-manifest depone/fixtures/agent_fabric/capture_manifest_shell.json --out dogfood-evidence.json
-python -m depone agent-fabric-dogfood-evidence --capture-manifest depone/fixtures/agent_fabric/capture_manifest_shell.json --capture-manifest depone/fixtures/agent_fabric/capture_manifest_docs_source_only.json --out controlled-capture-corpus.json
-python -m depone agent-fabric-paired-evidence --adapter-smoke agent-fabric-adapter-smoke.json --dogfood-evidence dogfood-evidence.json --out paired-evidence.json
-python -m depone agent-fabric-claim-gate --adapter-smoke agent-fabric-adapter-smoke.json --paired-evidence paired-evidence.json --out agent-fabric-claim-gate.json
-python -m depone team-pr-artifact --self-test
-
-python scripts/dwm.py plan "<objective>" --out out/v21/<run_id>
-python scripts/dwm.py run "<objective>" --out out/v21/<run_id>
-python scripts/dwm.py resume --run out/v21/<run_id>
-python scripts/dwm.py status --run out/v9/v32-semantic-dogfood
-python scripts/dwm.py next --run out/v9/v32-semantic-dogfood
-python scripts/dwm.py doctor
-python scripts/dwm.py commands --kind product
-python scripts/check_contract.py
-python scripts/check_readme_quality.py README.md
-python scripts/dwm.py commands --kind release
-```
-
-## Demo
-
-```bash
-python scripts/dwm_demo.py run --out out/demo/quickstart
-python scripts/dwm_demo.py inspect --demo out/demo/quickstart
-```
-
-Demo artifacts include `demo.json`, `status.json`, `README.md`,
-`demo-inspect.json`, `demo-summary.md`, and `out/demo/quickstart`.
-
-## Benchmark and Live Evidence
-
-```bash
-python scripts/dwm_benchmark.py corpus
-python scripts/dwm_benchmark.py claim --min-margin 8
-python scripts/dwm_live_benchmark.py capture --out out/benchmarks-live/<capture_id>
-python scripts/dwm_live_attempt_plan.py plan --adapter-command codex --task-id failing-test-fix --out out/live-attempt-plans/<plan_id>
-python scripts/dwm_live_runner_preflight.py preflight --plan out/live-attempt-plans/<plan_id> --out out/live-runner-preflight/<preflight_id>
-python scripts/dwm_live_receipt.py ingest --preflight out/live-runner-preflight/<preflight_id> --receipt receipt.json --out out/live-receipts/<receipt_id>
-python scripts/dwm_live_report.py publish --review out/live-score-reviews/<review_id> --out out/live-reports/<report_id>
-python scripts/dwm_readme_benchmark_graph.py generate --report out/live-reports/<report_id> --out out/readme-benchmark-graphs/<graph_id>
-python scripts/dwm_benchmark_snapshot.py record --report out/live-reports/<report_id> --release-id <release_id> --out out/benchmark-snapshots/<snapshot_id>
-python scripts/dwm_benchmark_series.py build --snapshot-root out/benchmark-snapshots --out out/benchmark-series/<series_id>
-python scripts/dwm_benchmark_candidate.py make --series out/benchmark-series/<series_id> --out out/benchmark-candidates/<candidate_id>
-python scripts/dwm_benchmark_candidate_review.py review --candidate out/benchmark-candidates/<candidate_id> --out out/benchmark-candidate-reviews/<review_id>
-python scripts/dwm_readme_asset_promotion.py promote --review out/benchmark-candidate-reviews/<review_id> --out out/readme-asset-promotions/<promotion_id>
-python scripts/dwm_benchmark_history.py build --report out/live-reports/<report_id> --out out/benchmark-history/<history_id>
-python scripts/dwm_benchmark_promotion.py promote --history out/benchmark-history/<history_id> --out out/benchmark-promotions/<promotion_id>
-```
-
-Benchmark artifacts include `report.json.graph_metrics`,
-`benchmark-graph.json`, `benchmark-graph.svg`, `readme-snippet.md`,
-`history.json`, `trend.svg`, `promotion.json`, `promoted-trend.svg`,
-`snapshot.json`, `series.json`, `candidate.json`, `candidate-review.json`,
-`publish-checklist.md`, `asset-promotion.json`, and `asset-diff.md`.
-
-## Dogfood and Process Progress
-
-```bash
-python scripts/dwm_workflow_queue.py create --packets packets.json --out out/workflow-queues/<queue_id>
-python scripts/dwm_workflow_queue.py resume --queue out/workflow-queues/<queue_id>
-python scripts/dwm_dogfood_corpus.py record --out out/dogfood-corpus/<corpus_id>
-python scripts/dwm_dogfood_attempts.py record --corpus out/dogfood-corpus/<corpus_id> --attempts attempts.json --out out/dogfood-attempts/<attempt_id>
-python scripts/dwm_dogfood_measure.py sample --out out/dogfood-measurements/<measurement_id>
-python scripts/dwm_dogfood_pair.py pair --dwm-measure out/dogfood-measurements/<measurement_id> --direct-receipt direct-receipt.json --out out/dogfood-pairs/<pair_id>
-python scripts/dwm_dogfood_pair_series.py build --pair-root out/dogfood-pairs --out out/dogfood-pair-series/<series_id>
-python scripts/dwm_dogfood_chart_candidate.py candidate --series out/dogfood-pair-series/<series_id> --out out/dogfood-chart-candidates/<chart_id>
-python scripts/dwm_dogfood_chart_review.py review --candidate out/dogfood-chart-candidates/<chart_id> --receipt review-receipt.json --out out/dogfood-chart-reviews/<review_id>
-python scripts/dwm_dogfood_acquire.py acquire --task-id <task_id> --out out/dogfood-acquisitions/<acquisition_id>
-python scripts/dwm_dogfood_operator.py recommend --out out/dogfood-operator/<operator_id>
-python scripts/dwm_dogfood_pair_select.py select --pair-root out/dogfood-pairs --out out/dogfood-pair-selections/<selection_id>
-python scripts/dwm_dogfood_chart_render.py render --review out/dogfood-chart-reviews/<review_id> --out out/dogfood-chart-renders/<render_id>
-python scripts/dwm_dogfood_progress.py build --out out/dogfood-progress/<progress_id>
-python scripts/dwm_dogfood_progress_asset_promotion.py promote --progress out/dogfood-progress/<progress_id> --out out/dogfood-progress-asset-promotions/<promotion_id>
-python scripts/dwm_daily_operator.py today --corpus out/dogfood-corpus/<corpus_id> --out out/daily-operator/<operator_id>
-```
-
-Dogfood artifacts include `queue.json`, `next-action.md`,
-`dogfood-corpus.json`, `queue-packets.json`, `dogfood-attempts.json`,
-`comparison-ledger.json`, `measurement.json`, `attempts.json`,
-`comparison-pair.json`, `comparison-pair.md`, `pair-status.json`,
-`pair-series.json`, `pair-series.md`, `graph-readiness.json`,
-`chart-candidate.json`, `chart-candidate.md`, `chart-data.csv`,
-`chart-review.json`, `chart-review.md`, `acquisition.json`, `acquisition.md`,
-`direct-receipt-template.json`, `dogfood-operator.json`,
-`dogfood-operator.md`, `pair-selection.json`, `pair-selection.md`,
-`chart-render.json`, `chart-render.svg`, `chart-render.md`,
-`dogfood-progress.json`, `dogfood-progress.svg`, `dogfood-progress.md`,
-`dwm-dogfood-progress.svg`, and `dwm-dogfood-progress.json`.
-
-## Role, HUD, Install, Adapter, and Release
-
-```bash
-python scripts/dwm_roles.py registry
-python scripts/dwm_hud.py approve --hud out/hud/<hud_id> --out out/hud/<approval_id> --approver <name>
-python scripts/dwm_install.py validate
-python scripts/dwm_adapters.py registry
-python scripts/dwm_adapters.py parity --out out/adapters/<parity_id>
-python scripts/dwm_adapter_live_matrix.py matrix --out out/adapter-live-matrix/<matrix_id>
-python scripts/dwm_release_candidate.py cut --parity out/adapters/<parity_id> --operator out/daily-operator/<operator_id> --out out/release-candidates/<candidate_id>
-python scripts/dwm_release.py status --out out/release/<release_id>
-python scripts/dwm_release_timing.py plan --out out/release-timing/<timing_id>
-python scripts/dwm_release_timing.py measure --limit 3 --out out/release-timing/<timing_id>
-python scripts/dwm_release_timing_history.py build --timing-root out/release-timing --out out/release-timing-history/<history_id>
-python scripts/dwm_large_workflow_control.py assess --workflow workflow.json --out out/large-workflow-control/<control_id>
-python scripts/dwm_large_workflow_dogfood.py record --run out/v9/v32-semantic-dogfood --out out/large-workflow-dogfood/<dogfood_id>
-python scripts/dwm_large_workflow_next.py select --control out/large-workflow-dogfood/v74-canonical/dogfood-control.json --out out/large-workflow-next/<next_id>
-python scripts/dwm_large_workflow_queue_bridge.py bridge --selection out/large-workflow-next/v75-canonical/large-workflow-next.json --out out/large-workflow-queue-bridge/<bridge_id> --queue-out out/workflow-queues/<queue_id>
-python scripts/dwm_large_workflow_queue_preflight.py preflight --queue out/workflow-queues/v76-canonical/queue.json --out out/large-workflow-queue-preflight/<preflight_id>
-python scripts/dwm_graph_timing_gate.py check --progress out/dogfood-progress/local-v66-current/dogfood-progress.json --readiness out/dogfood-pair-series/local-v64-selected-series/graph-readiness.json --preflight out/large-workflow-queue-preflight/v77-canonical/queue-preflight.json --out out/graph-timing/<timing_id>
-python scripts/dwm_readme_graph_visibility.py audit --readme README.md --timing out/graph-timing/v78-canonical/graph-timing.json --out out/readme-graph-visibility/<visibility_id>
-python scripts/dwm_continuation_boundary.py assess --preflight out/large-workflow-queue-preflight/v77-canonical/queue-preflight.json --timing out/graph-timing/v78-canonical/graph-timing.json --visibility out/readme-graph-visibility/v79-canonical/readme-graph-visibility.json --out out/continuation-boundaries/<boundary_id>
-python scripts/dwm_multi_slice_batch.py plan --boundary out/continuation-boundaries/v80-canonical/continuation-boundary.json --out out/multi-slice-batches/<batch_id>
-python scripts/dwm_execution_receipt_schema.py preflight --batch out/multi-slice-batches/v81-canonical/multi-slice-batch.json --out out/execution-receipt-schemas/<schema_id>
-python scripts/dwm_runner_receipt_dry_run.py dry-run --schema out/execution-receipt-schemas/v82-canonical/execution-receipt-schema.json --batch out/multi-slice-batches/v81-canonical/multi-slice-batch.json --out out/runner-receipt-dry-runs/<dry_run_id>
-python scripts/dwm_installed_surface_audit.py audit --active-skill SKILL.md --out out/installed-surface-audits/<audit_id>
-python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --out out/workflow-activations/<activation_id>
-python scripts/dwm_brand_boundary_audit.py audit --out out/brand-boundary-audits/<audit_id>
-python scripts/dwm_roadmap_reconciliation.py audit --out out/roadmap-reconciliations/<audit_id>
-# command safety
-python scripts/dwm_command_safety.py --manifest fixtures/v89/manifest.json --out out/command-safety/<safety_id>
-# workflow activation v2
-python scripts/dwm_workflow_activation.py activate --audit out/installed-surface-audits/v84-canonical/installed-surface-audit.json --receipt out/runner-receipt-dry-runs/v83-canonical/runner-receipt.json --status out/v9/v32-semantic-dogfood/status.json --brand-audit out/brand-boundary-audits/v87-canonical/brand-boundary-audit.json --roadmap-reconciliation out/roadmap-reconciliations/v88-canonical/roadmap-reconciliation.json --command-safety out/command-safety/v89-final/summary.json --out out/workflow-activations/<activation_id>
-# evidence oracle
-python scripts/dwm_evidence_oracle.py verify --claims fixtures/v92/canonical-claims.json --out out/evidence-oracles/<oracle_id>
-# workflow narrative
-python scripts/dwm_workflow_narrative.py render --roadmap out/roadmap-reconciliations/v88-canonical/roadmap-reconciliation.json --command-safety out/command-safety/v89-final/summary.json --activation out/workflow-activations/v90-canonical/workflow-activation.json --oracle out/evidence-oracles/v92-canonical/evidence-oracle.json --out out/workflow-narratives/<narrative_id>
-# control deck score
-python scripts/dwm_control_deck_score.py score --narrative out/workflow-narratives/v93-canonical/workflow-narrative.json --roadmap out/roadmap-reconciliations/v88-canonical/roadmap-reconciliation.json --command-safety out/command-safety/v89-final/summary.json --activation out/workflow-activations/v90-canonical/workflow-activation.json --oracle out/evidence-oracles/v92-canonical/evidence-oracle.json --out out/control-deck-scores/<score_id>
-# control deck score history
-python scripts/dwm_control_deck_score_history.py build --score out/control-deck-scores/<score_id> --out out/control-deck-score-history/<history_id>
-# metric ladder
-python scripts/dwm_metric_ladder.py assess --history out/control-deck-score-history/<history_id>/control-deck-score-history.json --graph-timing out/graph-timing/<timing_id>/graph-timing.json --out out/metric-ladders/<ladder_id>
-# benchmark readiness
-python scripts/dwm_benchmark_readiness.py assess --ladder out/metric-ladders/<ladder_id>/metric-ladder.json --out out/benchmark-readiness/<readiness_id>
-# wave operator
-python scripts/dwm_wave_operator.py select --readiness out/benchmark-readiness/<readiness_id>/benchmark-readiness.json --activation out/workflow-activations/<activation_id>/workflow-activation.json --out out/wave-operators/<wave_id>
-# wave receipt
-python scripts/dwm_wave_receipt.py record --wave out/wave-operators/<wave_id>/wave-operator.json --acquisition out/dogfood-acquisitions/<acquisition_id>/summary.json --out out/wave-receipts/<receipt_id>
-# promotion evidence
-python scripts/dwm_promotion_evidence.py record --receipt out/wave-receipts/<receipt_id>/wave-receipt.json --readiness out/benchmark-readiness/<readiness_id>/benchmark-readiness.json --out out/promotion-evidence/<evidence_id>
-# promotion route
-python scripts/dwm_promotion_route.py route --evidence out/promotion-evidence/<evidence_id>/promotion-evidence.json --out out/promotion-routes/<route_id>
-# V102/V103 live-proof contract
-python scripts/dwm_live_proof.py --self-test
-python scripts/dwm_live_proof.py --manifest fixtures/v102/manifest.json --out out/v102/final
-python scripts/dwm_live_proof.py --manifest fixtures/v103/manifest.json --out out/v103/final
-# V105/V106 verifier contracts
-python scripts/v105_verify_wedge.py --self-test
-python scripts/v106_multi_wave.py --self-test
-# opt-in only; not part of the deterministic release gate
-python scripts/dwm_live_proof.py run --seed fixtures/live-proof/seed --plan fixtures/live-proof/live-proof-1.workflow.plan.json --out out/live-proofs/live-proof-1 --i-approve-live-codex
-python scripts/dwm_live_proof.py compare --seed fixtures/live-proof/seed --plan fixtures/live-proof/live-proof-1.workflow.plan.json --out out/live-proofs/live-proof-2 --i-approve-live-codex
-python scripts/dwm_live_proof.py inspect --proof out/live-proofs/live-proof-1
-# contract tiers
-python scripts/check_contract.py --tier smoke
-python scripts/check_contract.py --tier changed
-python scripts/check_contract.py
-```
-
-Release artifacts include `operator-loop.json`, `today.md`,
-`adapter-parity.json`, `adapter-parity.md`, `adapter-live-matrix.json`,
-`adapter-live-matrix.md`, `release-candidate.json`, `release-notes.md`, and
-`release-checklist.md`, `release-timing.json`, `release-timing.md`,
-`timing-history.json`, `timing-history.md`, `large-workflow-control.json`,
-`large-workflow-control.md`, `dogfood-control.json`, `dogfood-control.md`,
-`large-workflow-next.json`, `large-workflow-next.md`, `queue-bridge.json`,
-`queue-packets.json`, `queue-bridge.md`, `queue-preflight.json`,
-`queue-preflight.md`, `graph-timing.json`, `graph-timing.md`, and
-`readme-graph-visibility.json`, `readme-graph-visibility.md`, and
-`continuation-boundary.json`, `continuation-boundary.md`,
-`multi-slice-batch.json`, `multi-slice-batch.md`,
-`execution-receipt-schema.json`, `execution-receipt-schema.md`,
-`sample-receipt.json`, `runner-receipt.json`, `runner-receipt.md`, and
-`installed-surface-audit.json`, `installed-surface-audit.md`, and
-`workflow-activation.json`, `workflow-activation.md`,
-`brand-boundary-audit.json`, `brand-boundary-audit.md`,
-`roadmap-reconciliation.json`, `roadmap-reconciliation.md`, and
-`evidence-oracle.json`, `evidence-oracle.md`,
-`workflow-narrative.json`, `workflow-narrative.md`,
-`control-deck-score.json`, `control-deck-score.md`,
-`control-deck-score-history.json`, `control-deck-score-history.md`,
-`control-deck-score-history.svg`, `metric-ladder.json`,
-`metric-ladder.md`, `benchmark-readiness.json`, `benchmark-readiness.md`, and
-`wave-operator.json`, `wave-operator.md`, `wave-receipt.json`,
-`wave-receipt.md`, `promotion-evidence.json`, `promotion-evidence.md`,
-`promotion-route.json`, `promotion-route.md`, `live-proof.json`,
-`live-proof.md`, `evidence-contract.json`, multi-wave plan fixtures, and
-`status.json`.
-
-## Repository Map
-
-| Path | Purpose |
-| --- | --- |
-| `SKILL.md` | Codex skill entrypoint and workflow design contract. |
-| `scripts/dwm.py` | Product CLI for status, next actions, doctor, and command discovery. |
-| `scripts/dwm_demo.py` | Canonical local demo and inspect summary without live adapters. |
-| `scripts/check_contract.py` | Release contract smoke and documentation consistency check. |
-| `scripts/compile_workflow.py` | First-slice packet compiler. |
-| `scripts/dwm_runner.py` | Runner, session/worktree, review/repair, and fanout surfaces. |
-| `scripts/dwm_live_*.py` | Live evidence, receipt, score, review, report, and graph gates. |
-| `scripts/dwm_benchmark_snapshot.py` | Release benchmark snapshot recorder. |
-| `scripts/dwm_benchmark_series.py` | Release snapshot series builder. |
-| `scripts/dwm_benchmark_candidate.py` | Promotion-ready benchmark publish candidate workflow. |
-| `scripts/dwm_benchmark_candidate_review.py` | Benchmark candidate review gate before README asset promotion. |
-| `scripts/dwm_readme_asset_promotion.py` | README benchmark asset promotion bundle and diff summary. |
-| `scripts/dwm_workflow_queue.py` | Long-run workflow queue and next safe action selector. |
-| `scripts/dwm_dogfood_corpus.py` | Local dogfood task corpus recorder with comparison placeholders. |
-| `scripts/dwm_dogfood_attempts.py` | Measured local dogfood comparison ledger. |
-| `scripts/dwm_dogfood_measure.py` | Measured local dogfood sample runner. |
-| `scripts/dwm_dogfood_pair.py` | Human-gated direct Codex versus DWM comparison pair. |
-| `scripts/dwm_dogfood_pair_series.py` | Dogfood pair series and graph-readiness gate. |
-| `scripts/dwm_dogfood_chart_candidate.py` | Local dogfood chart candidate gate. |
-| `scripts/dwm_dogfood_chart_review.py` | Human-reviewed local dogfood chart gate. |
-| `scripts/dwm_dogfood_acquire.py` | One-command dogfood evidence acquisition loop. |
-| `scripts/dwm_dogfood_operator.py` | Next dogfood acquisition recommendation loop. |
-| `scripts/dwm_dogfood_pair_select.py` | Clean pair-root selector for duplicate task pairs. |
-| `scripts/dwm_dogfood_chart_render.py` | Reviewed local dogfood chart renderer. |
-| `scripts/dwm_dogfood_progress.py` | Dogfood evidence process progress graph. |
-| `scripts/dwm_dogfood_progress_asset_promotion.py` | Reviewable README asset bundle for the dogfood process graph. |
-| `scripts/dwm_graph_timing_gate.py` | Graph timing gate that separates process progress visibility from public benchmark trends. |
-| `scripts/dwm_readme_graph_visibility.py` | README graph visibility audit aligned with V78 graph timing. |
-| `scripts/dwm_continuation_boundary.py` | Continuation boundary gate for source-only multi-slice work. |
-| `scripts/dwm_multi_slice_batch.py` | Plan-only multi-slice batch planner before the V84 human gate. |
-| `scripts/dwm_execution_receipt_schema.py` | Execution receipt schema preflight before actual queued execution. |
-| `scripts/dwm_runner_receipt_dry_run.py` | Fixture-only runner receipt dry-run gate with `executed: false`. |
-| `scripts/dwm_installed_surface_audit.py` | Active local skill path and copied install drift audit. |
-| `scripts/dwm_workflow_activation.py` | Next workflow activation gate from install, receipt, and completed-run evidence. |
-| `scripts/dwm_brand_boundary_audit.py` | Public Depone, DWM Core, and skill-name boundary audit. |
-| `scripts/dwm_roadmap_reconciliation.py` | Spec, roadmap, and release history alignment audit. |
-| `scripts/dwm_evidence_oracle.py` | Read-only artifact assertion oracle for claim-level evidence. |
-| `scripts/dwm_workflow_narrative.py` | Artifact-backed Depone Control Deck and workflow narrative renderer. |
-| `scripts/dwm_control_deck_score.py` | Operator-readiness scoring for Control Deck completeness. |
-| `scripts/dwm_control_deck_score_history.py` | Internal operator-readiness history and SVG rendering for Control Deck scores. |
-| `scripts/dwm_metric_ladder.py` | Graph claim-level gate for process, operator-readiness, and public benchmark metrics. |
-| `scripts/dwm_live_proof.py` | V102 live-proof recorder plus V103 deterministic two-arm comparison schema; live Codex execution remains opt-in. |
-| `scripts/v105_verify_wedge.py` | Deterministic evidence-contract verifier wedge for harness-captured logs, diffs, and control files. |
-| `scripts/v106_multi_wave.py` | Deterministic multi-wave execution-path validation fixtures. |
-| `scripts/dwm_daily_operator.py` | Daily operator loop for ready, blocked, and freshness state. |
-| `scripts/dwm_adapters.py` | Adapter registry, normalized evidence, and parity matrix checks. |
-| `scripts/dwm_adapter_live_matrix.py` | Local adapter command availability and auth-assumption matrix. |
-| `scripts/dwm_release_candidate.py` | Release candidate cut from parity and operator evidence. |
-| `scripts/dwm_benchmark_history.py` | Benchmark history ledger and trend graph builder. |
-| `scripts/dwm_benchmark_promotion.py` | Benchmark trend promotion gate for public graph claims. |
-| `docs/spec.md` | Product spec and release criteria. |
-| `docs/automation-roadmap.md` | Implementation roadmap and completed slices. |
-| `docs/github-research.md` | Prior-art survey. |
-| `docs/v12-to-v20-final-roadmap.md` | Final-product roadmap. |
-| `docs/agent-tool-contract.md` | Agent-facing CLI, JSON, exit-code, and evidence folder contract. |
-| `docs/command-reference.md` | Full command and artifact reference. |
-| `docs/release-history.md` | Versioned implementation history. |
-| `fixtures/` | Deterministic manifests used by release gates. |
-| `assets/` | Tracked README visuals and published benchmark graph snapshots. |
-
-Tracked assets include `assets/dwm-hero.svg`,
-`assets/dwm-live-benchmark.svg`, `assets/dwm-live-benchmark.json`,
-`assets/dwm-dogfood-progress.svg`, and `assets/dwm-dogfood-progress.json`.

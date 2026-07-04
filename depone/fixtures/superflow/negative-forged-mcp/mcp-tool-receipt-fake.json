@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-07-04T00:00:00Z",
+  "invocation": {
+    "args": {
+      "query": "superflow fixture"
+    },
+    "tool": "fake.search"
+  },
+  "invocation_hash": "0fc340c3b91c1795e6be43367c19acd58ad374245dde2c38c4e67f59f9955776",
+  "kind": "superflow-mcp-tool-receipt",
+  "observed_output": {
+    "items": [
+      {
+        "title": "tampered fixture result",
+        "url": "https://example.invalid/superflow"
+      }
+    ]
+  },
+  "output_hash": "4125664fe14366f932aa80be5d7fc01bf81408ba1364532af7e3ccd4e51b7999",
+  "policy_flags": {
+    "fake": true,
+    "network": false,
+    "raises_assurance": false
+  },
+  "redacted_input": {
+    "query": "superflow fixture"
+  },
+  "redacted_input_hash": "eff040c4951cb50a71c84db14d49a74a2aa95c50f9faf9508a8e158bba797736",
+  "schema_version": "1.0",
+  "server_id": "fake-mcp",
+  "tool_name": "fake.search"
+}

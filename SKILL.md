@@ -1,95 +1,130 @@
 ---
 name: depone
-description: Depone skill entrypoint. Design large, situation-aware multi-agent workflows for broad tasks that are too big for one normal agent turn. Use when a user asks for dynamic workflows, ultracode-style orchestration, large workflow design, multi-agent decomposition, codebase-wide audits, migrations, research sweeps, verification harnesses, or a plan that should scale across phases, subagents, gates, budgets, and resumable execution.
+description: Compatibility entrypoint for the Depone verifier and evidence-contract engine. Use for proofcheck-style evidence revalidation, contract/schema inspection, and plan-only gates. Do not use as the flagship ORRO runner or as proof that a model verified its own work.
 ---
 
-# Depone Skill Entrypoint
+# Depone Compatibility Skill
 
-DWM means Deterministic Workflow Machine. Use this skill entrypoint to turn a
-large objective into an executable workflow design. It is not a thin router. It
-designs the workflow itself: phases, workers, parallelization, handoff
-contracts, gates, budgets, evidence, and stop rules.
+Depone is the non-executing verifier and evidence-contract engine inside ORRO.
+The source of truth for this repository is `docs/spec.md`; this skill text is a
+compatibility surface derived from that spec.
 
-Do not run a large workflow just because a task is broad. First produce a
-workflow design the user can inspect or that the current environment can execute.
+Moonweave is the publisher/account namespace. ORRO is the product/tool name.
+`Superflow` is historical compatibility naming.
 
-## Start Here
+Use this skill when the user or host agent needs to:
 
-1. Restate the objective, scope, constraints, and success criteria.
-2. Inspect local context when the workflow depends on a repo, files, tools,
-   branches, installed skills, or runtime state.
-3. Decide the delivery layer:
-   - Skill-only design when the current system lacks a workflow runtime.
-   - Plugin when the workflow needs packaged skills, agents, scripts, or hooks.
-   - Runtime/MCP when execution must be resumable, inspectable, and script-held.
-4. Choose one or more patterns from `references/workflow-patterns.md`.
-5. Write the workflow as phases with explicit worker prompts, inputs, outputs,
-   verification gates, retry limits, and budget caps.
-6. Identify which parts can run in parallel and which barriers are truly needed.
-7. End with an execution path: direct Codex work, subagent plan, plugin
-   scaffold, runtime execution, or backlog.
+- inspect or validate a workflow/evidence contract,
+- re-check existing evidence bytes,
+- explain why evidence is A0, A1, A2, blocked, refuted, or inconclusive,
+- prepare a plan-only gate before execution,
+- call the `depone` CLI for verifier/developer workflows.
 
-## Design Contract
+Do **not** use this skill as the final product surface. Normal users should not
+be asked to install both a Depone skill and a witnessd skill for one workflow. The
+public ORRO surface should be one install and one primary skill; Depone is
+consumed behind that surface as the pinned verifier engine.
 
-Every workflow design must include:
+The public ORRO surfaces are:
 
-- `objective`: the outcome, not the implementation guess.
-- `surface`: repositories, paths, systems, or sources in scope.
-- `assumptions`: guesses that affect the workflow and how to verify them.
-- `phases`: ordered stages with clear entry and exit criteria.
-- `workers`: roles, tool permissions, context limits, and ownership boundaries.
-- `handoffs`: the exact artifacts passed between phases.
-- `parallelism`: fan-out count, concurrency cap, and fan-in rules.
-- `verification`: independent checks that can falsify the result.
-- `risk gates`: approval points for destructive, external, costly, public API,
-  dependency, database, production, secret, or history-rewrite actions.
-- `budget`: time, token, model, retry, and file-touch limits.
-- `resume plan`: what can be cached, replayed, skipped, or restarted.
-- `execution path`: direct Codex work, subagent plan, plugin, runtime, or backlog.
+| Name | User intent |
+| --- | --- |
+| ORRO | Observed Run & Review Orchestrator |
+| ORRO Flow | scout -> flowplan -> proofrun -> proofcheck -> handoff |
+| `orro` | scout -> plan -> run -> evidence -> verifier summary -> handoff |
+| `orro scout` | read-only repo exploration |
+| `flowplan` | plan-only workflow design |
+| `proofrun` | precise evidence-backed execution alias |
+| `proofcheck` | offline evidence verification alias |
+| `orro handoff` | maintainer review package bound to evidence |
+| `orro skillpack` | knowledge-as-code support |
+| `orro doctor` | engine/verifier/adapter/key/MCP/policy readiness check |
+| `orro auto` | continuation loop behind evidence gates |
+| `orro ultra` | future high-autonomy profile with stricter policies |
 
-## Pattern Rules
+## Repository boundary
 
-Prefer pipelines over barriers. A barrier is justified only when the next step
-needs the complete prior set, such as global deduplication, cross-item ranking,
-or final synthesis.
+The engines stay in two repositories:
 
-Use adversarial verification for claims, findings, migrations, and reviews.
-A result is not trusted because a worker found it; it is trusted because an
-independent verifier failed to refute it with evidence.
+```text
+Depone   = verifier engine and evidence contract
+witnessd = execution engine and evidence emitter
+```
 
-Use diverse reviewers when correctness depends on multiple failure modes:
-correctness, security, performance, compatibility, UX, or reproducibility.
+The thin `orro` command/skill may live in the witnessd repo while the product
+surface is small, because ORRO starts execution and witnessd owns execution. A
+future standalone `ORRO` repo is only a wrapper/distribution repo for plugin
+manifests, examples, version locks, and product docs. It must not duplicate
+Depone verifier logic or witnessd runtime logic.
 
-Use a loop-until-dry pattern for open-ended discovery, but cap the loop with
-max rounds and a "no new findings" stop condition.
+## Core rule
 
-For every risk gate, state the safe default. When unsure, stop, preserve
-completed artifacts, and ask the user before continuing.
+```text
+Depone verifies; witnessd executes; ORRO exposes the workflow.
+```
 
-## Output Format
+If the task needs worker spawn, retry, session ownership, active worktree
+mutation, Codex/Claude/OpenCode execution, MCP calls, or team orchestration, hand
+it to witnessd or the ORRO wrapper. If the task needs to decide what evidence
+bytes support, use Depone.
 
-For short requests, provide a compact workflow blueprint in the conversation.
-For substantial work, emit both:
+## What proofcheck may verify
 
-- `workflow.plan.json`: the machine-readable source of truth following
-  `references/workflow-plan-schema.md`.
-- rendered blueprint: a human-readable view derived from the same JSON.
+proofcheck may verify:
 
-The JSON and blueprint must agree on activation, the first wave containing one
-or more slices, handoffs, verification, risk gates, budgets, and resume points.
-Keep `first_slice` only as a compatibility alias when emitting JSON. If the
-router-first rule does not justify activation, emit a downgrade artifact that
-names the target: direct Codex, `workflow-router`, or a simple plan.
+- capture manifests,
+- observer captures,
+- runner receipts,
+- verification recipes and receipts,
+- skillpack-lock hashes,
+- repo-profile/context-pack bindings,
+- MCP/tool receipts,
+- team ledger and schedule receipts,
+- PR handoff evidence,
+- declarative policy requirements.
 
-When writing a spec file, include:
+proofcheck must not execute worker commands, call MCP servers, inspect live SaaS
+state, mutate worktrees, retry work, or infer success from skill text.
 
-1. Research and prior art.
-2. Product position and non-goals.
-3. Workflow architecture.
-4. Execution model.
-5. Safety and verification gates.
-6. Evaluation fixtures.
-7. Release or implementation plan.
+proofcheck is fail-closed. Missing directories, non-directory paths, empty
+evidence directories, malformed artifacts, missing required artifacts, scout-only
+planning artifacts without a verification receipt, and all-zero runner receipt
+hash placeholders must be reported as `blocked`, not `pass`.
 
-If implementation follows, keep the first wave small enough to verify with real
-slice reports, receipts, commands, fixtures, or generated workflow artifacts.
+## Safe Depone tasks
+
+1. Restate the evidence or contract being checked.
+2. Identify the exact files or byte artifacts involved.
+3. Validate schema and canonical hashes.
+4. Re-derive the verdict from the artifacts.
+5. Report the exact status without upgrading it.
+
+Allowed status language:
+
+```text
+A0-claims-only
+A1-local-observed
+A2-isolated-observed
+blocked
+refuted
+inconclusive
+pass
+```
+
+If verification has not run, say `evidence-pending`.
+
+## Common commands
+
+```bash
+python -m depone doctor --json
+python -m depone validate plan.json --json
+python -m depone proofcheck --evidence-dir <dir> --json
+python -m depone evidence-ingest ...
+python -m depone evidence-chain ...
+python -m depone team-ledger ...
+python -m depone next --evidence-dir <dir> --out evidence-next.json --json
+```
+
+Compatibility/demo commands such as `demo`, `observe`, `run`/`evidence-run`,
+`advance`, and internal `agent-fabric-*` surfaces may exist for fixtures and
+legacy automation. They are not the canonical ORRO user surface.

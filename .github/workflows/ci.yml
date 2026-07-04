@@ -51,7 +51,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone witnessd
-        run: git clone --depth=1 https://github.com/Moonweave-Systems/witnessd.git "$RUNNER_TEMP/witnessd"
+        env:
+          WITNESSD_REVERSE_CONFORMANCE_PAT: ${{ secrets.WITNESSD_REVERSE_CONFORMANCE_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WITNESSD_REVERSE_CONFORMANCE_PAT:-}" ]; then
+            echo "WITNESSD_REVERSE_CONFORMANCE_PAT is required for reverse conformance" >&2
+            exit 1
+          fi
+          git -c http.extraheader="AUTHORIZATION: bearer ${WITNESSD_REVERSE_CONFORMANCE_PAT}" \
+            clone --depth=1 https://github.com/Moonweave-Systems/witnessd.git "$RUNNER_TEMP/witnessd"
 
       - name: Set up Python
         uses: actions/setup-python@v5

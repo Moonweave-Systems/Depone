@@ -4,9 +4,10 @@ This page is a command inventory and compatibility reference. It is not the
 source of truth for product direction. The authoritative Depone spec is
 [`docs/spec.md`](spec.md).
 
-Depone commands are grouped by boundary class. New user-facing Moonweave work
-should prefer Superflow surfaces (`superflow`, `flowplan`, `proofrun`,
-`proofcheck`) instead of teaching users this full engine surface.
+Depone commands are grouped by boundary class. New user-facing work should prefer
+Superflow surfaces (`superflow`, `flowplan`, `proofrun`, `proofcheck`) instead of
+teaching users this full engine surface. Moonweave is the publisher/account
+namespace; Superflow is the product/tool name.
 
 ---
 
@@ -40,7 +41,7 @@ python -m depone compile plan.json --target conductor --out workflow.yaml --json
 ```
 
 `design` remains available as a compatibility planning helper when installed, but
-Moonweave's final plan-only user surface should be `flowplan`.
+Superflow's final plan-only user surface should be `flowplan`.
 
 ---
 
@@ -55,7 +56,7 @@ python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry
 ```
 
 A gate that would spawn, retry, mutate worktrees, or call a live model belongs in
-witnessd or the future Moonweave wrapper, not in Depone verifier-core paths.
+witnessd or the future Superflow wrapper, not in Depone verifier-core paths.
 
 ---
 
@@ -77,7 +78,7 @@ python -m depone codex-local-capability --repo . --codex-binary definitely-missi
 
 Important boundary: these commands may exist to create deterministic receipts or
 compatibility fixtures, but the flagship runtime path belongs in witnessd. Do not
-present these helpers as a full Moonweave Superflow engine.
+present these helpers as a full Superflow engine.
 
 ---
 

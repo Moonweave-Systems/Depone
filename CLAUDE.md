@@ -1,33 +1,36 @@
-# Depone — Agent Context
+# Depone - Agent Context
 
 Depone is the **non-executing verifier and evidence-contract engine** inside
-Superflow. It re-derives what signed/hash-bound evidence bytes actually support.
-It must not become the runtime that launched the workers it is judging.
+ORRO. It re-derives what signed/hash-bound evidence bytes actually support. It
+must not become the runtime that launched the workers it is judging.
 
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md). This
 file is a short agent orientation derived from that spec. If there is a conflict,
 `docs/spec.md` wins.
 
 ```text
-Depone verifies; witnessd executes; Superflow exposes the workflow.
+Depone verifies; witnessd executes; ORRO exposes the workflow.
 ```
 
-Moonweave is the publisher/account namespace. Superflow is the product/tool name.
+Moonweave is the publisher/account namespace. ORRO is the product/tool name.
+`Superflow` is historical compatibility naming.
 
 ## Public surfaces
 
 | Name | Meaning |
 | --- | --- |
-| `superflow` | flagship goal -> scout -> plan -> run -> evidence -> verifier summary -> handoff |
-| `superflow scout` | read-only repo exploration and context-pack creation |
+| ORRO | Observed Run & Review Orchestrator; flagship product/tool |
+| ORRO Flow | scout -> flowplan -> proofrun -> proofcheck -> handoff |
+| `orro` | flagship goal -> scout -> plan -> run -> evidence -> verifier summary -> handoff |
+| `orro scout` | read-only repo exploration and context-pack creation |
 | `flowplan` | plan-only workflow design |
 | `proofrun` | precise evidence-backed execution alias |
 | `proofcheck` | offline evidence verification alias |
-| `superflow handoff` | maintainer review package bound to evidence |
-| `superflow skillpack` | knowledge-as-code support |
-| `superflow doctor` | readiness check for engines, adapters, keys, MCP, and policies |
-| `superflow auto` | continuation loop behind evidence gates |
-| `superflow ultra` | future high-autonomy profile with stricter policies |
+| `orro handoff` | maintainer review package bound to evidence |
+| `orro skillpack` | knowledge-as-code support |
+| `orro doctor` | readiness check for engines, adapters, keys, MCP, and policies |
+| `orro auto` | continuation loop behind evidence gates |
+| `orro ultra` | future high-autonomy profile with stricter policies |
 | `depone` | verifier engine CLI / compatibility surface |
 
 ## Current direction
@@ -55,13 +58,13 @@ Depone should stay narrow and valuable:
 | MCP/tool receipt validation | yes | Verify hashes and policy flags; do not call servers. |
 | Next-action gate | yes, if non-executing | Gate from verified evidence only. |
 | Worker spawn / retry / session / worktree runtime | no | Belongs in witnessd. |
-| Live MCP/SaaS/database/API calls | no | Belongs in witnessd or the Superflow wrapper. |
-| End-user plugin packaging | no | Belongs in future Superflow wrapper. |
+| Live MCP/SaaS/database/API calls | no | Belongs in witnessd or the ORRO wrapper. |
+| End-user plugin packaging | no | Belongs in future ORRO wrapper. |
 
 If a change needs to launch Codex, Claude, OpenCode, shell workers, own durable
 sessions, retry work, mutate active worktrees, execute verification recipes, or
-call live MCP/SaaS/database APIs, put it in witnessd or the Superflow wrapper. If
-a change decides what assurance evidence bytes support, put it here.
+call live MCP/SaaS/database APIs, put it in witnessd or the ORRO wrapper. If a
+change decides what assurance evidence bytes support, put it here.
 
 ## Verify after any change
 

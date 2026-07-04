@@ -83,6 +83,11 @@ proofcheck may verify:
 proofcheck must not execute worker commands, call MCP servers, inspect live SaaS
 state, mutate worktrees, retry work, or infer success from skill text.
 
+proofcheck is fail-closed. Missing directories, non-directory paths, empty
+evidence directories, malformed artifacts, missing required artifacts, scout-only
+planning artifacts without a verification receipt, and all-zero runner receipt
+hash placeholders must be reported as `blocked`, not `pass`.
+
 ## Safe Depone tasks
 
 1. Restate the evidence or contract being checked.
@@ -110,6 +115,7 @@ If verification has not run, say `evidence-pending`.
 ```bash
 python -m depone doctor --json
 python -m depone validate plan.json --json
+python -m depone proofcheck --evidence-dir <dir> --json
 python -m depone evidence-ingest ...
 python -m depone evidence-chain ...
 python -m depone team-ledger ...

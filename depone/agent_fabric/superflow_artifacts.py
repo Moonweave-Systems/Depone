@@ -96,10 +96,10 @@ def validate_superflow_artifacts(
 
     errors: list[dict[str, str]] = _load_errors(artifacts)
     if any(
-        error.get("code")
+        _error_code_or_legacy(error)
         in {
-            "ERR_SUPERFLOW_EVIDENCE_DIR_MISSING",
-            "ERR_SUPERFLOW_EVIDENCE_DIR_NOT_DIRECTORY",
+            "ERR_ORRO_EVIDENCE_DIR_MISSING",
+            "ERR_ORRO_EVIDENCE_DIR_NOT_DIRECTORY",
         }
         for error in errors
     ):
@@ -283,7 +283,8 @@ def validate_context_pack(
     if repo_profile is not None:
         if context_pack.get("repo_profile_hash") != canonical_hash(repo_profile):
             errors.append(_error("ERR_SUPERFLOW_CONTEXT_PACK_REPO_PROFILE_HASH_MISMATCH", "repo_profile_hash must match repo profile"))
-        profile_files = set(repo_profile.get("files") if isinstance(repo_profile.get("files"), list) else [])
+        raw_profile_files = repo_profile.get("files")
+        profile_files = set(raw_profile_files if isinstance(raw_profile_files, list) else [])
         if isinstance(selected_paths, list):
             missing = [path for path in selected_paths if isinstance(path, str) and path not in profile_files]
             if missing:
@@ -483,7 +484,17 @@ def _load_errors(artifacts: dict[str, Any]) -> list[dict[str, str]]:
             and isinstance(item.get("code"), str)
             and isinstance(item.get("message"), str)
         ):
-            errors.append({"code": item["code"], "message": item["message"]})
+            errors.append(
+                {
+                    "code": item["code"],
+                    "message": item["message"],
+                    **(
+                        {"legacy_code": item["legacy_code"]}
+                        if isinstance(item.get("legacy_code"), str)
+                        else {}
+                    ),
+                }
+            )
     return errors
 
 
@@ -491,15 +502,15 @@ def _decision_from_errors(errors: list[dict[str, str]]) -> str:
     if not errors:
         return PASS_DECISION
     refuting_codes = {
-        "ERR_SUPERFLOW_RECEIPT_EXIT_CODE_MISMATCH",
-        "ERR_SUPERFLOW_RECEIPT_RECIPE_HASH_MISMATCH",
-        "ERR_SUPERFLOW_MCP_RECEIPT_INVOCATION_HASH_MISMATCH",
-        "ERR_SUPERFLOW_MCP_RECEIPT_INPUT_HASH_MISMATCH",
-        "ERR_SUPERFLOW_MCP_RECEIPT_OUTPUT_HASH_MISMATCH",
-        "ERR_SUPERFLOW_SKILLPACK_LOCK_HASH_MISMATCH",
-        "ERR_SUPERFLOW_CONTEXT_PACK_REPO_PROFILE_HASH_MISMATCH",
+        "ERR_ORRO_RECEIPT_EXIT_CODE_MISMATCH",
+        "ERR_ORRO_RECEIPT_RECIPE_HASH_MISMATCH",
+        "ERR_ORRO_MCP_RECEIPT_INVOCATION_HASH_MISMATCH",
+        "ERR_ORRO_MCP_RECEIPT_INPUT_HASH_MISMATCH",
+        "ERR_ORRO_MCP_RECEIPT_OUTPUT_HASH_MISMATCH",
+        "ERR_ORRO_SKILLPACK_LOCK_HASH_MISMATCH",
+        "ERR_ORRO_CONTEXT_PACK_REPO_PROFILE_HASH_MISMATCH",
     }
-    if any(error.get("code") in refuting_codes for error in errors):
+    if any(_error_code_or_legacy(error) in refuting_codes for error in errors):
         return REFUTED_DECISION
     return BLOCKED_DECISION
 
@@ -522,4 +533,17 @@ def _try_read_json_object(path: Path) -> tuple[dict[str, Any], dict[str, str] | 
 
 
 def _error(code: str, message: str) -> dict[str, str]:
+    if code.startswith("ERR_SUPERFLOW_"):
+        return {
+            "code": f"ERR_ORRO_{code.removeprefix('ERR_SUPERFLOW_')}",
+            "message": message,
+            "legacy_code": code,
+        }
     return {"code": code, "message": message}
+
+
+def _error_code_or_legacy(error: dict[str, str]) -> str | None:
+    code = error.get("code")
+    if isinstance(code, str) and code.startswith("ERR_SUPERFLOW_"):
+        return f"ERR_ORRO_{code.removeprefix('ERR_SUPERFLOW_')}"
+    return code

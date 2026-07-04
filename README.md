@@ -1,23 +1,38 @@
 # Depone
 
-> Non-executing verifier and evidence-contract source of truth for agent evidence.
+> Non-executing verifier and evidence-contract source of truth for Moonweave agent evidence.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F46E5.svg)](LICENSE)
-[![Agent skill](https://img.shields.io/badge/agent%20skill-Codex-4F46E5.svg)](SKILL.md)
 [![Release](https://img.shields.io/github/v/release/Moonweave-Systems/Depone?color=4F46E5)](https://github.com/Moonweave-Systems/Depone/releases)
 [![Contract](https://img.shields.io/badge/contract-self--tested-059669.svg)](docs/command-reference.md)
 
 ![Depone hero](assets/dwm-hero.svg)
 
-**Depone** is a non-executing verifier - re-derives A0/A1/A2 from signed
-evidence bytes, offline, cannot raise the grade.
+**Depone** is the verifier engine inside Moonweave. It re-derives A0/A1/A2,
+blocked, or refuted from signed evidence bytes, offline, and cannot raise the
+grade beyond what those bytes support.
 
-Depone owns the evidence contract for capture manifests, runner receipts,
-isolation facts, DSSE envelopes, team ledgers, and error codes. Runtimes such as
-[witnessd](https://github.com/Moonweave-Systems/witnessd) execute work and emit
-evidence; Depone re-derives the verdict from those bytes. The two repositories
-are developed together in the Moonweave workspace but remain separate products.
-Their only coupling is the evidence contract.
+Depone owns the evidence contract for capture manifests, observer captures,
+isolation facts, runner receipts, DSSE envelopes, evidence contracts, team
+ledgers, and verifier error codes. Runtimes such as
+[`witnessd`](https://github.com/Moonweave-Systems/witnessd) execute work and emit
+evidence; Depone re-derives the verdict from those bytes.
+
+## Product surface decision
+
+Depone and witnessd remain separate engines, but the end-user install surface
+should be one product: **Moonweave**. The planned user-facing skills are:
+
+| Skill | User intent | Depone role |
+| --- | --- | --- |
+| `ProofPlan` | Plan a workflow without running workers. | Validate plan and contract shape. |
+| `ProofRun` | Run through witnessd, emit evidence, then verify when possible. | Re-derive verdict after evidence exists. |
+| `ProofVerify` | Re-check existing evidence offline. | Primary engine. |
+| `ProofFlow` | Continue long-running work behind evidence gates. | Revalidate state and gate the next action. |
+
+The direct `depone` CLI and `SKILL.md` remain developer, verifier, CI, and
+compatibility surfaces. They are not the final flagship user UX beside a separate
+`witnessd` skill. See [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md).
 
 ## Quickstart
 
@@ -30,116 +45,92 @@ python -m pip install --no-deps .
 # Check the package-local verifier surface.
 depone doctor --json
 
-# Run the offline design -> compile -> verify demo.
-depone demo --json --out depone-quickstart
-
-# Re-derive a committed evidence bundle.
+# Re-derive committed evidence/verifier fixtures.
 depone evidence-ingest --self-test
 depone evidence-chain --self-test
 depone team-ledger --self-test
 ```
 
-Source installation smoke is `python scripts/install_smoke.py --json`. It
-installs Depone from the local source tree with `--no-deps`, runs the installed
-`depone doctor`, and re-validates a committed team-ledger artifact. It does not
-publish a package or claim PyPI readiness.
+Source installation smoke is:
 
-## What Exists Today
+```bash
+python scripts/install_smoke.py --json
+```
 
-Depone ships a stdlib verifier package, a strict plan validator, evidence
-adapters, DSSE/in-toto-shaped substrate helpers, and offline gates for
-agent-session evidence. It can re-derive A0/A1/A2 assurance from:
+It installs Depone from the local source tree with `--no-deps`, runs the
+installed `depone doctor`, and re-validates a committed team-ledger artifact. It
+does not publish a package or claim PyPI readiness.
+
+## What exists today
+
+Depone ships a stdlib verifier package, strict plan/contract validators,
+evidence adapters, DSSE/in-toto-shaped substrate helpers, and offline gates for
+agent-session evidence. It can re-derive assurance from:
 
 - capture manifests and observer captures,
 - runner receipts and local capability receipts,
 - isolation facts,
 - signed evidence bundles,
+- evidence-contract artifacts,
 - team-ledger and merge-attempt artifacts.
 
-It cannot turn a weak capture into a stronger one. If the bytes only support
-A0, the verifier must report A0. If observer capture or isolation evidence is
-missing, the verifier must not infer it from prose or operator intent.
+It cannot turn a weak capture into a stronger one. If the bytes only support A0,
+the verifier must report A0. If observer capture or isolation evidence is
+missing, the verifier must not infer it from prose, model claims, or operator
+intent.
 
-Historical DWM tooling was retired to git history (tag v0.1.0 preserves the full surface).
-The release claim for this wave is the verifier and evidence-contract role, not
-a new agent runtime.
+Historical DWM tooling was retired to git history. Compatibility commands remain
+available where needed, but the release claim for this repo is the verifier and
+evidence-contract role, not a new agent runtime.
 
-## Command Reference
+## Command taxonomy
 
-| Command | Description |
-|---|---|
-| `depone doctor` | Check package-local readiness for agent-session use |
-| `depone demo` | Run a local design -> compile -> verify demo |
-| `depone validate` | Validate a plan JSON document against the schema |
-| `depone compile` | Translate a plan into a target framework artifact |
-| `depone verify` | Verify evidence against a plan |
-| `depone observe` | Capture observer-owned local evidence for a runner sandbox |
-| `depone evidence-substrate` | Emit DSSE/in-toto and OTel GenAI-shaped evidence |
-| `depone evidence-ingest` | Verify external evidence subject digests as untrusted input |
-| `depone evidence-chain` | Verify an ordered append-only capture-manifest chain |
-| `depone team-ledger` | Re-derive team-ledger assurance from committed artifacts |
-| `depone team-launch-preflight` | Non-executing gate for planned team lanes |
-| `depone team-worktree-prep` | Create/select local lane worktrees without launching agents |
-| `depone next` | Re-validate an evidence-run directory and recommend a safe next action |
-| `depone mcp` | Serve the same evidence/verify capabilities over MCP stdio |
+| Class | Examples | Product meaning |
+| --- | --- | --- |
+| Verifier commands | `evidence-ingest`, `evidence-chain`, `team-ledger` | Stable engine calls for `ProofVerify`. |
+| Contract commands | `validate`, `compile`, evidence-contract validation | Planning/contract helpers for `ProofPlan`. |
+| Gate commands | `next`, `team-launch-preflight` | Non-executing gates for wrapper workflows. |
+| Compatibility/demo commands | `demo`, `observe`, `evidence-substrate`, internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
 
-Internal compatibility commands remain available for existing automation:
-`validate-contracts`, `run`/`evidence-run`, `advance`, and the
-`agent-fabric-*` command family. Treat those as compatibility surfaces unless a
-fresh release note promotes a narrower claim.
+Commands that launch workers, own sessions, retry, or mutate active worktrees
+belong in witnessd or in the future Moonweave wrapper calling witnessd. Commands
+that consume bytes and emit verifier results belong in Depone.
 
-## Normal Loop
+## Normal Moonweave loop
 
-1. An external runtime executes work in its own sandbox.
-2. The runtime emits capture, receipt, isolation, and signing artifacts.
+```text
+1. Moonweave ProofRun receives the user goal.
+2. witnessd executes work and emits evidence bytes.
 3. Depone reads the artifact bytes offline.
-4. Depone re-derives the verdict and assurance grade from the contract.
-5. Operators compare that verifier result with the runtime's claim.
+4. Depone re-derives the verdict and assurance grade.
+5. Moonweave summarizes the result without upgrading the verdict.
+```
 
-For the two-product flagship, witnessd is the executing half and Depone is the
-verifying half. witnessd emits evidence bundles; Depone checks whether those
-bundles really support the claimed A0/A1/A2 result.
+For direct verifier use, steps 1 and 2 are skipped: `ProofVerify` or `depone`
+reads existing evidence and reports what the bytes support.
 
-## Safety Model
+## Safety model
 
-Depone treats artifacts, not model claims, as the source of truth.
-Generated `out/` directories are verification evidence, not source of truth.
-Destructive actions, network access, dependency installation, secret access,
-production deployment, and history rewrite require explicit gates.
+Depone treats artifacts, not model claims, as the source of truth. Generated
+`out/` directories are verification evidence, not source of truth. Destructive
+actions, network access, dependency installation, secret access, production
+deployment, and history rewrite require explicit gates and belong outside
+verifier-core paths.
 
 The verifier must not upgrade assurance from self-report alone. A1/A2 report
 assurance depends on evidence that can be re-derived from signed or hash-bound
 artifact bytes. A3/keyless transparency-log attestation is not implemented.
 
-## What Is Still Honest
+## Honest limits
 
-Depone claims **no direct-agent superiority** - it is a design + verification
-layer, not an agent runtime. It does not claim upward performance. It is not a public benchmark graph.
-Public trend promotion requires real release history and measured improvements
-over established baselines; it is blocked until release history supports it.
-Trend promotion is blocked until release history supports the claim. The skill
-is named `depone`.
-
-Known limits:
-
-- The July 1, 2026 review found a P0 path where unsigned JSON could spoof
-  observed assurance. PR #62 repaired this by requiring trusted-observer
-  provenance outside the evidence directory plus Ed25519 DSSE for report-level
-  observed assurance.
-- HMAC-backed provenance remains dependent on operator policy. An Ed25519-only
-  deployment closes that residual policy path.
+- Depone claims **no direct-agent superiority**. It is a verification and
+  evidence-contract engine, not a benchmark graph or agent runtime.
+- HMAC-backed provenance remains dependent on operator policy. Ed25519-only
+  deployments are preferred for report-level trusted-observer provenance.
 - Transparency-log and Sigstore-style A3/keyless attestation are not implemented.
-- `CLAUDE.md` still says there is no `pyproject.toml`, while this release has a
-  real `pyproject.toml`. That documentation contradiction is known debt, not a
-  verifier-contract change.
-
-### Inspection
-
-```bash
-python scripts/check_readme_quality.py README.md
-python3 -m depone validate-contracts --self-test
-python3 -m depone doctor --self-test
-```
+- Some historical DWM/skill wording remains in deeper docs and compatibility
+  commands; [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md)
+  is the current boundary interpretation.
 
 ## Quality
 
@@ -149,19 +140,14 @@ Release readiness is checked with:
 python3 -m unittest discover -s tests -p 'test_*.py'
 python3 -m depone validate-contracts --self-test
 python3 -m depone doctor --self-test
+python scripts/check_readme_quality.py README.md
 ```
-
-## Position
-
-Depone is not a prompt-only workflow router and not a clone of any one runtime.
-It is the offline verifier and evidence-contract authority beside execution
-engines. DWM Core keeps agentic work inspectable, reproducible, resumable, and
-honest about what has actually been evidenced.
 
 ## Documentation
 
-- [`docs/command-reference.md`](docs/command-reference.md) and [`docs/spec.md`](docs/spec.md): command and product references.
-- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md): plan schema and installed Codex skill.
+- [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md) — Depone role in the final Moonweave product surface.
+- [`docs/command-reference.md`](docs/command-reference.md) and [`docs/spec.md`](docs/spec.md) — command and product references.
+- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) — compatibility plan schema and installed skill surface.
 
 ## License
 

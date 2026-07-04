@@ -1,39 +1,51 @@
 # Depone — Agent Context
 
-Depone (engine: **DWM Core**, the Deterministic Workflow Machine) is a
-control-plane for large AI-native work: workflow design, packet compilation,
-bounded runner gates, review/repair evidence, and scoring artifacts. The tooling
-is pure-stdlib Python under `scripts/` plus one `.cjs` reference implementation.
-The installed skill is `depone`; the entry doc is `SKILL.md`.
+Depone is the **non-executing verifier and evidence-contract engine** inside
+Moonweave. It re-derives what signed/hash-bound evidence bytes actually support.
+It must not become the runtime that launched the workers it is judging.
 
-This file exists so a cloud agent that clones the repo with no other context
-knows how to work here. Keep it short and current.
+The user-facing product surface is planned as **Moonweave** with purpose-named
+skills: `ProofPlan`, `ProofRun`, `ProofVerify`, and `ProofFlow`. Direct `depone`
+CLI and `SKILL.md` usage remains developer, verifier, CI, and compatibility
+surface. See [`docs/moonweave-engine-boundary.md`](docs/moonweave-engine-boundary.md).
+
+This file exists so an agent that clones the repo with no other context knows how
+to work here. Keep it short and current.
 
 ## Current direction (read first)
 
-`docs/v125-direction-check-roadmap.md` is the current product-direction source of
-truth. Bottom line: Depone should be the independent evidence and control plane
-for increasingly automated agent-team work. Keep the non-executing design+verify
-plane, but move by executed evidence, not by adding source-only control layers.
+Depone should stay narrow and valuable:
 
-Current state:
+- own the evidence contract,
+- validate plans/contracts when no execution is required,
+- verify capture manifests, receipts, isolation facts, DSSE bundles, evidence
+  contracts, and team ledgers,
+- emit honest `pass`, `blocked`, `refuted`, `inconclusive`, A0, A1, or A2 results
+  from bytes,
+- avoid presenting compatibility/demo execution helpers as the flagship product
+  surface.
 
-- V126 captured a real Codex direct-vs-governed run and promoted the governed
-  arm into an observed A1 capture fixture.
-- V127 made claim evaluation honest: required unevaluated claims are
-  `inconclusive`, not `pass`; "hash-signed" wording was corrected.
-- V128 emits the first stdlib-only in-toto/DSSE plus OTel GenAI evidence bundle.
-- V129 through PR #37 added `depone advance`, a revalidating one-step gate over
-  `next` plus one evidence-producing continuation.
+Moonweave's two-engine sentence is:
 
-Next work: `docs/v125-direction-check-roadmap.md` remains the source of truth.
-Use `docs/depone-agent-execution-roadmap.md` as its agent-facing execution plan:
-first close the V128 ingest/dogfood gap and stabilize the canonical
-`capture-manifest.prev_capture_hash` / `evidence-chain` continuity seam before
-adding container isolation, signing, loops, or team ledgers. Do not revive the
-V124 Agent OS draft as a product milestone now; it is a source-only meta layer
-and remains parked unless it directly helps capture, ingest, verify, or trust
-real evidence.
+```text
+Depone verifies; witnessd executes; Moonweave exposes the workflow.
+```
+
+## Boundary rules
+
+| Work type | Belongs here? | Rule |
+| --- | --- | --- |
+| Evidence schema and verifier error code | yes | Depone is the source of truth. |
+| Offline evidence re-derivation | yes | Bytes in, verdict out. |
+| Plan/contract validation | yes | No worker launch. |
+| Next-action gate | yes, if non-executing | Gate from verified evidence only. |
+| Worker spawn / retry / session / worktree runtime | no | Belongs in witnessd. |
+| End-user plugin packaging | no | Belongs in future `moonweave-plugin`. |
+
+If a change needs to launch Codex, Claude, OpenCode, shell workers, own durable
+sessions, retry work, or mutate active worktrees, put it in witnessd or the
+Moonweave wrapper. If a change decides what assurance evidence bytes support, put
+it here.
 
 ## Verify after any change
 
@@ -42,26 +54,32 @@ Run before claiming work is done or opening a PR:
 ```bash
 python scripts/check_contract.py --tier changed   # release contract (changed tier)
 python scripts/dwm.py doctor                       # operator-state sanity
-python scripts/check_readme_quality.py README.md   # only if README changed
+python scripts/check_readme_quality.py README.md   # if README changed
 ```
 
-Full contract sweep: `python scripts/check_contract.py`. Many scripts also carry
-a `--self-test`; run the one for any script you touch.
+Full contract sweep:
+
+```bash
+python scripts/check_contract.py
+```
+
+Many scripts also carry a `--self-test`; run the one for any script you touch.
 
 ## Invariants
 
 - **No external dependencies.** Scripts use the Python standard library only.
-  Never add a third-party package, a requirements/pyproject file at the root, or
-  a new runtime to make something work.
+  Never add a third-party package or runtime dependency to make something work.
 - Type hints on all new function signatures; prefer `str | None` over
   `Optional[str]`. Use f-strings, not `.format()` or `%`.
 - Artifacts and source hashes are the source of truth. Never hand-edit generated
   files under `out/` or fixtures under `fixtures/` to make a check pass.
-- Keep planned work and executed work separate — never present an unrun step as
-  done. This is the core discipline the tool enforces; respect it in your own
-  changes.
+- Keep planned work and executed work separate. Never present an unrun step as
+  done.
+- Do not upgrade assurance from prose, model confidence, or operator intent.
+- Do not add a new witnessd-facing schema field unless the Depone contract and
+  tests define it first.
 
 ## Commit style
 
-Imperative subject focused on *why*, not what. One commit per logical change.
-Do not amend existing commits.
+Imperative subject focused on *why*, not what. One commit per logical change. Do
+not amend existing commits.

@@ -22,6 +22,16 @@ PASS_DECISION = "pass"
 BLOCKED_DECISION = "blocked"
 REFUTED_DECISION = "refuted"
 
+ARTIFACT_LOAD_ERRORS_KEY = "_artifact_load_errors"
+REQUIRED_ARTIFACTS = {
+    "repo_profile": "repo-profile.json",
+    "context_pack": "context-pack.json",
+    "skillpack_lock": "skillpack-lock.json",
+    "verification_recipe": "verification-recipe.json",
+    "verification_receipt": "verification-receipt.json",
+    "pr_handoff": "pr-handoff.json",
+}
+
 
 def build_superflow_artifact_verdict(
     artifacts: dict[str, Any],
@@ -41,7 +51,7 @@ def build_superflow_artifact_verdict(
         "artifact_hashes": {
             name: canonical_hash(value)
             for name, value in sorted(artifacts.items())
-            if isinstance(value, (dict, list))
+            if not name.startswith("_") and isinstance(value, (dict, list))
         },
         "boundary": {
             "executes_commands": False,
@@ -62,14 +72,45 @@ def validate_superflow_artifacts(
 ) -> list[dict[str, str]]:
     """Validate all known Superflow artifacts supplied by a runtime."""
 
-    errors: list[dict[str, str]] = []
+    errors: list[dict[str, str]] = _load_errors(artifacts)
+    if any(
+        error.get("code")
+        in {
+            "ERR_SUPERFLOW_EVIDENCE_DIR_MISSING",
+            "ERR_SUPERFLOW_EVIDENCE_DIR_NOT_DIRECTORY",
+        }
+        for error in errors
+    ):
+        return errors
+
+    artifact_keys = [
+        key
+        for key in REQUIRED_ARTIFACTS
+        if isinstance(artifacts.get(key), dict)
+    ]
+    mcp_receipts = _objects_list(artifacts.get("mcp_tool_receipts"))
+    if not artifact_keys and not mcp_receipts:
+        errors.append(
+            _error(
+                "ERR_SUPERFLOW_ARTIFACT_SET_EMPTY",
+                "evidence directory contains no Superflow artifacts",
+            )
+        )
+    for key, filename in REQUIRED_ARTIFACTS.items():
+        if not isinstance(artifacts.get(key), dict):
+            errors.append(
+                _error(
+                    "ERR_SUPERFLOW_ARTIFACT_REQUIRED_MISSING",
+                    f"required artifact is missing: {filename}",
+                )
+            )
+
     recipe = _object_or_none(artifacts.get("verification_recipe"))
     receipt = _object_or_none(artifacts.get("verification_receipt"))
     repo_profile = _object_or_none(artifacts.get("repo_profile"))
     context_pack = _object_or_none(artifacts.get("context_pack"))
     skillpack_lock = _object_or_none(artifacts.get("skillpack_lock"))
     pr_handoff = _object_or_none(artifacts.get("pr_handoff"))
-    mcp_receipts = _objects_list(artifacts.get("mcp_tool_receipts"))
 
     if recipe is not None:
         errors.extend(validate_verification_recipe(recipe))
@@ -132,6 +173,13 @@ def validate_verification_receipt(
 ) -> list[dict[str, str]]:
     errors = _validate_kind_and_version(receipt, VERIFICATION_RECEIPT_KIND)
     _validate_hex(receipt.get("runner_receipt_hash"), "runner_receipt_hash", errors)
+    if receipt.get("runner_receipt_hash") == "0" * 64:
+        errors.append(
+            _error(
+                "ERR_SUPERFLOW_RECEIPT_RUNNER_HASH_PLACEHOLDER",
+                "runner_receipt_hash must not be the all-zero placeholder",
+            )
+        )
     _validate_hex(receipt.get("transcript_sha256"), "transcript_sha256", errors)
     if receipt.get("raises_assurance") is not False:
         errors.append(_error("ERR_SUPERFLOW_RECEIPT_ASSURANCE_INVALID", "verification receipt must not raise assurance"))
@@ -312,23 +360,45 @@ def validate_pr_handoff(
 def load_superflow_artifacts(evidence_dir: Path) -> dict[str, Any]:
     """Load known Superflow artifact filenames from an evidence directory."""
 
-    mapping = {
-        "repo_profile": "repo-profile.json",
-        "context_pack": "context-pack.json",
-        "skillpack_lock": "skillpack-lock.json",
-        "verification_recipe": "verification-recipe.json",
-        "verification_receipt": "verification-receipt.json",
-        "pr_handoff": "pr-handoff.json",
-    }
     artifacts: dict[str, Any] = {}
-    for key, filename in mapping.items():
+    errors: list[dict[str, str]] = []
+    if not evidence_dir.exists():
+        return {
+            ARTIFACT_LOAD_ERRORS_KEY: [
+                _error(
+                    "ERR_SUPERFLOW_EVIDENCE_DIR_MISSING",
+                    f"evidence directory is missing: {evidence_dir}",
+                )
+            ]
+        }
+    if not evidence_dir.is_dir():
+        return {
+            ARTIFACT_LOAD_ERRORS_KEY: [
+                _error(
+                    "ERR_SUPERFLOW_EVIDENCE_DIR_NOT_DIRECTORY",
+                    f"evidence path is not a directory: {evidence_dir}",
+                )
+            ]
+        }
+
+    for key, filename in REQUIRED_ARTIFACTS.items():
         path = evidence_dir / filename
         if path.is_file():
-            artifacts[key] = _read_json_object(path)
-    artifacts["mcp_tool_receipts"] = [
-        _read_json_object(path)
-        for path in sorted(evidence_dir.glob("mcp-tool-receipt-*.json"))
-    ]
+            value, error = _try_read_json_object(path)
+            if error is None:
+                artifacts[key] = value
+            else:
+                errors.append(error)
+    mcp_tool_receipts: list[dict[str, Any]] = []
+    for path in sorted(evidence_dir.glob("mcp-tool-receipt-*.json")):
+        value, error = _try_read_json_object(path)
+        if error is None:
+            mcp_tool_receipts.append(value)
+        else:
+            errors.append(error)
+    artifacts["mcp_tool_receipts"] = mcp_tool_receipts
+    if errors:
+        artifacts[ARTIFACT_LOAD_ERRORS_KEY] = errors
     return artifacts
 
 
@@ -378,6 +448,21 @@ def _objects_list(value: object) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
+def _load_errors(artifacts: dict[str, Any]) -> list[dict[str, str]]:
+    value = artifacts.get(ARTIFACT_LOAD_ERRORS_KEY)
+    if not isinstance(value, list):
+        return []
+    errors: list[dict[str, str]] = []
+    for item in value:
+        if (
+            isinstance(item, dict)
+            and isinstance(item.get("code"), str)
+            and isinstance(item.get("message"), str)
+        ):
+            errors.append({"code": item["code"], "message": item["message"]})
+    return errors
+
+
 def _decision_from_errors(errors: list[dict[str, str]]) -> str:
     if not errors:
         return PASS_DECISION
@@ -400,6 +485,16 @@ def _read_json_object(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON root must be an object: {path}")
     return value
+
+
+def _try_read_json_object(path: Path) -> tuple[dict[str, Any], dict[str, str] | None]:
+    try:
+        return _read_json_object(path), None
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        return {}, _error(
+            "ERR_SUPERFLOW_ARTIFACT_MALFORMED",
+            f"malformed artifact {path.name}: {exc}",
+        )
 
 
 def _error(code: str, message: str) -> dict[str, str]:

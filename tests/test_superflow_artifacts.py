@@ -51,6 +51,90 @@ class SuperflowArtifactTests(unittest.TestCase):
         self.assertFalse(verdict["boundary"]["calls_live_mcp"])
         self.assertFalse(verdict["boundary"]["raises_assurance"])
 
+    def test_missing_evidence_dir_blocks(self) -> None:
+        fixture = self.root / "missing"
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+        codes = {error["code"] for error in verdict["errors"]}
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn("ERR_SUPERFLOW_EVIDENCE_DIR_MISSING", codes)
+
+    def test_non_directory_evidence_path_blocks(self) -> None:
+        fixture = self.root / "not-a-dir"
+        fixture.write_text("not a directory\n", encoding="utf-8")
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+        codes = {error["code"] for error in verdict["errors"]}
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn("ERR_SUPERFLOW_EVIDENCE_DIR_NOT_DIRECTORY", codes)
+
+    def test_empty_evidence_dir_blocks(self) -> None:
+        fixture = self.root / "empty"
+        fixture.mkdir()
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+        codes = {error["code"] for error in verdict["errors"]}
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn("ERR_SUPERFLOW_ARTIFACT_SET_EMPTY", codes)
+        self.assertIn("ERR_SUPERFLOW_ARTIFACT_REQUIRED_MISSING", codes)
+
+    def test_missing_required_artifact_blocks(self) -> None:
+        fixture = self._copy_positive_fixture()
+        (fixture / "context-pack.json").unlink()
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+        codes = {error["code"] for error in verdict["errors"]}
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn("ERR_SUPERFLOW_ARTIFACT_REQUIRED_MISSING", codes)
+
+    def test_malformed_artifact_blocks(self) -> None:
+        fixture = self._copy_positive_fixture()
+        (fixture / "context-pack.json").write_text("{not json\n", encoding="utf-8")
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+        codes = {error["code"] for error in verdict["errors"]}
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn("ERR_SUPERFLOW_ARTIFACT_MALFORMED", codes)
+
+    def test_placeholder_runner_receipt_hash_blocks(self) -> None:
+        fixture = self._copy_positive_fixture()
+        receipt_path = fixture / "verification-receipt.json"
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        receipt["runner_receipt_hash"] = "0" * 64
+        receipt_path.write_text(
+            json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+        codes = {error["code"] for error in verdict["errors"]}
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn("ERR_SUPERFLOW_RECEIPT_RUNNER_HASH_PLACEHOLDER", codes)
+
     def test_failed_verification_receipt_refutes_fixture(self) -> None:
         fixture = self._copy_positive_fixture()
         self._overlay(
@@ -139,6 +223,57 @@ class SuperflowArtifactTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["decision"], "pass")
         self.assertEqual(payload["error_count"], 0)
+
+    def test_proofcheck_cli_blocks_missing_evidence_dir(self) -> None:
+        fixture = self.root / "missing"
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "depone",
+                "proofcheck",
+                "--evidence-dir",
+                str(fixture),
+                "--json",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertNotEqual(completed.returncode, 0)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["decision"], "blocked")
+        self.assertEqual(
+            payload["errors"][0]["code"],
+            "ERR_SUPERFLOW_EVIDENCE_DIR_MISSING",
+        )
+
+    def test_proofcheck_cli_blocks_empty_evidence_dir(self) -> None:
+        fixture = self.root / "empty"
+        fixture.mkdir()
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "depone",
+                "proofcheck",
+                "--evidence-dir",
+                str(fixture),
+                "--json",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertNotEqual(completed.returncode, 0)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["decision"], "blocked")
+        codes = {error["code"] for error in payload["errors"]}
+        self.assertIn("ERR_SUPERFLOW_ARTIFACT_SET_EMPTY", codes)
 
     def test_proofcheck_cli_blocks_failed_receipt(self) -> None:
         fixture = self._copy_positive_fixture()

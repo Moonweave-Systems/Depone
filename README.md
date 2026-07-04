@@ -79,6 +79,7 @@ depone doctor --json
 depone evidence-ingest --self-test
 depone evidence-chain --self-test
 depone team-ledger --self-test
+depone proofcheck --evidence-dir depone/fixtures/superflow/positive --json
 ```
 
 Source installation smoke is:
@@ -114,11 +115,16 @@ the verifier must report A0. If observer capture or isolation evidence is
 missing, the verifier must not infer it from prose, model claims, skill text, MCP
 output, or operator intent.
 
+`proofcheck` is fail-closed. Missing directories, non-directories, empty evidence
+directories, malformed artifacts, missing required Superflow artifacts, scout-only
+planning artifacts without a verification receipt, and all-zero runner receipt
+hash placeholders block instead of passing.
+
 ## Command taxonomy
 
 | Class | Examples | Product meaning |
 | --- | --- | --- |
-| Verifier commands | `evidence-ingest`, `evidence-chain`, `team-ledger` | Stable engine calls for `proofcheck`. |
+| Verifier commands | `proofcheck`, `evidence-ingest`, `evidence-chain`, `team-ledger` | Stable engine calls for `proofcheck`. |
 | Contract commands | `validate`, `compile`, evidence-contract validation | Planning/contract helpers for `flowplan`. |
 | Gate commands | `next`, `team-launch-preflight` | Non-executing gates for wrapper workflows. |
 | Compatibility/demo commands | `demo`, `observe`, `evidence-substrate`, internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
@@ -138,6 +144,10 @@ Depone.
 5. Depone re-derives the verdict and assurance grade.
 6. Superflow summarizes and prepares handoff without upgrading the verdict.
 ```
+
+Scout artifacts are planning evidence only. A scout-only directory is useful for
+context and planning, but it is not execution proof and must not produce a
+`proofcheck` pass by itself.
 
 For direct verifier use, steps 1, 2, 3, and 6 are skipped: `proofcheck` or
 `depone` reads existing evidence and reports what the bytes support.

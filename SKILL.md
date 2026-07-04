@@ -1,13 +1,15 @@
 ---
 name: depone
-description: Compatibility entrypoint for the Depone verifier and evidence-contract engine. Use for proofcheck-style evidence revalidation, contract/schema inspection, and plan-only gates. Do not use as the flagship Moonweave Superflow runner or as proof that a model verified its own work.
+description: Compatibility entrypoint for the Depone verifier and evidence-contract engine. Use for proofcheck-style evidence revalidation, contract/schema inspection, and plan-only gates. Do not use as the flagship Superflow runner or as proof that a model verified its own work.
 ---
 
 # Depone Compatibility Skill
 
 Depone is the non-executing verifier and evidence-contract engine inside
-Moonweave Superflow. The source of truth for this repository is `docs/spec.md`;
-this skill text is a compatibility surface derived from that spec.
+Superflow. The source of truth for this repository is `docs/spec.md`; this skill
+text is a compatibility surface derived from that spec.
+
+Moonweave is the publisher/account namespace. Superflow is the product/tool name.
 
 Use this skill when the user or host agent needs to:
 
@@ -17,8 +19,8 @@ Use this skill when the user or host agent needs to:
 - prepare a plan-only gate before execution,
 - call the `depone` CLI for verifier/developer workflows.
 
-Do **not** use this skill as the final Moonweave product surface. The public
-Moonweave surfaces are:
+Do **not** use this skill as the final product surface. The public Superflow
+surfaces are:
 
 | Name | User intent |
 | --- | --- |
@@ -32,12 +34,12 @@ Moonweave surfaces are:
 ## Core rule
 
 ```text
-Depone verifies; witnessd executes; Moonweave Superflow exposes the workflow.
+Depone verifies; witnessd executes; Superflow exposes the workflow.
 ```
 
 If the task needs worker spawn, retry, session ownership, active worktree
 mutation, Codex/Claude/OpenCode execution, or team orchestration, hand it to
-witnessd or the Moonweave wrapper. If the task needs to decide what evidence
+witnessd or the Superflow wrapper. If the task needs to decide what evidence
 bytes support, use Depone.
 
 ## Safe Depone tasks
@@ -75,4 +77,4 @@ python -m depone next --evidence-dir <dir> --out evidence-next.json --json
 
 Compatibility/demo commands such as `demo`, `observe`, `run`/`evidence-run`,
 `advance`, and internal `agent-fabric-*` surfaces may exist for fixtures and
-legacy automation. They are not the canonical Moonweave user surface.
+legacy automation. They are not the canonical Superflow user surface.

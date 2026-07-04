@@ -5,15 +5,14 @@ source of truth for product direction. The authoritative Depone spec is
 [`docs/spec.md`](spec.md).
 
 Depone commands are grouped by boundary class. New user-facing Moonweave work
-should prefer the future `moonweave` wrapper and purpose-named skills
-(`ProofPlan`, `ProofRun`, `ProofVerify`, `ProofFlow`) instead of teaching users
-this full engine surface.
+should prefer Superflow surfaces (`superflow`, `flowplan`, `proofrun`,
+`proofcheck`) instead of teaching users this full engine surface.
 
 ---
 
 ## 1. Verifier commands
 
-Stable engine calls for ProofVerify-style workflows. These commands consume
+Stable engine calls for proofcheck-style workflows. These commands consume
 existing artifacts and emit verifier results. They must not launch workers.
 
 ```bash
@@ -41,7 +40,7 @@ python -m depone compile plan.json --target conductor --out workflow.yaml --json
 ```
 
 `design` remains available as a compatibility planning helper when installed, but
-Moonweave's final plan-only user surface should be `ProofPlan`.
+Moonweave's final plan-only user surface should be `flowplan`.
 
 ---
 
@@ -78,7 +77,7 @@ python -m depone codex-local-capability --repo . --codex-binary definitely-missi
 
 Important boundary: these commands may exist to create deterministic receipts or
 compatibility fixtures, but the flagship runtime path belongs in witnessd. Do not
-present these helpers as a full Moonweave automation engine.
+present these helpers as a full Moonweave Superflow engine.
 
 ---
 

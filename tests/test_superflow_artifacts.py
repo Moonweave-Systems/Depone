@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from depone.agent_fabric.claim_gate import canonical_hash
 from depone.agent_fabric.superflow_artifacts import (
     build_superflow_artifact_verdict,
     load_superflow_artifacts,
@@ -37,6 +38,43 @@ class SuperflowArtifactTests(unittest.TestCase):
     def _overlay(self, target: Path, fixture_dir: str, filename: str) -> None:
         shutil.copy2(self.FIXTURE_ROOT / fixture_dir / filename, target / filename)
 
+    def _rewrite_fixture_kinds(self, fixture: Path, old: str, new: str) -> None:
+        json_paths = [
+            "repo-profile.json",
+            "context-pack.json",
+            "skillpack-lock.json",
+            "verification-recipe.json",
+            "verification-receipt.json",
+            "mcp-tool-receipt-fake.json",
+            "pr-handoff.json",
+        ]
+        objects = {
+            name: json.loads((fixture / name).read_text(encoding="utf-8"))
+            for name in json_paths
+        }
+        for value in objects.values():
+            if isinstance(value.get("kind"), str):
+                value["kind"] = value["kind"].replace(old, new, 1)
+
+        objects["context-pack.json"]["repo_profile_hash"] = canonical_hash(
+            objects["repo-profile.json"]
+        )
+        objects["verification-receipt.json"]["recipe_hash"] = canonical_hash(
+            objects["verification-recipe.json"]
+        )
+        objects["pr-handoff.json"]["verification_receipt_hashes"] = [
+            canonical_hash(objects["verification-receipt.json"])
+        ]
+        objects["pr-handoff.json"]["mcp_tool_receipt_hashes"] = [
+            canonical_hash(objects["mcp-tool-receipt-fake.json"])
+        ]
+
+        for name, value in objects.items():
+            (fixture / name).write_text(
+                json.dumps(value, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
     def test_positive_fixture_passes(self) -> None:
         fixture = self.FIXTURE_ROOT / "positive"
 
@@ -50,6 +88,19 @@ class SuperflowArtifactTests(unittest.TestCase):
         self.assertFalse(verdict["boundary"]["executes_commands"])
         self.assertFalse(verdict["boundary"]["calls_live_mcp"])
         self.assertFalse(verdict["boundary"]["raises_assurance"])
+
+    def test_orro_kind_fixture_passes(self) -> None:
+        fixture = self._copy_positive_fixture()
+        self._rewrite_fixture_kinds(fixture, "superflow-", "orro-")
+
+        verdict = build_superflow_artifact_verdict(
+            load_superflow_artifacts(fixture),
+            base_dir=fixture,
+        )
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(verdict["kind"], "orro-artifact-verdict")
+        self.assertEqual(verdict["errors"], [])
 
     def test_missing_evidence_dir_blocks(self) -> None:
         fixture = self.root / "missing"

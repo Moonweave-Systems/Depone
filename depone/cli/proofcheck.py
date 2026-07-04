@@ -1,4 +1,4 @@
-"""depone proofcheck — offline Superflow artifact verification."""
+"""depone proofcheck -- offline ORRO artifact verification."""
 
 from __future__ import annotations
 

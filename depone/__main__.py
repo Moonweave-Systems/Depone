@@ -727,7 +727,7 @@ def _add_proofcheck_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--evidence-dir",
         default="",
-        help="Directory containing Superflow artifact JSON files to verify offline",
+        help="Directory containing ORRO artifact JSON files to verify offline",
     )
     parser.add_argument(
         "--out",
@@ -857,7 +857,7 @@ def main() -> None:
     # proofcheck
     proofcheck_parser = sub.add_parser(
         "proofcheck",
-        help="Offline proofcheck for persisted Superflow artifacts",
+        help="Offline proofcheck for persisted ORRO artifacts",
     )
     _add_proofcheck_args(proofcheck_parser)
 

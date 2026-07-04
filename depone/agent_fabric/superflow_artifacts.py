@@ -1,4 +1,8 @@
-"""Offline validators for Superflow planning and receipt artifacts."""
+"""Offline validators for ORRO planning and receipt artifacts.
+
+``superflow-*`` kinds are retained as historical compatibility aliases for
+existing fixtures and persisted evidence.
+"""
 
 from __future__ import annotations
 
@@ -10,13 +14,31 @@ from depone.agent_fabric.claim_gate import canonical_hash
 
 SCHEMA_VERSION = "1.0"
 
-VERIFICATION_RECIPE_KIND = "superflow-verification-recipe"
-VERIFICATION_RECEIPT_KIND = "superflow-verification-receipt"
-REPO_PROFILE_KIND = "superflow-repo-profile"
-CONTEXT_PACK_KIND = "superflow-context-pack"
-SKILLPACK_LOCK_KIND = "superflow-skillpack-lock"
-MCP_TOOL_RECEIPT_KIND = "superflow-mcp-tool-receipt"
-PR_HANDOFF_KIND = "superflow-pr-handoff"
+VERIFICATION_RECIPE_KIND = "orro-verification-recipe"
+VERIFICATION_RECEIPT_KIND = "orro-verification-receipt"
+REPO_PROFILE_KIND = "orro-repo-profile"
+CONTEXT_PACK_KIND = "orro-context-pack"
+SKILLPACK_LOCK_KIND = "orro-skillpack-lock"
+MCP_TOOL_RECEIPT_KIND = "orro-mcp-tool-receipt"
+PR_HANDOFF_KIND = "orro-pr-handoff"
+
+LEGACY_VERIFICATION_RECIPE_KIND = "superflow-verification-recipe"
+LEGACY_VERIFICATION_RECEIPT_KIND = "superflow-verification-receipt"
+LEGACY_REPO_PROFILE_KIND = "superflow-repo-profile"
+LEGACY_CONTEXT_PACK_KIND = "superflow-context-pack"
+LEGACY_SKILLPACK_LOCK_KIND = "superflow-skillpack-lock"
+LEGACY_MCP_TOOL_RECEIPT_KIND = "superflow-mcp-tool-receipt"
+LEGACY_PR_HANDOFF_KIND = "superflow-pr-handoff"
+
+KIND_ALIASES = {
+    VERIFICATION_RECIPE_KIND: {LEGACY_VERIFICATION_RECIPE_KIND},
+    VERIFICATION_RECEIPT_KIND: {LEGACY_VERIFICATION_RECEIPT_KIND},
+    REPO_PROFILE_KIND: {LEGACY_REPO_PROFILE_KIND},
+    CONTEXT_PACK_KIND: {LEGACY_CONTEXT_PACK_KIND},
+    SKILLPACK_LOCK_KIND: {LEGACY_SKILLPACK_LOCK_KIND},
+    MCP_TOOL_RECEIPT_KIND: {LEGACY_MCP_TOOL_RECEIPT_KIND},
+    PR_HANDOFF_KIND: {LEGACY_PR_HANDOFF_KIND},
+}
 
 PASS_DECISION = "pass"
 BLOCKED_DECISION = "blocked"
@@ -38,12 +60,12 @@ def build_superflow_artifact_verdict(
     *,
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Return a fail-closed verdict over persisted Superflow artifact objects."""
+    """Return a fail-closed verdict over persisted ORRO artifact objects."""
 
     errors = validate_superflow_artifacts(artifacts, base_dir=base_dir)
     decision = _decision_from_errors(errors)
     return {
-        "kind": "superflow-artifact-verdict",
+        "kind": "orro-artifact-verdict",
         "schema_version": SCHEMA_VERSION,
         "decision": decision,
         "error_count": len(errors),
@@ -70,7 +92,7 @@ def validate_superflow_artifacts(
     *,
     base_dir: Path | None = None,
 ) -> list[dict[str, str]]:
-    """Validate all known Superflow artifacts supplied by a runtime."""
+    """Validate all known ORRO artifacts supplied by a runtime."""
 
     errors: list[dict[str, str]] = _load_errors(artifacts)
     if any(
@@ -93,7 +115,7 @@ def validate_superflow_artifacts(
         errors.append(
             _error(
                 "ERR_SUPERFLOW_ARTIFACT_SET_EMPTY",
-                "evidence directory contains no Superflow artifacts",
+                "evidence directory contains no ORRO artifacts",
             )
         )
     for key, filename in REQUIRED_ARTIFACTS.items():
@@ -358,7 +380,7 @@ def validate_pr_handoff(
 
 
 def load_superflow_artifacts(evidence_dir: Path) -> dict[str, Any]:
-    """Load known Superflow artifact filenames from an evidence directory."""
+    """Load known ORRO artifact filenames from an evidence directory."""
 
     artifacts: dict[str, Any] = {}
     errors: list[dict[str, str]] = []
@@ -406,8 +428,10 @@ def _validate_kind_and_version(artifact: dict[str, Any], kind: str) -> list[dict
     errors: list[dict[str, str]] = []
     if not isinstance(artifact, dict):
         return [_error("ERR_SUPERFLOW_ARTIFACT_INVALID", "artifact root must be an object")]
-    if artifact.get("kind") != kind:
-        errors.append(_error("ERR_SUPERFLOW_ARTIFACT_KIND_INVALID", f"kind must be {kind}"))
+    accepted_kinds = {kind, *KIND_ALIASES.get(kind, set())}
+    if artifact.get("kind") not in accepted_kinds:
+        expected = " or ".join(sorted(accepted_kinds))
+        errors.append(_error("ERR_SUPERFLOW_ARTIFACT_KIND_INVALID", f"kind must be {expected}"))
     if artifact.get("schema_version") != SCHEMA_VERSION:
         errors.append(_error("ERR_SUPERFLOW_ARTIFACT_SCHEMA_INVALID", f"schema_version must be {SCHEMA_VERSION}"))
     return errors

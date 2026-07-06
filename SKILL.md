@@ -91,6 +91,11 @@ evidence directories, malformed artifacts, missing required artifacts, scout-onl
 planning artifacts without a verification receipt, and all-zero runner receipt
 hash placeholders must be reported as `blocked`, not `pass`.
 
+ORRO wrapper artifacts are not proof by themselves. Workflow plans, role-lane
+plans, role dispatch, continuation decisions, auto plans/receipts/sessions,
+reports, handoff prose, copied proofcheck verdict files, transcripts, model
+confidence, and role names must not raise assurance or make proofcheck pass.
+
 ## Safe Depone tasks
 
 1. Restate the evidence or contract being checked.

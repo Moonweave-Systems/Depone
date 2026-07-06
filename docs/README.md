@@ -10,6 +10,7 @@ This file exists to prevent doc drift. It is a map, not a second spec.
 | Executable contract implementation | `../depone/agent_fabric/*`, `../depone/verify/*` |
 | Human quickstart | [`../README.md`](../README.md) |
 | Command inventory and compatibility reference | [`command-reference.md`](command-reference.md) |
+| ORRO proofcheck hardening policy | [`orro-proofcheck-hardening.md`](orro-proofcheck-hardening.md) |
 | Claude/session orientation | [`../CLAUDE.md`](../CLAUDE.md) |
 | Codex/session orientation | [`../AGENTS.md`](../AGENTS.md) |
 | Compatibility skill text | [`../SKILL.md`](../SKILL.md) |

@@ -36,6 +36,11 @@ empty evidence directories, malformed artifacts, missing required ORRO artifacts
 scout-only planning artifacts without a verification receipt, and all-zero runner
 receipt hashes produce `blocked`, not `pass`.
 
+`proofcheck` does not trust wrapper outputs as input truth. Existing
+`proofcheck-verdict.json` files, workflow plans, role-lane plans, role dispatch,
+auto artifacts, reports, transcripts, model claims, and handoff prose are
+context or outputs, not execution proof.
+
 Verifier artifact families now include:
 
 | Artifact family | Depone interpretation |
@@ -47,6 +52,8 @@ Verifier artifact families now include:
 | skillpack-lock | Knowledge selection evidence, not proof of correctness. |
 | MCP/tool receipts | Hash-bound external observations, not remote truth. |
 | PR handoff | Human review package, not approval or merge evidence. |
+| ORRO workflow/role-lane/auto/report artifacts | Wrapper context; not proof or assurance. |
+| proofcheck verdict files | Verifier output; not an input trust root. |
 
 New artifact kinds should use `orro-*`. Existing `superflow-*` kinds may remain
 accepted as compatibility aliases until fixtures and code migrate.

@@ -129,6 +129,11 @@ directories, malformed artifacts, missing required ORRO artifacts, scout-only
 planning artifacts without a verification receipt, and all-zero runner receipt
 hash placeholders block instead of passing.
 
+ORRO wrapper artifacts are context, not proof. Workflow plans, role-lane plans,
+role dispatch, continuation decisions, auto artifacts, reports, handoff packages,
+transcripts, prose, model confidence, and copied verdicts cannot raise assurance
+or make a new evidence directory pass.
+
 ## Command taxonomy
 
 | Class | Examples | Product meaning |
@@ -176,6 +181,7 @@ python scripts/check_readme_quality.py README.md
 - [`docs/spec.md`](docs/spec.md) - authoritative Depone repository spec.
 - [`docs/README.md`](docs/README.md) - documentation map and legacy policy.
 - [`docs/command-reference.md`](docs/command-reference.md) - command inventory and compatibility reference.
+- [`docs/orro-proofcheck-hardening.md`](docs/orro-proofcheck-hardening.md) - ORRO negative-corpus and wrapper-artifact proofcheck policy.
 - [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) - compatibility planning and skill surfaces derived from the spec.
 
 ## License

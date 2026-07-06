@@ -19,11 +19,10 @@ Depone verifies; witnessd executes; ORRO exposes the workflow.
 ORRO. Existing `superflow-*` fixture paths, schema kinds, or compatibility aliases
 may remain during migration.
 
-The source of truth for this repository is [`docs/spec.md`](docs/spec.md).
-README, agent context files, skill text, command references, release notes, and
-historical DWM documents are derived or compatibility documents. If they conflict
-with `docs/spec.md`, the spec wins. For the documentation map, see
-[`docs/README.md`](docs/README.md).
+The source of truth for this repository is [`docs/spec.md`](docs/spec.md). If
+README, agent context, skill text, command references, release notes, or
+historical docs conflict with it, the spec wins. The ORRO product repo is
+<https://github.com/Moonweave-Systems/ORRO>; it is not verifier authority.
 
 ## Product boundary
 
@@ -57,6 +56,7 @@ The engines remain separate repositories:
 ```text
 Depone   = verifier engine and evidence contract
 witnessd = execution engine and evidence emitter
+ORRO     = product/distribution/wrapper repository
 ```
 
 The user-facing install should still be one product: ORRO. Normal users should
@@ -65,10 +65,9 @@ the near term, the thin `orro` command/skill may live in the witnessd repo becau
 ORRO starts execution and witnessd owns execution. Depone is consumed as a pinned
 verifier dependency.
 
-A future standalone `ORRO` repo is only for distribution: marketplace manifests,
-host-specific plugin bundles, examples, product docs, version locks, and
-end-to-end integration tests. It is not a third engine and must not duplicate
-Depone verifier logic or witnessd runtime logic.
+`Moonweave-Systems/ORRO` owns product docs, examples, distribution drafts, and
+e2e smoke contracts. It is not a third engine and must not duplicate Depone
+verifier logic or witnessd runtime logic.
 
 ## Quickstart
 
@@ -179,6 +178,7 @@ python scripts/check_readme_quality.py README.md
 ## Documentation
 
 - [`docs/spec.md`](docs/spec.md) - authoritative Depone repository spec.
+- <https://github.com/Moonweave-Systems/ORRO> - product/distribution/wrapper repository.
 - [`docs/orro-engine-contract-v0.md`](docs/orro-engine-contract-v0.md) - cross-engine ORRO contract.
 - [`docs/README.md`](docs/README.md) - documentation map and legacy policy.
 - [`docs/command-reference.md`](docs/command-reference.md) - command inventory and compatibility reference.

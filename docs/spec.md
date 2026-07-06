@@ -17,6 +17,12 @@ The cross-engine ORRO boundary is frozen in
 derived from this verifier contract and makes the witnessd/Depone/ORRO artifact
 classes explicit.
 
+The standalone ORRO product/distribution repository lives at
+<https://github.com/Moonweave-Systems/ORRO>. It owns onboarding, examples,
+distribution drafts, product doctrine, and e2e smoke contracts. It does not
+redefine verifier truth; this `docs/spec.md` remains authoritative for Depone
+proofcheck semantics.
+
 ---
 
 ## 1. Product boundary
@@ -62,6 +68,7 @@ The engine repositories stay separate:
 ```text
 Depone   = verifier engine and evidence contract
 witnessd = execution engine and evidence emitter
+ORRO     = product/distribution/wrapper repository
 ```
 
 The user-facing install surface is still one product: ORRO. Normal users should
@@ -72,11 +79,12 @@ In the near term, the thin `orro` command/skill may live in the witnessd repo
 because ORRO starts execution and witnessd owns execution. Depone is then consumed
 as a pinned verifier dependency.
 
-A future standalone `ORRO` repository is justified only when distribution needs
-it: marketplace manifests, host-specific plugin bundles, examples, product docs,
-engine version locks, and end-to-end integration tests. That repo must be a
+The standalone `Moonweave-Systems/ORRO` repository now exists for distribution
+needs: marketplace manifests, host-specific plugin bundles, examples, product
+docs, engine version locks, and end-to-end integration tests. That repo is a
 wrapper/distribution repo, not a third engine. It must not duplicate Depone
-verifier logic or witnessd runtime logic.
+verifier logic or witnessd runtime logic, and its docs/examples are product
+guidance rather than verifier contract authority.
 
 ---
 

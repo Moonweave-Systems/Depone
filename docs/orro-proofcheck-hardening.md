@@ -8,6 +8,11 @@ merge, or raise assurance from prose.
 Depone verifies; witnessd executes; ORRO exposes the workflow.
 ```
 
+The standalone ORRO product/distribution repository is
+<https://github.com/Moonweave-Systems/ORRO>. Its docs and examples are product
+guidance, not verifier contract authority. Depone remains the verifier engine
+and must not be duplicated there.
+
 ## Fail-Closed Rule
 
 `depone proofcheck` must fail closed on missing, malformed, incomplete, copied,

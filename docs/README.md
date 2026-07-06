@@ -7,6 +7,7 @@ This file exists to prevent doc drift. It is a map, not a second spec.
 | Role | Document |
 | --- | --- |
 | Depone verifier/evidence-contract source of truth | [`spec.md`](spec.md) |
+| ORRO product/distribution repository | <https://github.com/Moonweave-Systems/ORRO> |
 | ORRO engine boundary contract | [`orro-engine-contract-v0.md`](orro-engine-contract-v0.md) |
 | ORRO engine contract drift checker | `../scripts/check_orro_engine_contract.py` |
 | Executable contract implementation | `../depone/agent_fabric/*`, `../depone/verify/*` |
@@ -19,6 +20,9 @@ This file exists to prevent doc drift. It is a map, not a second spec.
 
 When these conflict, `docs/spec.md` wins for Depone verifier-contract decisions.
 witnessd `SPEC3.md` wins for witnessd runtime/product decisions.
+The `Moonweave-Systems/ORRO` repository owns product onboarding, examples,
+distribution drafts, and e2e smoke-contract docs. It does not redefine verifier
+truth or replace this repository's proofcheck contract authority.
 
 ## Public naming
 

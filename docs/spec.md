@@ -12,6 +12,11 @@ SKILL.md, command references, release notes, and historical DWM documents are
 derived or compatibility documents. If they conflict with this file, this file
 wins.
 
+The cross-engine ORRO boundary is frozen in
+[`docs/orro-engine-contract-v0.md`](orro-engine-contract-v0.md). That document is
+derived from this verifier contract and makes the witnessd/Depone/ORRO artifact
+classes explicit.
+
 ---
 
 ## 1. Product boundary

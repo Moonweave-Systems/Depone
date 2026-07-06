@@ -7,6 +7,7 @@ This file exists to prevent doc drift. It is a map, not a second spec.
 | Role | Document |
 | --- | --- |
 | Depone verifier/evidence-contract source of truth | [`spec.md`](spec.md) |
+| ORRO engine boundary contract | [`orro-engine-contract-v0.md`](orro-engine-contract-v0.md) |
 | Executable contract implementation | `../depone/agent_fabric/*`, `../depone/verify/*` |
 | Human quickstart | [`../README.md`](../README.md) |
 | Command inventory and compatibility reference | [`command-reference.md`](command-reference.md) |

@@ -179,6 +179,7 @@ python scripts/check_readme_quality.py README.md
 ## Documentation
 
 - [`docs/spec.md`](docs/spec.md) - authoritative Depone repository spec.
+- [`docs/orro-engine-contract-v0.md`](docs/orro-engine-contract-v0.md) - cross-engine ORRO contract.
 - [`docs/README.md`](docs/README.md) - documentation map and legacy policy.
 - [`docs/command-reference.md`](docs/command-reference.md) - command inventory and compatibility reference.
 - [`docs/orro-proofcheck-hardening.md`](docs/orro-proofcheck-hardening.md) - ORRO negative-corpus and wrapper-artifact proofcheck policy.

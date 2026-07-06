@@ -7,6 +7,8 @@ must not become the runtime that launched the workers it is judging.
 The source of truth for this repository is [`docs/spec.md`](docs/spec.md). This
 file is a short agent orientation derived from that spec. If there is a conflict,
 `docs/spec.md` wins.
+The cross-engine boundary is summarized in
+[`docs/orro-engine-contract-v0.md`](docs/orro-engine-contract-v0.md).
 
 ```text
 Depone verifies; witnessd executes; ORRO exposes the workflow.

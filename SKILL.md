@@ -8,6 +8,8 @@ description: Compatibility entrypoint for the Depone verifier and evidence-contr
 Depone is the non-executing verifier and evidence-contract engine inside ORRO.
 The source of truth for this repository is `docs/spec.md`; this skill text is a
 compatibility surface derived from that spec.
+The cross-engine artifact boundary is summarized in
+`docs/orro-engine-contract-v0.md`.
 
 Moonweave is the publisher/account namespace. ORRO is the product/tool name.
 `Superflow` is historical compatibility naming.

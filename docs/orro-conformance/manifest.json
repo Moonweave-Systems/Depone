@@ -1,0 +1,33 @@
+{
+  "kind": "orro-conformance-manifest",
+  "schema_version": "0.1",
+  "fixtures": [
+    {
+      "name": "valid-team-ledger-run",
+      "class": "positive",
+      "expected_depone_decision": "pass",
+      "expected_orro_next": "ready-for-handoff or complete depending on handoff"
+    },
+    {
+      "name": "scout-only",
+      "class": "negative",
+      "expected_depone_decision": "blocked",
+      "expected_orro_next": "blocked or evidence-pending"
+    },
+    {
+      "name": "workflow-plan-only",
+      "class": "negative",
+      "expected_depone_decision": "blocked"
+    },
+    {
+      "name": "wrapper-artifacts-only",
+      "class": "negative",
+      "expected_depone_decision": "blocked"
+    },
+    {
+      "name": "stale-proofcheck-verdict",
+      "class": "negative",
+      "expected_orro_handoff": "blocked"
+    }
+  ]
+}

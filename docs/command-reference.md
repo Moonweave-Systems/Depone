@@ -3,6 +3,8 @@
 This page is a command inventory and compatibility reference. It is not the
 source of truth for product direction. The authoritative Depone spec is
 [`docs/spec.md`](spec.md).
+The cross-engine ORRO artifact boundary is summarized in
+[`docs/orro-engine-contract-v0.md`](orro-engine-contract-v0.md).
 
 Depone commands are grouped by boundary class. New user-facing work should prefer
 ORRO surfaces (`orro`, `orro scout`, `flowplan`, `proofrun`, `proofcheck`,

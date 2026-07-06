@@ -73,3 +73,16 @@ Depone verifies; witnessd executes; ORRO exposes the workflow.
 - compatibility commands.
 
 New primary public naming is ORRO/`orro`.
+
+## Drift Check
+
+Maintainers should run the no-dependency checker when changing this contract or
+the conformance manifest:
+
+```bash
+python scripts/check_orro_engine_contract.py
+```
+
+The checker verifies that the verifier-authoritative contract keeps the required
+artifact names, trust rules, gates, compatibility language, and conformance
+fixture classes in sync.

@@ -4,6 +4,7 @@ import argparse
 import contextlib
 import io
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -75,6 +76,18 @@ class OrroEngineContractTests(unittest.TestCase):
         self.assertEqual(manifest["kind"], "orro-conformance-manifest")
         self.assertEqual(manifest["schema_version"], "0.1")
         self.assertGreaterEqual(len(manifest["fixtures"]), 5)
+
+    def test_contract_checker_passes(self) -> None:
+        result = subprocess.run(
+            ["python3", "scripts/check_orro_engine_contract.py"],
+            cwd=self.ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("check_orro_engine_contract: pass", result.stdout)
 
     def test_valid_team_ledger_evidence_dir_passes_proofcheck(self) -> None:
         evidence_dir = self.root / "valid-team-ledger-run"

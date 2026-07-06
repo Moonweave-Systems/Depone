@@ -197,6 +197,39 @@ Rules:
 - Skill text, CLAUDE.md, AGENTS.md, MCP output, IDE terminal views, tmux panes,
   and session transcripts are not final truth unless bound into a
   verifier-recognized receipt.
+- Existing `proofcheck-verdict.json` files are verifier outputs. They are not
+  input trust roots for a new proofcheck run and must not make missing or
+  malformed evidence pass.
+
+### 5.1 ORRO wrapper artifact classification
+
+ORRO wrapper artifacts may be useful context for humans, ORRO reports, and
+handoff packaging, but Depone proofcheck must not count them as execution proof
+or assurance by themselves.
+
+| Artifact | Depone interpretation |
+| --- | --- |
+| `orro-workflow-plan` | Intent. |
+| `orro-workflow-plan-binding` | Wrapper binding/context. |
+| `orro-role-lane-plan` | Executable intent, not proof. |
+| `orro-role-lane-plan-binding` | Wrapper binding/context. |
+| `orro-role-dispatch` | Context, not proof. |
+| `orro-continuation-decision` | Continuation advice, not proof. |
+| `orro-auto-plan` | Recommendation context, not proof. |
+| `orro-auto-receipt` | Orchestration metadata, not task success. |
+| `orro-auto-session` | Orchestration metadata, not task success. |
+| `orro-report` | Human-facing summary, not proof. |
+| `orro-handoff` | Review package, not approval. |
+| `proofcheck-verdict` | Verifier output, not an input trust root. |
+| `team-ledger` | Candidate execution evidence to verify. |
+| `verification-receipt` | Observed command execution evidence when valid. |
+| `verification-recipe` | Intent. |
+
+Depone does not need to deeply validate every wrapper artifact to remain safe.
+It only needs to avoid treating wrapper, prose, role, transcript, model, auto, or
+handoff artifacts as proof. A directory containing only scout, planning,
+workflow, role-lane, auto, report, handoff, or copied verdict artifacts must fail
+closed.
 
 ---
 

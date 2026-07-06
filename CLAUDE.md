@@ -91,6 +91,9 @@ Many scripts also carry a `--self-test`; run the one for any script you touch.
 - Keep planned work and executed work separate.
 - Do not upgrade assurance from prose, model confidence, skill text, MCP output,
   or operator intent.
+- Do not treat ORRO wrapper artifacts as proof: workflow plans, role-lane plans,
+  role dispatch, continuation decisions, auto artifacts, reports, handoffs, and
+  existing proofcheck verdicts are context or outputs, not input trust roots.
 - Do not add a new witnessd-facing schema field unless the Depone contract and
   tests define it first.
 

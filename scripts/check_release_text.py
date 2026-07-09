@@ -13,9 +13,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", ".pytest_cache", ".ruff_cache", "__pycache__", "out", "build", ".eggs", ".venv", "venv", "contract-seed"}
 SECRET_PATTERN = re.compile(
-    r"(?i)['\"]?(api[_-]?key|secret|token|password)['\"]?\s*[:=]\s*['\"]?[^'\"\s]{8,}|"
+    r"(?i)['\"]?(api[_-]?key|secret|token|password)['\"]?\s*[:=]\s*['\"]?(?P<secret_value>[^'\"\s]{8,})|"
     r"-----BEGIN (RSA|OPENSSH) PRIVATE KEY-----"
 )
+PROCESS_TOKEN_VALUE_RE = re.compile(r"^\d+:\d+$")  # pid:starttime process identity, not a credential
 PLACEHOLDER_PATTERN = re.compile(r"T[O]DO|T[B]D|PLACE[H]OLDER|FIX[M]E")
 
 
@@ -57,8 +58,12 @@ def check_files(root: Path) -> None:
     placeholder_hits: list[str] = []
     for path, text in iter_text_files(root):
         rel_path = path.relative_to(root)
-        if SECRET_PATTERN.search(text):
+        for match in SECRET_PATTERN.finditer(text):
+            value = match.group("secret_value")
+            if value is not None and PROCESS_TOKEN_VALUE_RE.fullmatch(value):
+                continue
             secret_hits.append(str(rel_path))
+            break
         if path.suffix.lower() == ".md" and PLACEHOLDER_PATTERN.search(text):
             placeholder_hits.append(str(rel_path))
     if secret_hits:
@@ -125,6 +130,10 @@ def self_test() -> None:
             pass
         else:
             raise TextCheckError("self-test failed: JSON secret file passed")
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "receipt.json").write_text('{"pid_start_token": "101:1000"}\n')
+        check_files(root)
     print("release text check self-test: pass")
 
 

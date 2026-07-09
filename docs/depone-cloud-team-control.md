@@ -70,7 +70,7 @@ chat summaries into completed evidence.
 The runtime substrate is intentionally separate from this control-plane schema.
 tmux/OMX can remain an operator-facing team surface, but Depone's canonical
 runtime record must be a machine receipt, transcript, git fact set, and
-validation verdict. See `docs/depone-runtime-substrate.md`.
+validation verdict.
 
 ### Cloud runner
 
@@ -298,7 +298,7 @@ python3 -m depone team-ledger --self-test
 
 ## Next slices
 
-The current follow-up order is tracked in `docs/depone-next-work-plan.md`.
+The current follow-up order:
 
 1. Implement Wave 2, `team-merge-attempt`, so merge/fan-in evidence comes from a
    real git merge attempt instead of operator-entered receipt fields.

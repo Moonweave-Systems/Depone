@@ -47,41 +47,30 @@ jobs:
         run: python3 -m depone doctor --self-test
 
   conformance:
-    name: witnessd reverse conformance
+    name: public reverse conformance (Depone re-derives witnessd fixtures)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Depone
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Check reverse conformance token
-        id: reverse-token
-        env:
-          WITNESSD_REVERSE_CONFORMANCE_PAT: ${{ secrets.WITNESSD_REVERSE_CONFORMANCE_PAT }}
-        run: |
-          set -euo pipefail
-          if [ -z "${WITNESSD_REVERSE_CONFORMANCE_PAT:-}" ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "WITNESSD_REVERSE_CONFORMANCE_PAT is not configured; skipping private reverse conformance."
-          else
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Clone witnessd
-        if: steps.reverse-token.outputs.available == 'true'
-        env:
-          WITNESSD_REVERSE_CONFORMANCE_PAT: ${{ secrets.WITNESSD_REVERSE_CONFORMANCE_PAT }}
-        run: |
-          set -euo pipefail
-          git -c http.extraheader="AUTHORIZATION: bearer ${WITNESSD_REVERSE_CONFORMANCE_PAT}" \
-            clone --depth=1 https://github.com/Moonweave-Systems/witnessd.git "$RUNNER_TEMP/witnessd"
-
       - name: Set up Python
-        if: steps.reverse-token.outputs.available == 'true'
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
 
-      - name: Re-derive witnessd W1 fixture with this Depone
-        if: steps.reverse-token.outputs.available == 'true'
+      - name: Clone witnessd
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/Moonweave-Systems/witnessd.git "$RUNNER_TEMP/witnessd"
+
+      - name: Re-derive all committed witnessd fixtures with this Depone
         working-directory: ${{ runner.temp }}/witnessd
-        run: PYTHONPATH="$GITHUB_WORKSPACE" python3 scripts/revalidate_w1.py
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          WITNESSD_DEPONE_ROOT: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          for script in scripts/revalidate_*.py; do
+            echo "== ${script} =="
+            python3 "${script}"
+          done

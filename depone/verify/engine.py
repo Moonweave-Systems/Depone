@@ -85,6 +85,17 @@ class AgentFabricCaptureCheck:
 
 
 @dataclass
+class ReviewSignal:
+    evidence_path: str
+    provider: str
+    finding_count: int
+    can_change_evidence_verdict: bool
+    axis: str = "review"
+    valid: bool = True
+    errors: list[str] = field(default_factory=list)
+
+
+@dataclass
 class VerificationReport:
     schema_version: str = "1.0"
     plan_hash: str = ""
@@ -96,6 +107,7 @@ class VerificationReport:
     assurance: str = "A0-claims-only"
     agent_fabric_captures: list[AgentFabricCaptureCheck] = field(default_factory=list)
     claim_evaluations: list[ClaimEvaluation] = field(default_factory=list)
+    review_signals: list[ReviewSignal] = field(default_factory=list)
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
 
@@ -422,6 +434,46 @@ def _read_agent_fabric_captures(
     return captures
 
 
+def _read_review_signals(evidence: EvidenceContext) -> list[ReviewSignal]:
+    signals: list[ReviewSignal] = []
+    for evidence_file in evidence.files:
+        try:
+            parsed = json.loads(evidence_file.content)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(parsed, dict):
+            continue
+        if parsed.get("kind") != "moonweave-review-receipt":
+            continue
+
+        errors: list[str] = []
+        provider = parsed.get("provider")
+        if not isinstance(provider, str) or not provider:
+            errors.append("review receipt provider must be non-empty")
+            provider = "unknown"
+        axis = parsed.get("axis", "review")
+        if axis != "review":
+            errors.append("review receipt axis must be review")
+        can_change = parsed.get("can_change_evidence_verdict")
+        if can_change is not False:
+            errors.append("review receipt must not change evidence verdict")
+        findings = parsed.get("findings")
+        if not isinstance(findings, list):
+            errors.append("review receipt findings must be a list")
+            findings = []
+        signals.append(
+            ReviewSignal(
+                evidence_path=evidence_file.path,
+                provider=str(provider),
+                finding_count=len(findings),
+                can_change_evidence_verdict=bool(can_change),
+                valid=not errors,
+                errors=errors,
+            )
+        )
+    return signals
+
+
 def _assurance_for_report(captures: list[AgentFabricCaptureCheck]) -> str:
     if any(capture.valid and capture.assurance == ASSURANCE_A2 for capture in captures):
         return ASSURANCE_A2
@@ -458,6 +510,7 @@ def run_verification(
     budget = check_budget_adherence(plan, evidence)
     evidence_contract = validate_evidence_contract(evidence)
     agent_fabric_captures = _read_agent_fabric_captures(evidence)
+    review_signals = _read_review_signals(evidence)
     handoffs_spec = plan.get("handoffs", [])
 
     any_refuted = False
@@ -547,5 +600,6 @@ def run_verification(
         assurance=_assurance_for_report(agent_fabric_captures),
         agent_fabric_captures=agent_fabric_captures,
         claim_evaluations=claim_evals,
+        review_signals=review_signals,
         verdict=overall,
     )

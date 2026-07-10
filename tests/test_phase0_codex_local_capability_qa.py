@@ -80,6 +80,22 @@ class Phase0CodexLocalCapabilityQaTests(unittest.TestCase):
         self.assertNotEqual(facts.get("dirty"), False)
         self.assertIn("error", facts)
 
+    def test_git_probe_timeout_never_reports_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_dir:
+            repo = Path(repo_dir)
+
+            with patch.object(
+                capability.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired(["git", "status"], 10),
+            ):
+                facts = capability._git_facts(repo)
+
+        self.assertFalse(facts["is_git_worktree"])
+        self.assertNotEqual(facts.get("dirty"), False)
+        probe_errors = cast(list[str], facts["probe_errors"])
+        self.assertIn("git status unknown", probe_errors)
+
     def test_qa06_current_codex_approval_policy_untrusted_is_supported(self) -> None:
         self.assertIn("untrusted", ALLOWED_APPROVAL_POLICIES)
 

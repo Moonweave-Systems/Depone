@@ -283,7 +283,7 @@ def _git_probe(repo: Path, args: list[str], error_label: str) -> dict[str, objec
             check=False,
             timeout=10,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return {"known": False, "value": None, "error": error_label}
     if completed.returncode != 0:
         return {"known": False, "value": None, "error": error_label}

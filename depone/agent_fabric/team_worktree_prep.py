@@ -15,6 +15,11 @@ from depone.agent_fabric.team_launch_preflight import (
 
 TEAM_WORKTREE_PREP_KIND = "depone-team-worktree-prep"
 TEAM_WORKTREE_PREP_SCHEMA_VERSION = "0.1"
+TEAM_WORKTREE_PREP_DEPRECATION = {
+    "status": "deprecated",
+    "migration_target": "witnessd",
+    "reason": "local worktree preparation mutates runtime state and belongs to witnessd",
+}
 
 
 class TeamWorktreePrepError(ValueError):
@@ -287,6 +292,7 @@ def _payload(
         "lanes": lanes,
         "errors": errors,
         "source_hashes": {"team_launch_preflight": canonical_hash(preflight)},
+        "deprecation": dict(TEAM_WORKTREE_PREP_DEPRECATION),
         "boundary": {
             "create_worktree_requested": create_worktree,
             "runs_git_worktree_add": created_any,

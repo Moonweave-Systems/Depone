@@ -105,6 +105,7 @@ class AgentFabricTeamWorktreePrepTests(unittest.TestCase):
         self.assertEqual(receipt["boundary"]["runs_git_worktree_add"], True)
         self.assertEqual(receipt["boundary"]["launches_agents"], False)
         self.assertEqual(receipt["boundary"]["executes_lane_commands"], False)
+        self.assertEqual(receipt["deprecation"]["migration_target"], "witnessd")
         self.assertEqual(validate_team_worktree_prep(receipt), [])
 
     def test_existing_worktree_is_selected_without_create_flag(self) -> None:

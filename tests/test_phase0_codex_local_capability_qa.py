@@ -41,7 +41,10 @@ class Phase0CodexLocalCapabilityQaTests(unittest.TestCase):
             outside.write_text("outside secret instructions", encoding="utf-8")
             (repo / "AGENTS.md").symlink_to(outside)
 
-            with patch("shutil.which", return_value=fake_codex.as_posix()):
+            with (
+                patch("shutil.which", return_value=fake_codex.as_posix()),
+                patch("depone.agent_fabric.codex_local_capability.importlib.import_module", side_effect=ImportError),
+            ):
                 receipt = build_codex_local_capability(
                     repo=repo,
                     instruction_files=[Path("AGENTS.md")],

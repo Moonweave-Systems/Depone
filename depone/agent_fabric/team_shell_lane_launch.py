@@ -20,6 +20,11 @@ from depone.agent_fabric.agent_operating_contract import (
 
 TEAM_SHELL_LANE_LAUNCH_KIND = "depone-team-shell-lane-launch"
 TEAM_SHELL_LANE_LAUNCH_SCHEMA_VERSION = "0.1"
+TEAM_SHELL_LANE_LAUNCH_DEPRECATION = {
+    "status": "deprecated",
+    "migration_target": "witnessd",
+    "reason": "lane command execution belongs to the witnessd runtime boundary",
+}
 ROLE_REGISTRY_PATH = DWM_ROLES_PATH
 DEFAULT_AGENT_ROLE_ID = V22_WORKER_ROLE_ID
 PROHIBITED_EXECUTABLES = frozenset({"codex", "claude", "claude-code", "opencode"})
@@ -116,6 +121,7 @@ def run_shell_lane_command(
         "allowlist_sha256": _canonical_hash(allowlist),
         "agent_contract_hash": agent_contract["agent_contract_hash"],
         "agent_contract": agent_contract,
+        "deprecation": dict(TEAM_SHELL_LANE_LAUNCH_DEPRECATION),
         "boundary": {
             "uses_shell": Path(argv[0]).name.lower() in SHELL_INTERPRETERS,
             "uses_argv_allowlist": True,

@@ -293,6 +293,7 @@ class AgentFabricTeamShellLaneLaunchTests(unittest.TestCase):
             self.assertEqual(receipt["decision"], "pass")
             self.assertTrue(receipt["boundary"]["uses_shell"])
             self.assertFalse(receipt["boundary"]["launches_agents"])
+            self.assertEqual(receipt["deprecation"]["migration_target"], "witnessd")
 
 
 if __name__ == "__main__":

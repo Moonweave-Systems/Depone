@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import shutil
 import subprocess
@@ -24,6 +25,12 @@ ALLOWED_SANDBOX_MODES = frozenset({"read-only", "workspace-write"})
 ALLOWED_APPROVAL_POLICIES = frozenset(
     {"never", "on-request", "on-failure", "untrusted"}
 )
+DEPONE_CODEX_LOCAL_CAPABILITY_DEPRECATION = {
+    "status": "deprecated",
+    "canonical_module": "witnessd.codex_capability",
+    "migration_target": "witnessd",
+    "removal": "next Depone major after witnessd adoption",
+}
 
 
 def build_codex_local_capability(
@@ -37,6 +44,18 @@ def build_codex_local_capability(
     role_id: str = DEFAULT_CODEX_ROLE_ID,
 ) -> dict[str, object]:
     """Build a blocked/pass capability receipt without launching Codex."""
+
+    canonical = _witnessd_canonical()
+    if canonical is not None:
+        return canonical.build_codex_local_capability(
+            repo=repo,
+            codex_binary=codex_binary,
+            sandbox_mode=sandbox_mode,
+            approval_policy=approval_policy,
+            version_timeout_seconds=version_timeout_seconds,
+            instruction_files=instruction_files,
+            role_id=role_id,
+        )
 
     resolved_repo = repo.resolve()
     blocked_reasons: list[str] = []
@@ -91,6 +110,7 @@ def build_codex_local_capability(
         "instruction_files": instructions,
         "agent_contract_hash": contract["agent_contract_hash"],
         "agent_contract": contract,
+        "deprecation": dict(DEPONE_CODEX_LOCAL_CAPABILITY_DEPRECATION),
         "boundary": {
             "launches_live_model": False,
             "executes_coding_task": False,
@@ -102,6 +122,10 @@ def build_codex_local_capability(
 
 def validate_codex_local_capability(receipt: dict[str, object]) -> list[str]:
     """Return validation errors for a Codex local capability receipt."""
+
+    canonical = _witnessd_canonical()
+    if canonical is not None:
+        return canonical.validate_codex_local_capability(receipt)
 
     errors: list[str] = []
     if receipt.get("kind") != CODEX_LOCAL_CAPABILITY_KIND:
@@ -139,6 +163,13 @@ def write_codex_local_capability(path: Path, receipt: dict[str, object]) -> None
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _witnessd_canonical() -> Any | None:
+    try:
+        return importlib.import_module("witnessd.codex_capability")
+    except ImportError:
+        return None
 
 
 def _version_probe_not_run() -> dict[str, object]:

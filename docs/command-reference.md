@@ -111,7 +111,11 @@ python -m depone codex-local-capability --repo . --codex-binary definitely-missi
 
 Important boundary: these commands may exist to create deterministic receipts or
 compatibility fixtures, but the flagship runtime path belongs in witnessd. Do not
-present these helpers as a full ORRO engine.
+present these helpers as a full ORRO engine. `team-launch-preflight`,
+`team-worktree-prep`, `team-shell-lane-launch`, and `codex-local-capability` are
+deprecated compatibility surfaces under the Phase 2 TCB extraction plan; new
+runtime preflight, worktree mutation, provider probing, and lane execution belong
+in witnessd.
 
 ---
 

@@ -14,6 +14,7 @@ This file exists to prevent doc drift. It is a map, not a second spec.
 | Human quickstart | [`../README.md`](../README.md) |
 | Command inventory and compatibility reference | [`command-reference.md`](command-reference.md) |
 | ORRO proofcheck hardening policy | [`orro-proofcheck-hardening.md`](orro-proofcheck-hardening.md) |
+| Phase 2 TCB extraction plan | [`phase2-tcb-extraction.md`](phase2-tcb-extraction.md) |
 | Claude/session orientation | [`../CLAUDE.md`](../CLAUDE.md) |
 | Codex/session orientation | [`../AGENTS.md`](../AGENTS.md) |
 | Compatibility skill text | [`../SKILL.md`](../SKILL.md) |

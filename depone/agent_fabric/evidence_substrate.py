@@ -27,6 +27,8 @@ DSSE_PAYLOAD_TYPE = "application/vnd.in-toto+json"
 SPAN_SCHEMA_VERSION = "1.0"
 DIGEST_MODE_RAW = "raw"
 DIGEST_MODE_CANONICAL_JSON = "canonical-json"
+RUN_INTENT_SUBJECT_NAME = "run-intent"
+REDACTION_MANIFEST_SUBJECT_NAME = "redaction-manifest"
 
 
 def _canonical_json(value: Any) -> str:
@@ -47,6 +49,7 @@ def build_intoto_statement_from_capture(
     *,
     name: str = "depone-capture-manifest",
     runner_receipt: dict[str, Any] | None = None,
+    run_intent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Serialize an existing capture manifest as an in-toto Statement."""
 
@@ -79,6 +82,13 @@ def build_intoto_statement_from_capture(
             {
                 "name": "runner_receipt",
                 "digest": {"sha256": canonical_hash(runner_receipt)},
+            }
+        )
+    if isinstance(run_intent, dict):
+        subject.append(
+            {
+                "name": RUN_INTENT_SUBJECT_NAME,
+                "digest": {"sha256": canonical_hash(run_intent)},
             }
         )
 
@@ -123,6 +133,9 @@ def build_intoto_statement_from_capture(
                 if isinstance(runner_receipt, dict)
                 else None
             ),
+            "run_intent_hash": (
+                canonical_hash(run_intent) if isinstance(run_intent, dict) else None
+            ),
             "boundary": {
                 "raises_assurance": False,
                 "signed": False,
@@ -165,6 +178,142 @@ def _subject_names(statement: dict[str, Any]) -> list[str]:
         if isinstance(item, dict) and isinstance(item.get("name"), str):
             names.append(item["name"])
     return names
+
+
+def _artifact_index(subjects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": item["name"],
+            "digest": {"sha256": item["digest"]["sha256"]},
+        }
+        for item in sorted(subjects, key=lambda record: record["name"])
+    ]
+
+
+def _artifact_merkle_root(artifact_index: list[dict[str, Any]]) -> str:
+    leaves = [
+        canonical_hash({"name": item["name"], "digest": item["digest"]})
+        for item in artifact_index
+    ]
+    if not leaves:
+        return canonical_hash([])
+    level = leaves
+    while len(level) > 1:
+        next_level: list[str] = []
+        for index in range(0, len(level), 2):
+            left = level[index]
+            right = level[index + 1] if index + 1 < len(level) else left
+            next_level.append(canonical_hash({"left": left, "right": right}))
+        level = next_level
+    return level[0]
+
+
+def _valid_subject_records(statement: dict[str, Any]) -> list[dict[str, Any]]:
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list):
+        return []
+    records: list[dict[str, Any]] = []
+    for item in subjects:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        digest = item.get("digest")
+        sha256 = digest.get("sha256") if isinstance(digest, dict) else None
+        if isinstance(name, str) and isinstance(sha256, str) and sha256:
+            records.append({"name": name, "digest": {"sha256": sha256}})
+    return records
+
+
+def _apply_signed_artifact_index_verification(
+    statement: dict[str, Any], verdict: dict[str, Any]
+) -> None:
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        return
+    artifact_index = predicate.get("artifact_index")
+    artifact_merkle_root = predicate.get("artifact_merkle_root")
+    if artifact_index is None and artifact_merkle_root is None:
+        return
+    expected_index = _artifact_index(_valid_subject_records(statement))
+    reasons = list(verdict.get("reasons", []))
+    if artifact_index != expected_index:
+        verdict["decision"] = "blocked"
+        reasons.append("artifact index does not match signed subjects")
+    if artifact_merkle_root != _artifact_merkle_root(expected_index):
+        verdict["decision"] = "blocked"
+        reasons.append("artifact merkle root does not match artifact index")
+    for result in verdict.get("subject_results", []):
+        if isinstance(result, dict) and result.get("status") == "missing":
+            result["status"] = "incomplete"
+            reasons.append(f"subject artifact incomplete: {result.get('name')}")
+            verdict["decision"] = "blocked"
+    verdict["reasons"] = reasons
+
+
+def _apply_signed_run_intent_completeness(
+    statement: dict[str, Any], verdict: dict[str, Any]
+) -> None:
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        return
+    if predicate.get("artifact_index") is None:
+        return
+    if RUN_INTENT_SUBJECT_NAME in _subject_names(statement):
+        return
+    verdict["decision"] = "blocked"
+    verdict.setdefault("subject_results", []).append(
+        {
+            "name": RUN_INTENT_SUBJECT_NAME,
+            "expected": None,
+            "actual": None,
+            "status": "incomplete",
+        }
+    )
+    verdict["reasons"] = list(verdict.get("reasons", [])) + [
+        f"required subject incomplete: {RUN_INTENT_SUBJECT_NAME}"
+    ]
+
+
+def _load_run_intent(path: str | None) -> dict[str, Any] | None:
+    if not path:
+        return None
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    intent = payload.get("intent")
+    if isinstance(intent, dict):
+        return intent
+    return payload
+
+
+def _apply_signed_redaction_manifest_completeness(
+    statement: dict[str, Any],
+    verdict: dict[str, Any],
+    artifact_paths: dict[str, str],
+) -> None:
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict) or predicate.get("artifact_index") is None:
+        return
+    run_intent = _load_run_intent(artifact_paths.get(RUN_INTENT_SUBJECT_NAME))
+    if not isinstance(run_intent, dict) or run_intent.get("capture_profile") != "redacted":
+        return
+    if REDACTION_MANIFEST_SUBJECT_NAME in _subject_names(statement):
+        return
+    verdict["decision"] = "blocked"
+    verdict.setdefault("subject_results", []).append(
+        {
+            "name": REDACTION_MANIFEST_SUBJECT_NAME,
+            "expected": None,
+            "actual": None,
+            "status": "incomplete",
+        }
+    )
+    verdict["reasons"] = list(verdict.get("reasons", [])) + [
+        f"required subject incomplete: {REDACTION_MANIFEST_SUBJECT_NAME}"
+    ]
 
 
 def resolve_present_artifact_digests(
@@ -582,6 +731,9 @@ def ingest_signed_evidence_bundle(
         artifact_digest_modes,
     )
     verdict = ingest_external_statement(statement, present_digests, unreadable)
+    _apply_signed_artifact_index_verification(statement, verdict)
+    _apply_signed_run_intent_completeness(statement, verdict)
+    _apply_signed_redaction_manifest_completeness(statement, verdict, artifact_paths)
     verdict["signing_status"] = SIGNING_STATUS_OPERATOR_KEY
     verdict["signature_verified"] = True
     verdict["signature_boundary"] = bundle.get("signature_boundary")
@@ -661,11 +813,18 @@ def build_evidence_bundle(
     capture_manifest: dict[str, Any],
     *,
     runner_receipt: dict[str, Any] | None = None,
+    run_intent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     statement = build_intoto_statement_from_capture(
         capture_manifest,
         runner_receipt=runner_receipt,
+        run_intent=run_intent,
     )
+    predicate = statement.get("predicate")
+    if isinstance(predicate, dict):
+        artifact_index = _artifact_index(_valid_subject_records(statement))
+        predicate["artifact_index"] = artifact_index
+        predicate["artifact_merkle_root"] = _artifact_merkle_root(artifact_index)
     return {
         "kind": "depone-evidence-substrate-bundle",
         "schema_version": "1.0",
@@ -690,6 +849,7 @@ def validate_statement_for_capture(
     capture_manifest: dict[str, Any],
     *,
     runner_receipt: dict[str, Any] | None = None,
+    run_intent: dict[str, Any] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     if statement.get("_type") != INTOTO_STATEMENT_TYPE:
@@ -713,6 +873,8 @@ def validate_statement_for_capture(
         expected["observer_capture"] = observer_hash
     if isinstance(runner_receipt, dict):
         expected["runner_receipt"] = canonical_hash(runner_receipt)
+    if isinstance(run_intent, dict):
+        expected[RUN_INTENT_SUBJECT_NAME] = canonical_hash(run_intent)
     for name, digest in expected.items():
         if digests.get(name) != digest:
             errors.append(f"statement subject digest mismatch: {name}")

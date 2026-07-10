@@ -3,47 +3,62 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import sys
 
-from depone.cli import (
-    agent_fabric_adapter_smoke,
-    agent_fabric_claim_gate,
-    agent_fabric_controlled_capture,
-    agent_fabric_dogfood_evidence,
-    agent_fabric_evidence_chain,
-    agent_fabric_evidence_ingest,
-    agent_fabric_evidence_substrate,
-    agent_fabric_harness_snapshot,
-    agent_fabric_observe,
-    agent_fabric_paired_evidence,
-    agent_fabric_paired_run,
-    agent_fabric_seal,
-    agent_fabric_sign,
-    agent_fabric_smoke,
-    agent_fabric_team_ledger,
-    team_pr_artifact,
-    team_merge_attempt,
-    agent_fabric_verify_seal,
-    agent_fabric_verify_signature,
-    advance,
-    codex_local_capability,
-    demo,
-    design,
-    doctor,
-    evidence_next,
-    evidence_run,
-    proofcheck,
-    team_dry_run,
-    team_launch_preflight,
-    team_shell_lane_launch,
-    team_worktree_prep,
-    validate,
-    validate_contracts,
-)
-from depone import compile as compile_mod
 from depone.cli._response import EXIT_INTERNAL, EXIT_USAGE, emit_error, emit_json
-from depone.mcp import server as mcp_server
-from depone import verify as verify_mod
+
+
+_LAZY_MODULES = {
+    "agent_fabric_adapter_smoke": "depone.cli.agent_fabric_adapter_smoke",
+    "agent_fabric_claim_gate": "depone.cli.agent_fabric_claim_gate",
+    "agent_fabric_controlled_capture": "depone.cli.agent_fabric_controlled_capture",
+    "agent_fabric_dogfood_evidence": "depone.cli.agent_fabric_dogfood_evidence",
+    "agent_fabric_evidence_chain": "depone.cli.agent_fabric_evidence_chain",
+    "agent_fabric_evidence_ingest": "depone.cli.agent_fabric_evidence_ingest",
+    "agent_fabric_evidence_substrate": "depone.cli.agent_fabric_evidence_substrate",
+    "agent_fabric_harness_snapshot": "depone.cli.agent_fabric_harness_snapshot",
+    "agent_fabric_observe": "depone.cli.agent_fabric_observe",
+    "agent_fabric_paired_evidence": "depone.cli.agent_fabric_paired_evidence",
+    "agent_fabric_paired_run": "depone.cli.agent_fabric_paired_run",
+    "agent_fabric_seal": "depone.cli.agent_fabric_seal",
+    "agent_fabric_sign": "depone.cli.agent_fabric_sign",
+    "agent_fabric_smoke": "depone.cli.agent_fabric_smoke",
+    "agent_fabric_team_ledger": "depone.cli.agent_fabric_team_ledger",
+    "agent_fabric_verify_seal": "depone.cli.agent_fabric_verify_seal",
+    "agent_fabric_verify_signature": "depone.cli.agent_fabric_verify_signature",
+    "advance": "depone.cli.advance",
+    "codex_local_capability": "depone.cli.codex_local_capability",
+    "compile_mod": "depone.compile",
+    "demo": "depone.cli.demo",
+    "design": "depone.cli.design",
+    "doctor": "depone.cli.doctor",
+    "evidence_next": "depone.cli.evidence_next",
+    "evidence_run": "depone.cli.evidence_run",
+    "mcp_server": "depone.mcp.server",
+    "proofcheck": "depone.cli.proofcheck",
+    "team_dry_run": "depone.cli.team_dry_run",
+    "team_launch_preflight": "depone.cli.team_launch_preflight",
+    "team_merge_attempt": "depone.cli.team_merge_attempt",
+    "team_pr_artifact": "depone.cli.team_pr_artifact",
+    "team_shell_lane_launch": "depone.cli.team_shell_lane_launch",
+    "team_worktree_prep": "depone.cli.team_worktree_prep",
+    "validate": "depone.cli.validate",
+    "validate_contracts": "depone.cli.validate_contracts",
+    "verify_mod": "depone.verify",
+}
+
+
+def _load(name: str):
+    module = importlib.import_module(_LAZY_MODULES[name])
+    globals()[name] = module
+    return module
+
+
+def __getattr__(name: str):
+    if name in _LAZY_MODULES:
+        return _load(name)
+    raise AttributeError(name)
 
 
 class DeponeArgumentParser(argparse.ArgumentParser):
@@ -1414,81 +1429,81 @@ def main() -> None:
 
     try:
         if args.command == "design":
-            design.run(args)
+            _load("design").run(args)
         elif args.command == "validate":
-            validate.run(args)
+            _load("validate").run(args)
         elif args.command == "compile":
-            compile_mod.run(args)
+            _load("compile_mod").run(args)
         elif args.command == "verify":
-            verify_mod.run(args)
+            _load("verify_mod").run(args)
         elif args.command == "proofcheck":
-            proofcheck.run(args)
+            _load("proofcheck").run(args)
         elif args.command == "validate-contracts":
-            validate_contracts.run(args)
+            _load("validate_contracts").run(args)
         elif args.command == "mcp":
-            mcp_server.run(args)
+            _load("mcp_server").run(args)
         elif args.command == "doctor":
-            doctor.run(args)
+            _load("doctor").run(args)
         elif args.command == "agent-fabric-smoke":
-            agent_fabric_smoke.run(args)
+            _load("agent_fabric_smoke").run(args)
         elif args.command == "agent-fabric-harness-snapshot":
-            agent_fabric_harness_snapshot.run(args)
+            _load("agent_fabric_harness_snapshot").run(args)
         elif args.command == "agent-fabric-adapter-smoke":
-            agent_fabric_adapter_smoke.run(args)
+            _load("agent_fabric_adapter_smoke").run(args)
         elif args.command == "agent-fabric-controlled-capture":
-            agent_fabric_controlled_capture.run(args)
+            _load("agent_fabric_controlled_capture").run(args)
         elif args.command == "agent-fabric-dogfood-evidence":
-            agent_fabric_dogfood_evidence.run(args)
+            _load("agent_fabric_dogfood_evidence").run(args)
         elif args.command == "agent-fabric-paired-evidence":
-            agent_fabric_paired_evidence.run(args)
+            _load("agent_fabric_paired_evidence").run(args)
         elif args.command == "agent-fabric-paired-run":
-            agent_fabric_paired_run.run(args)
+            _load("agent_fabric_paired_run").run(args)
         elif args.command in ("agent-fabric-observe", "observe"):
-            agent_fabric_observe.run(args)
+            _load("agent_fabric_observe").run(args)
         elif args.command == "agent-fabric-seal":
-            agent_fabric_seal.run(args)
+            _load("agent_fabric_seal").run(args)
         elif args.command == "agent-fabric-verify-seal":
-            agent_fabric_verify_seal.run(args)
+            _load("agent_fabric_verify_seal").run(args)
         elif args.command == "agent-fabric-sign":
-            agent_fabric_sign.run(args)
+            _load("agent_fabric_sign").run(args)
         elif args.command == "agent-fabric-verify-signature":
-            agent_fabric_verify_signature.run(args)
+            _load("agent_fabric_verify_signature").run(args)
         elif args.command in ("agent-fabric-evidence-substrate", "evidence-substrate"):
-            agent_fabric_evidence_substrate.run(args)
+            _load("agent_fabric_evidence_substrate").run(args)
         elif args.command in ("agent-fabric-evidence-ingest", "evidence-ingest"):
-            agent_fabric_evidence_ingest.run(args)
+            _load("agent_fabric_evidence_ingest").run(args)
         elif args.command in ("agent-fabric-evidence-chain", "evidence-chain"):
-            agent_fabric_evidence_chain.run(args)
+            _load("agent_fabric_evidence_chain").run(args)
         elif args.command == "team-pr-artifact":
-            team_pr_artifact.run(args)
+            _load("team_pr_artifact").run(args)
         elif args.command == "team-merge-attempt":
-            team_merge_attempt.run(args)
+            _load("team_merge_attempt").run(args)
         elif args.command in ("team-ledger", "agent-fabric-team-ledger"):
-            agent_fabric_team_ledger.run(args)
+            _load("agent_fabric_team_ledger").run(args)
         elif args.command == "team-ledger-merge-receipt":
-            agent_fabric_team_ledger.run_merge_receipt(args)
+            _load("agent_fabric_team_ledger").run_merge_receipt(args)
         elif args.command == "worktree-lane-receipt":
-            agent_fabric_team_ledger.run_worktree_receipt(args)
+            _load("agent_fabric_team_ledger").run_worktree_receipt(args)
         elif args.command == "team-dry-run":
-            team_dry_run.run(args)
+            _load("team_dry_run").run(args)
         elif args.command == "team-launch-preflight":
-            team_launch_preflight.run(args)
+            _load("team_launch_preflight").run(args)
         elif args.command == "team-worktree-prep":
-            team_worktree_prep.run(args)
+            _load("team_worktree_prep").run(args)
         elif args.command == "team-shell-lane-launch":
-            team_shell_lane_launch.run(args)
+            _load("team_shell_lane_launch").run(args)
         elif args.command == "codex-local-capability":
-            codex_local_capability.run(args)
+            _load("codex_local_capability").run(args)
         elif args.command in ("evidence-run", "run"):
-            evidence_run.run(args)
+            _load("evidence_run").run(args)
         elif args.command in ("evidence-next", "next"):
-            evidence_next.run(args)
+            _load("evidence_next").run(args)
         elif args.command == "advance":
-            advance.run(args)
+            _load("advance").run(args)
         elif args.command == "agent-fabric-claim-gate":
-            agent_fabric_claim_gate.run(args)
+            _load("agent_fabric_claim_gate").run(args)
         elif args.command == "demo":
-            demo.run(args)
+            _load("demo").run(args)
         else:
             parser.print_help()
             sys.exit(EXIT_USAGE)

@@ -12,6 +12,11 @@ from depone.agent_fabric.team_ledger import TEAM_LEDGER_KIND, TEAM_LEDGER_SCHEMA
 TEAM_LAUNCH_PREFLIGHT_KIND = "depone-team-launch-preflight"
 TEAM_LAUNCH_PREFLIGHT_SCHEMA_VERSION = "0.1"
 VALID_LAUNCH_INTENTS = frozenset({"plan-only", "launch-ready"})
+TEAM_LAUNCH_PREFLIGHT_DEPRECATION = {
+    "status": "deprecated",
+    "migration_target": "witnessd",
+    "reason": "team scheduling and launch preflight belong to the witnessd runtime boundary",
+}
 
 
 def build_team_launch_preflight(
@@ -75,6 +80,7 @@ def build_team_launch_preflight(
         "adapter_availability": adapter_availability or {},
         "errors": errors,
         "source_hashes": {"team_dry_run": canonical_hash(team_dry_run)},
+        "deprecation": dict(TEAM_LAUNCH_PREFLIGHT_DEPRECATION),
         "boundary": {
             "launches_agents": False,
             "creates_worktrees": False,

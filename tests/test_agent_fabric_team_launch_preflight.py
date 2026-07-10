@@ -51,6 +51,7 @@ class AgentFabricTeamLaunchPreflightTests(unittest.TestCase):
         self.assertEqual(payload["launch_intent"], "plan-only")
         self.assertFalse(payload["boundary"]["launches_agents"])
         self.assertFalse(payload["boundary"]["creates_worktrees"])
+        self.assertEqual(payload["deprecation"]["migration_target"], "witnessd")
         self.assertEqual(validate_team_launch_preflight(payload), [])
 
     def test_build_team_launch_preflight_ledger_binds_preflight_lanes(self) -> None:

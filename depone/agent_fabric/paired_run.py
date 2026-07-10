@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -234,7 +235,19 @@ def run_codex_exec(
     timeout_seconds: int = 120,
     sandbox: str = "workspace-write",
 ) -> dict[str, Any]:
-    """Run Codex non-interactively and return a runner receipt."""
+    """Run Codex non-interactively and return a runner receipt.
+
+    Deprecated: Evidence v2 Codex capture is owned by
+    ``witnessd.adapters.codex.run_codex_lane`` so raw JSONL bytes and
+    AgentEventEnvelope normalization stay inside the provider adapter.
+    """
+
+    warnings.warn(
+        "run_codex_exec is deprecated; use witnessd.adapters.codex.run_codex_lane "
+        "for Evidence v2 Codex capture",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
     if not prompt.strip():
         raise PairedRunError("ERR_CODEX_PROMPT_MISSING", "codex prompt must not be empty")

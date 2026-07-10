@@ -33,16 +33,34 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         tmp = Path(self._tmp.name)
+        self._run_intent = {
+            "schema_version": "1.0",
+            "run_id": "depone-test-run",
+            "baseline": {"git_head": "0123456789abcdef"},
+            "allowed_paths": ["depone/fixtures/agent_fabric/reference_adapter_shell.json"],
+            "approval": {"policy": "never"},
+            "sandbox": {"mode": "workspace-write"},
+            "provider": {"name": "codex", "adapter_version": "test"},
+            "instruction_hashes": {},
+            "budgets": {},
+            "capture_profile": "full",
+        }
         (tmp / "capture-manifest.json").write_text(
             json.dumps(self._capture), encoding="utf-8"
         )
         (tmp / "observer-capture.json").write_text(
             json.dumps(self._capture["observer_capture"]), encoding="utf-8"
         )
+        (tmp / "run-intent.json").write_text(
+            json.dumps(self._run_intent), encoding="utf-8"
+        )
         self._tmp_dir = tmp
 
     def _bundle(self) -> dict[str, object]:
         return build_evidence_bundle(self._capture)
+
+    def _signed_bundle_input(self) -> dict[str, object]:
+        return build_evidence_bundle(self._capture, run_intent=self._run_intent)
 
     def _artifact_paths(self) -> dict[str, str]:
         return {
@@ -51,12 +69,22 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             "observer_capture": str(self._tmp_dir / "observer-capture.json"),
         }
 
+    def _signed_artifact_paths(self) -> dict[str, str]:
+        paths = self._artifact_paths()
+        paths["run-intent"] = str(self._tmp_dir / "run-intent.json")
+        return paths
+
     def _artifact_digest_modes(self) -> dict[str, str]:
         return {
             "source_fixture": DIGEST_MODE_CANONICAL_JSON,
             "depone-capture-manifest": DIGEST_MODE_CANONICAL_JSON,
             "observer_capture": DIGEST_MODE_CANONICAL_JSON,
         }
+
+    def _signed_artifact_digest_modes(self) -> dict[str, str]:
+        modes = self._artifact_digest_modes()
+        modes["run-intent"] = DIGEST_MODE_CANONICAL_JSON
+        return modes
 
     def _external_dir(self) -> Path:
         return Path("depone/fixtures/agent_fabric/external")
@@ -230,7 +258,7 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             temp_dir = Path(temp_text)
             private_key, public_key = _generate_ed25519_keypair(temp_dir)
             signed_bundle = sign_evidence_bundle(
-                self._bundle(),
+                self._signed_bundle_input(),
                 str(private_key),
                 key_id="operator-test-key",
             )
@@ -238,13 +266,13 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             verdict = ingest_signed_evidence_bundle(
                 signed_bundle,
                 str(public_key),
-                self._artifact_paths(),
-                artifact_digest_modes=self._artifact_digest_modes(),
+                self._signed_artifact_paths(),
+                artifact_digest_modes=self._signed_artifact_digest_modes(),
                 otel_spans=signed_bundle["otel_spans"],
             )
 
         self.assertEqual(verdict["decision"], "pass")
-        self.assertEqual(verdict["verified_subject_count"], 3)
+        self.assertEqual(verdict["verified_subject_count"], 4)
         self.assertEqual(verdict["signing_status"], "signed-ed25519-operator-key")
         self.assertTrue(verdict["signature_verified"])
         self.assertFalse(verdict["boundary"]["raises_assurance"])
@@ -256,13 +284,13 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             temp_dir = Path(temp_text)
             private_key, public_key = _generate_ed25519_keypair(temp_dir)
             signed_bundle = sign_evidence_bundle(
-                self._bundle(),
+                self._signed_bundle_input(),
                 str(private_key),
                 key_id="operator-test-key",
             )
-            artifact_paths = self._artifact_paths()
+            artifact_paths = self._signed_artifact_paths()
             artifact_paths.pop("observer_capture")
-            digest_modes = self._artifact_digest_modes()
+            digest_modes = self._signed_artifact_digest_modes()
             digest_modes.pop("observer_capture")
 
             verdict = ingest_signed_evidence_bundle(
@@ -277,6 +305,34 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
         self.assertIn(
             "incomplete",
             {result["status"] for result in verdict["subject_results"]},
+        )
+
+    def test_signed_bundle_without_run_intent_subject_is_incomplete(self) -> None:
+        self._require_openssl()
+        with tempfile.TemporaryDirectory() as temp_text:
+            temp_dir = Path(temp_text)
+            private_key, public_key = _generate_ed25519_keypair(temp_dir)
+            signed_bundle = sign_evidence_bundle(
+                self._bundle(),
+                str(private_key),
+                key_id="operator-test-key",
+            )
+
+            verdict = ingest_signed_evidence_bundle(
+                signed_bundle,
+                str(public_key),
+                self._artifact_paths(),
+                artifact_digest_modes=self._artifact_digest_modes(),
+                otel_spans=signed_bundle["otel_spans"],
+            )
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "incomplete",
+            {result["status"] for result in verdict["subject_results"]},
+        )
+        self.assertTrue(
+            any("run-intent" in reason for reason in verdict["reasons"])
         )
 
     def test_signed_bundle_blocks_when_public_key_does_not_verify(self) -> None:
@@ -310,7 +366,7 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             temp_dir = Path(temp_text)
             private_key, public_key = _generate_ed25519_keypair(temp_dir)
             signed_bundle = sign_evidence_bundle(
-                self._bundle(),
+                self._signed_bundle_input(),
                 str(private_key),
                 key_id="operator-test-key",
             )
@@ -340,6 +396,8 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
                     ),
                     "--artifact",
                     f"observer_capture={self._artifact_paths()['observer_capture']}:json",
+                    "--artifact",
+                    f"run-intent={self._signed_artifact_paths()['run-intent']}:json",
                     "--out",
                     str(verdict_path),
                 ],

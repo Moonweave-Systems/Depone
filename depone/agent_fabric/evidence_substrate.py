@@ -27,6 +27,7 @@ DSSE_PAYLOAD_TYPE = "application/vnd.in-toto+json"
 SPAN_SCHEMA_VERSION = "1.0"
 DIGEST_MODE_RAW = "raw"
 DIGEST_MODE_CANONICAL_JSON = "canonical-json"
+RUN_INTENT_SUBJECT_NAME = "run-intent"
 
 
 def _canonical_json(value: Any) -> str:
@@ -47,6 +48,7 @@ def build_intoto_statement_from_capture(
     *,
     name: str = "depone-capture-manifest",
     runner_receipt: dict[str, Any] | None = None,
+    run_intent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Serialize an existing capture manifest as an in-toto Statement."""
 
@@ -79,6 +81,13 @@ def build_intoto_statement_from_capture(
             {
                 "name": "runner_receipt",
                 "digest": {"sha256": canonical_hash(runner_receipt)},
+            }
+        )
+    if isinstance(run_intent, dict):
+        subject.append(
+            {
+                "name": RUN_INTENT_SUBJECT_NAME,
+                "digest": {"sha256": canonical_hash(run_intent)},
             }
         )
 
@@ -122,6 +131,9 @@ def build_intoto_statement_from_capture(
                 }
                 if isinstance(runner_receipt, dict)
                 else None
+            ),
+            "run_intent_hash": (
+                canonical_hash(run_intent) if isinstance(run_intent, dict) else None
             ),
             "boundary": {
                 "raises_assurance": False,
@@ -235,6 +247,30 @@ def _apply_signed_artifact_index_verification(
             reasons.append(f"subject artifact incomplete: {result.get('name')}")
             verdict["decision"] = "blocked"
     verdict["reasons"] = reasons
+
+
+def _apply_signed_run_intent_completeness(
+    statement: dict[str, Any], verdict: dict[str, Any]
+) -> None:
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        return
+    if predicate.get("artifact_index") is None:
+        return
+    if RUN_INTENT_SUBJECT_NAME in _subject_names(statement):
+        return
+    verdict["decision"] = "blocked"
+    verdict.setdefault("subject_results", []).append(
+        {
+            "name": RUN_INTENT_SUBJECT_NAME,
+            "expected": None,
+            "actual": None,
+            "status": "incomplete",
+        }
+    )
+    verdict["reasons"] = list(verdict.get("reasons", [])) + [
+        f"required subject incomplete: {RUN_INTENT_SUBJECT_NAME}"
+    ]
 
 
 def resolve_present_artifact_digests(
@@ -653,6 +689,7 @@ def ingest_signed_evidence_bundle(
     )
     verdict = ingest_external_statement(statement, present_digests, unreadable)
     _apply_signed_artifact_index_verification(statement, verdict)
+    _apply_signed_run_intent_completeness(statement, verdict)
     verdict["signing_status"] = SIGNING_STATUS_OPERATOR_KEY
     verdict["signature_verified"] = True
     verdict["signature_boundary"] = bundle.get("signature_boundary")
@@ -732,10 +769,12 @@ def build_evidence_bundle(
     capture_manifest: dict[str, Any],
     *,
     runner_receipt: dict[str, Any] | None = None,
+    run_intent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     statement = build_intoto_statement_from_capture(
         capture_manifest,
         runner_receipt=runner_receipt,
+        run_intent=run_intent,
     )
     predicate = statement.get("predicate")
     if isinstance(predicate, dict):
@@ -766,6 +805,7 @@ def validate_statement_for_capture(
     capture_manifest: dict[str, Any],
     *,
     runner_receipt: dict[str, Any] | None = None,
+    run_intent: dict[str, Any] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     if statement.get("_type") != INTOTO_STATEMENT_TYPE:
@@ -789,6 +829,8 @@ def validate_statement_for_capture(
         expected["observer_capture"] = observer_hash
     if isinstance(runner_receipt, dict):
         expected["runner_receipt"] = canonical_hash(runner_receipt)
+    if isinstance(run_intent, dict):
+        expected[RUN_INTENT_SUBJECT_NAME] = canonical_hash(run_intent)
     for name, digest in expected.items():
         if digests.get(name) != digest:
             errors.append(f"statement subject digest mismatch: {name}")

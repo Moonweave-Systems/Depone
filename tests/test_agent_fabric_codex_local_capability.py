@@ -21,10 +21,7 @@ class CodexLocalCapabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".git").mkdir()
-            with (
-                patch("shutil.which", return_value=None),
-                patch("depone.agent_fabric.codex_local_capability.importlib.import_module", side_effect=ImportError),
-            ):
+            with patch("shutil.which", return_value=None):
                 receipt = build_codex_local_capability(
                     repo=root,
                     codex_binary="codex",
@@ -53,7 +50,6 @@ class CodexLocalCapabilityTests(unittest.TestCase):
         self.assertFalse(receipt["boundary"]["launches_live_model"])
         self.assertFalse(receipt["boundary"]["executes_coding_task"])
         self.assertFalse(receipt["boundary"]["raises_assurance"])
-        self.assertEqual(receipt["deprecation"]["canonical_module"], "witnessd.codex_capability")
         self.assertEqual(validate_codex_local_capability(receipt), [])
 
     def test_pass_receipt_records_version_repo_and_instruction_hash(self) -> None:

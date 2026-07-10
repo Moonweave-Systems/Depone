@@ -41,10 +41,7 @@ class Phase0CodexLocalCapabilityQaTests(unittest.TestCase):
             outside.write_text("outside secret instructions", encoding="utf-8")
             (repo / "AGENTS.md").symlink_to(outside)
 
-            with (
-                patch("shutil.which", return_value=fake_codex.as_posix()),
-                patch("depone.agent_fabric.codex_local_capability.importlib.import_module", side_effect=ImportError),
-            ):
+            with patch("shutil.which", return_value=fake_codex.as_posix()):
                 receipt = build_codex_local_capability(
                     repo=repo,
                     instruction_files=[Path("AGENTS.md")],
@@ -76,8 +73,9 @@ class Phase0CodexLocalCapabilityQaTests(unittest.TestCase):
                     )
                 return SimpleNamespace(returncode=128, stdout="", stderr="fatal")
 
-            with patch.object(capability.subprocess, "run", side_effect=fake_run):
-                facts = capability._git_facts(repo)
+            canonical = capability._canonical()
+            with patch.object(canonical.subprocess, "run", side_effect=fake_run):
+                facts = canonical._git_facts(repo)
 
         self.assertTrue(facts["is_git_worktree"])
         self.assertNotEqual(facts.get("dirty"), False)
@@ -88,11 +86,11 @@ class Phase0CodexLocalCapabilityQaTests(unittest.TestCase):
             repo = Path(repo_dir)
 
             with patch.object(
-                capability.subprocess,
+                capability._canonical().subprocess,
                 "run",
                 side_effect=subprocess.TimeoutExpired(["git", "status"], 10),
             ):
-                facts = capability._git_facts(repo)
+                facts = capability._canonical()._git_facts(repo)
 
         self.assertFalse(facts["is_git_worktree"])
         self.assertNotEqual(facts.get("dirty"), False)

@@ -164,6 +164,13 @@ context and planning, but it is not execution proof and must not produce a
 For direct verifier use, steps 1, 2, 3, and 6 are skipped: `proofcheck` or
 `depone` reads existing evidence and reports what the bytes support.
 
+## Phase 0 evidence limitations
+
+Phase 0 keeps local Codex capability checks fail-closed on uncertain git facts
+and instruction symlink escapes. This is release safety only: Depone still
+reports only what persisted evidence bytes support, not code correctness or
+complete artifact binding.
+
 ## Quality
 
 Release readiness is checked with:
@@ -177,14 +184,7 @@ python scripts/check_readme_quality.py README.md
 
 ## Documentation
 
-- [`docs/spec.md`](docs/spec.md) - authoritative Depone repository spec.
-- <https://github.com/Moonweave-Systems/ORRO> - product/distribution/wrapper repository.
-- [`docs/orro-engine-contract-v0.md`](docs/orro-engine-contract-v0.md) - cross-engine ORRO contract.
-- [`docs/README.md`](docs/README.md) - documentation map and legacy policy.
-- [`docs/command-reference.md`](docs/command-reference.md) - command inventory and compatibility reference.
-- [`docs/orro-proofcheck-hardening.md`](docs/orro-proofcheck-hardening.md) - ORRO negative-corpus and wrapper-artifact proofcheck policy.
-- [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md) and [`SKILL.md`](SKILL.md) - compatibility planning and skill surfaces derived from the spec.
+Key references: [`docs/spec.md`](docs/spec.md), [`docs/orro-engine-contract-v0.md`](docs/orro-engine-contract-v0.md), [`docs/command-reference.md`](docs/command-reference.md), [`docs/orro-proofcheck-hardening.md`](docs/orro-proofcheck-hardening.md), [`references/workflow-plan-schema.md`](references/workflow-plan-schema.md), [`SKILL.md`](SKILL.md), and <https://github.com/Moonweave-Systems/ORRO>.
 
 ## License
-
 MIT. See [`LICENSE`](LICENSE).

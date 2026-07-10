@@ -335,6 +335,39 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
             any("run-intent" in reason for reason in verdict["reasons"])
         )
 
+    def test_signed_redacted_run_intent_without_redaction_manifest_is_incomplete(self) -> None:
+        self._require_openssl()
+        with tempfile.TemporaryDirectory() as temp_text:
+            temp_dir = Path(temp_text)
+            private_key, public_key = _generate_ed25519_keypair(temp_dir)
+            run_intent = dict(self._run_intent)
+            run_intent["capture_profile"] = "redacted"
+            (self._tmp_dir / "run-intent.json").write_text(
+                json.dumps(run_intent), encoding="utf-8"
+            )
+            signed_bundle = sign_evidence_bundle(
+                build_evidence_bundle(self._capture, run_intent=run_intent),
+                str(private_key),
+                key_id="operator-test-key",
+            )
+
+            verdict = ingest_signed_evidence_bundle(
+                signed_bundle,
+                str(public_key),
+                self._signed_artifact_paths(),
+                artifact_digest_modes=self._signed_artifact_digest_modes(),
+                otel_spans=signed_bundle["otel_spans"],
+            )
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "incomplete",
+            {result["status"] for result in verdict["subject_results"]},
+        )
+        self.assertTrue(
+            any("redaction-manifest" in reason for reason in verdict["reasons"])
+        )
+
     def test_signed_bundle_blocks_when_public_key_does_not_verify(self) -> None:
         self._require_openssl()
         with tempfile.TemporaryDirectory() as temp_text:

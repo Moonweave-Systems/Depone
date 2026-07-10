@@ -28,6 +28,7 @@ SPAN_SCHEMA_VERSION = "1.0"
 DIGEST_MODE_RAW = "raw"
 DIGEST_MODE_CANONICAL_JSON = "canonical-json"
 RUN_INTENT_SUBJECT_NAME = "run-intent"
+REDACTION_MANIFEST_SUBJECT_NAME = "redaction-manifest"
 
 
 def _canonical_json(value: Any) -> str:
@@ -270,6 +271,48 @@ def _apply_signed_run_intent_completeness(
     )
     verdict["reasons"] = list(verdict.get("reasons", [])) + [
         f"required subject incomplete: {RUN_INTENT_SUBJECT_NAME}"
+    ]
+
+
+def _load_run_intent(path: str | None) -> dict[str, Any] | None:
+    if not path:
+        return None
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    intent = payload.get("intent")
+    if isinstance(intent, dict):
+        return intent
+    return payload
+
+
+def _apply_signed_redaction_manifest_completeness(
+    statement: dict[str, Any],
+    verdict: dict[str, Any],
+    artifact_paths: dict[str, str],
+) -> None:
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict) or predicate.get("artifact_index") is None:
+        return
+    run_intent = _load_run_intent(artifact_paths.get(RUN_INTENT_SUBJECT_NAME))
+    if not isinstance(run_intent, dict) or run_intent.get("capture_profile") != "redacted":
+        return
+    if REDACTION_MANIFEST_SUBJECT_NAME in _subject_names(statement):
+        return
+    verdict["decision"] = "blocked"
+    verdict.setdefault("subject_results", []).append(
+        {
+            "name": REDACTION_MANIFEST_SUBJECT_NAME,
+            "expected": None,
+            "actual": None,
+            "status": "incomplete",
+        }
+    )
+    verdict["reasons"] = list(verdict.get("reasons", [])) + [
+        f"required subject incomplete: {REDACTION_MANIFEST_SUBJECT_NAME}"
     ]
 
 
@@ -690,6 +733,7 @@ def ingest_signed_evidence_bundle(
     verdict = ingest_external_statement(statement, present_digests, unreadable)
     _apply_signed_artifact_index_verification(statement, verdict)
     _apply_signed_run_intent_completeness(statement, verdict)
+    _apply_signed_redaction_manifest_completeness(statement, verdict, artifact_paths)
     verdict["signing_status"] = SIGNING_STATUS_OPERATOR_KEY
     verdict["signature_verified"] = True
     verdict["signature_boundary"] = bundle.get("signature_boundary")

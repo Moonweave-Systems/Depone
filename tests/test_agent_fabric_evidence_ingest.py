@@ -250,6 +250,35 @@ class AgentFabricEvidenceIngestTests(unittest.TestCase):
         self.assertFalse(verdict["boundary"]["raises_assurance"])
         self.assertTrue(verdict["boundary"]["trusts_external_signature"])
 
+    def test_signed_bundle_marks_indexed_missing_subject_incomplete(self) -> None:
+        self._require_openssl()
+        with tempfile.TemporaryDirectory() as temp_text:
+            temp_dir = Path(temp_text)
+            private_key, public_key = _generate_ed25519_keypair(temp_dir)
+            signed_bundle = sign_evidence_bundle(
+                self._bundle(),
+                str(private_key),
+                key_id="operator-test-key",
+            )
+            artifact_paths = self._artifact_paths()
+            artifact_paths.pop("observer_capture")
+            digest_modes = self._artifact_digest_modes()
+            digest_modes.pop("observer_capture")
+
+            verdict = ingest_signed_evidence_bundle(
+                signed_bundle,
+                str(public_key),
+                artifact_paths,
+                artifact_digest_modes=digest_modes,
+                otel_spans=signed_bundle["otel_spans"],
+            )
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "incomplete",
+            {result["status"] for result in verdict["subject_results"]},
+        )
+
     def test_signed_bundle_blocks_when_public_key_does_not_verify(self) -> None:
         self._require_openssl()
         with tempfile.TemporaryDirectory() as temp_text:

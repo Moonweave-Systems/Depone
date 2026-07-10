@@ -54,9 +54,11 @@ def build_codex_local_capability(
     git_facts = _git_facts(resolved_repo)
     if git_facts.get("is_git_worktree") is not True:
         blocked_reasons.append("repo is not a git worktree")
-    for probe_error in git_facts.get("probe_errors", []):
-        if isinstance(probe_error, str):
-            blocked_reasons.append(probe_error)
+    probe_errors = git_facts.get("probe_errors")
+    if isinstance(probe_errors, list):
+        for probe_error in probe_errors:
+            if isinstance(probe_error, str):
+                blocked_reasons.append(probe_error)
     if git_facts.get("dirty") is True:
         blocked_reasons.append("repo working tree is dirty")
     contract = build_agent_contract_facts(

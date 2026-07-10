@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 
 from depone.agent_fabric import codex_local_capability as capability
@@ -47,11 +48,13 @@ class Phase0CodexLocalCapabilityQaTests(unittest.TestCase):
                 )
 
         self.assertEqual(receipt["decision"], "blocked")
+        blocked_reasons = cast(list[str], receipt["blocked_reasons"])
         self.assertIn(
             "instruction file path outside repo boundary",
-            receipt["blocked_reasons"],
+            blocked_reasons,
         )
-        instruction = receipt["instruction_files"][0]
+        instruction_files = cast(list[dict[str, object]], receipt["instruction_files"])
+        instruction = instruction_files[0]
         self.assertFalse(instruction["present"])
         self.assertIsNone(instruction["sha256"])
         self.assertIn("blocked_reason", instruction)

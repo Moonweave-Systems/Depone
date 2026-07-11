@@ -100,6 +100,7 @@ Depone owns the evidence contract:
 - trusted-observer provenance validation,
 - DSSE/in-toto-shaped evidence bundle validation,
 - evidence-contract validation,
+- role-capability write-scope conformance validation,
 - schedule and concurrency receipt validation,
 - team-ledger validation,
 - verification-recipe schema and receipt validation,
@@ -214,7 +215,49 @@ Rules:
   input trust roots for a new proofcheck run and must not make missing or
   malformed evidence pass.
 
-### 5.1 ORRO wrapper artifact classification
+### 5.1 Role-capability write-scope conformance
+
+`evidence-contract.json` schema version `v106.role_capability_write_scope`
+adds one verdict-bearing axis: role-capability write-scope conformance.
+
+The declared write scope is read from the pre-execution `run-intent.json`
+artifact, not from witnessd advisory artifacts. The contract directive is:
+
+```json
+{
+  "schema_version": "v106.role_capability_write_scope",
+  "role_capability_write_scope": {
+    "run_intent_path": "run-intent.json",
+    "bundle_path": "bundle.json"
+  }
+}
+```
+
+Depone re-derives conformance by checking:
+
+- `bundle.json` binds the `run-intent` subject digest either to the observed
+  `run-intent.json` bytes (witnessd bundle mode) or to the canonical run-intent
+  object (Depone evidence-substrate compatibility mode).
+- The run-intent DSSE payload decodes to the same object as the artifact
+  `intent`.
+- `intent.role_capability.declared_write_scope` is a non-empty list of glob
+  strings.
+- Every path in `git-diff-name-only.txt` is allowed by that write scope.
+
+Write-scope matching is deterministic: a path conforms when it exactly equals a
+declared pattern or `fnmatchcase(path, pattern)` is true. This glob axis does not
+change the older exact-match meaning of `allowed_touched_files`.
+
+Violations refute the verdict with Depone-owned error codes:
+
+- `ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING`
+- `ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID`
+- `ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION`
+
+witnessd-local `write-scope-declaration.json` remains advisory; it must not be
+trusted as this verdict input.
+
+### 5.2 ORRO wrapper artifact classification
 
 ORRO wrapper artifacts may be useful context for humans, ORRO reports, and
 handoff packaging, but Depone proofcheck must not count them as execution proof

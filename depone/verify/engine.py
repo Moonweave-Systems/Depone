@@ -96,6 +96,14 @@ class ReviewSignal:
 
 
 @dataclass
+class RoleCapabilityConformance:
+    axis: str
+    status: Literal["pass", "fail"]
+    evidence_path: str | None = None
+    error_code: str | None = None
+
+
+@dataclass
 class VerificationReport:
     schema_version: str = "1.0"
     plan_hash: str = ""
@@ -108,12 +116,57 @@ class VerificationReport:
     agent_fabric_captures: list[AgentFabricCaptureCheck] = field(default_factory=list)
     claim_evaluations: list[ClaimEvaluation] = field(default_factory=list)
     review_signals: list[ReviewSignal] = field(default_factory=list)
+    role_capability_conformance: list[RoleCapabilityConformance] = field(
+        default_factory=list
+    )
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
 
 def _compute_plan_hash(plan: dict[str, Any]) -> str:
     raw = json.dumps(plan, sort_keys=True, ensure_ascii=False).encode()
     return hashlib.sha256(raw).hexdigest()
+
+
+def _has_role_capability_write_scope_contract(evidence: EvidenceContext) -> bool:
+    for entry in evidence.files:
+        if entry.path != "evidence-contract.json":
+            continue
+        try:
+            contract = json.loads(entry.content)
+        except json.JSONDecodeError:
+            return False
+        return isinstance(contract, dict) and isinstance(
+            contract.get("role_capability_write_scope"),
+            dict,
+        )
+    return False
+
+
+def _role_capability_conformance(
+    evidence: EvidenceContext,
+    evidence_contract: list[EvidenceContractEntry],
+) -> list[RoleCapabilityConformance]:
+    if not _has_role_capability_write_scope_contract(evidence):
+        return []
+    failure = next(
+        (
+            entry
+            for entry in evidence_contract
+            if entry.code.startswith("ERR_ROLE_CAPABILITY_")
+            or entry.code == "ERR_EVIDENCE_CONTRACT_INVALID"
+        ),
+        None,
+    )
+    if failure is None:
+        return [RoleCapabilityConformance(axis="write_scope", status="pass")]
+    return [
+        RoleCapabilityConformance(
+            axis="write_scope",
+            status="fail",
+            evidence_path=failure.evidence_path,
+            error_code=failure.code,
+        )
+    ]
 
 
 def _resolve_handoff_path(
@@ -509,6 +562,10 @@ def run_verification(
     adv_checks = _adversarial_from_claims(claim_evals)
     budget = check_budget_adherence(plan, evidence)
     evidence_contract = validate_evidence_contract(evidence)
+    role_capability_conformance = _role_capability_conformance(
+        evidence,
+        evidence_contract,
+    )
     agent_fabric_captures = _read_agent_fabric_captures(evidence)
     review_signals = _read_review_signals(evidence)
     handoffs_spec = plan.get("handoffs", [])
@@ -601,5 +658,6 @@ def run_verification(
         agent_fabric_captures=agent_fabric_captures,
         claim_evaluations=claim_evals,
         review_signals=review_signals,
+        role_capability_conformance=role_capability_conformance,
         verdict=overall,
     )

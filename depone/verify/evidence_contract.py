@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import base64
+import fnmatch
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from depone.agent_fabric.claim_gate import canonical_hash
 from depone.verify.adapters.base import EvidenceContext
 
 
@@ -17,6 +21,7 @@ class EvidenceContractEntry:
 
 _EVIDENCE_CONTRACT_FILENAME = "evidence-contract.json"
 _CONTRACT_SCHEMA_VERSION = "v105.verify_wedge"
+_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION = "v106.role_capability_write_scope"
 _ROOT_CONTROL_FILENAMES = frozenset(
     {"evidence-contract.json", "git-diff-name-only.txt", "git-diff.patch"}
 )
@@ -27,6 +32,11 @@ _ERR_REQUIRED_TEST_EVIDENCE_MISSING = "ERR_REQUIRED_TEST_EVIDENCE_MISSING"
 _ERR_TEST_EXIT_CODE_MISMATCH = "ERR_TEST_EXIT_CODE_MISMATCH"
 _ERR_FORBIDDEN_FILE_TOUCHED = "ERR_FORBIDDEN_FILE_TOUCHED"
 _ERR_TEST_WEAKENED = "ERR_TEST_WEAKENED"
+_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING = "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING"
+_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID = "ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID"
+_ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = (
+    "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
+)
 
 
 def _evidence_map(evidence: EvidenceContext) -> dict[str, Any]:
@@ -43,6 +53,13 @@ def _find_evidence_file(evidence: EvidenceContext, name: str) -> tuple[str, str]
     for entry in evidence.files:
         if entry.path == name:
             return entry.path, entry.content
+    return None
+
+
+def _evidence_file_entry(evidence: EvidenceContext, name: str) -> Any | None:
+    for entry in evidence.files:
+        if entry.path == name:
+            return entry
     return None
 
 
@@ -120,6 +137,8 @@ def _has_enforcement_directive(contract: dict[str, Any]) -> bool:
         return True
     if _has_non_empty_str_list(contract, "forbidden_test_files"):
         return True
+    if isinstance(contract.get("role_capability_write_scope"), dict):
+        return True
     return contract.get("forbid_test_weakening") is True and _has_non_empty_str_list(
         contract,
         "test_file_patterns",
@@ -129,10 +148,30 @@ def _has_enforcement_directive(contract: dict[str, Any]) -> bool:
 def _validate_contract_semantics(
     contract: dict[str, Any],
 ) -> EvidenceContractEntry | None:
-    if contract.get("schema_version") != _CONTRACT_SCHEMA_VERSION:
+    schema_version = contract.get("schema_version")
+    if schema_version not in {
+        _CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
+    }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
-            message=f"evidence-contract.json must declare schema_version {_CONTRACT_SCHEMA_VERSION!r}",
+            message=(
+                "evidence-contract.json must declare schema_version "
+                f"{_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r}"
+            ),
+            evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+        )
+    if (
+        isinstance(contract.get("role_capability_write_scope"), dict)
+        and schema_version != _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION
+    ):
+        return EvidenceContractEntry(
+            code=_ERR_CONTRACT_INVALID,
+            message=(
+                "role_capability_write_scope requires schema_version "
+                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r}"
+            ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
     if not _has_enforcement_directive(contract):
@@ -167,6 +206,197 @@ def _touched_files(evidence: EvidenceContext) -> list[str]:
         return []
     _, content = entry
     return [line.strip() for line in content.splitlines() if line.strip()]
+
+
+def _json_object(
+    content: str,
+    path: str,
+) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        return None, EvidenceContractEntry(
+            code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+            message=f"{path} is not valid JSON",
+            evidence_path=path,
+        )
+    if not isinstance(parsed, dict):
+        return None, EvidenceContractEntry(
+            code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+            message=f"{path} must contain a JSON object",
+            evidence_path=path,
+        )
+    return parsed, None
+
+
+def _run_intent_payload(intent_artifact: dict[str, Any]) -> dict[str, Any] | None:
+    envelope = intent_artifact.get("dsse_envelope")
+    if not isinstance(envelope, dict):
+        return None
+    payload = envelope.get("payload")
+    if not isinstance(payload, str):
+        return None
+    try:
+        decoded = base64.b64decode(payload.encode("ascii")).decode("utf-8")
+        parsed = json.loads(decoded)
+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _subject_digest(bundle: dict[str, Any], name: str) -> str | None:
+    statement = bundle.get("statement")
+    if not isinstance(statement, dict):
+        return None
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list):
+        return None
+    for subject in subjects:
+        if not isinstance(subject, dict) or subject.get("name") != name:
+            continue
+        digest = subject.get("digest")
+        if isinstance(digest, dict) and isinstance(digest.get("sha256"), str):
+            return digest["sha256"]
+    return None
+
+
+def _path_allowed_by_scope(path: str, write_scope: list[str]) -> bool:
+    return any(
+        path == pattern or fnmatch.fnmatchcase(path, pattern)
+        for pattern in write_scope
+    )
+
+
+def _run_intent_digest_matches(
+    expected_digest: str,
+    run_intent_content: str,
+    intent: dict[str, Any],
+) -> bool:
+    raw_digest = hashlib.sha256(run_intent_content.encode("utf-8")).hexdigest()
+    # witnessd bundles bind the raw run-intent artifact bytes. Depone's existing
+    # evidence-substrate helper binds the canonical intent object. Accept both so
+    # the verifier remains compatible with both producers while still requiring
+    # the DSSE payload and intent object to match.
+    return expected_digest in {raw_digest, canonical_hash(intent)}
+
+
+def _validate_role_capability_write_scope(
+    evidence: EvidenceContext,
+    contract: dict[str, Any],
+    touched_files: list[str],
+) -> list[EvidenceContractEntry]:
+    directive = contract.get("role_capability_write_scope")
+    if not isinstance(directive, dict):
+        return []
+
+    run_intent_path = directive.get("run_intent_path")
+    if not isinstance(run_intent_path, str) or not run_intent_path:
+        run_intent_path = "run-intent.json"
+    run_intent_entry = _evidence_file_entry(evidence, run_intent_path)
+    if run_intent_entry is None:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING,
+                message=f"role capability write_scope requires {run_intent_path}",
+                evidence_path=run_intent_path,
+            )
+        ]
+
+    run_intent_artifact, invalid = _json_object(
+        run_intent_entry.content,
+        run_intent_path,
+    )
+    if invalid is not None:
+        return [invalid]
+
+    bundle_path = directive.get("bundle_path")
+    if not isinstance(bundle_path, str) or not bundle_path:
+        bundle_path = "bundle.json"
+    bundle_entry = _evidence_file_entry(evidence, bundle_path)
+    if bundle_entry is None:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message=f"role capability write_scope requires {bundle_path}",
+                evidence_path=bundle_path,
+            )
+        ]
+    bundle, invalid = _json_object(bundle_entry.content, bundle_path)
+    if invalid is not None:
+        return [invalid]
+    intent = run_intent_artifact.get("intent")
+    if not isinstance(intent, dict):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent.json must contain intent object",
+                evidence_path=run_intent_path,
+            )
+        ]
+    payload = _run_intent_payload(run_intent_artifact)
+    if payload != intent:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent DSSE payload must match intent object",
+                evidence_path=run_intent_path,
+            )
+        ]
+
+    expected_digest = _subject_digest(bundle, "run-intent")
+    if expected_digest is None:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="bundle.json must bind run-intent as a subject",
+                evidence_path=bundle_path,
+            )
+        ]
+    if not _run_intent_digest_matches(
+        expected_digest,
+        run_intent_entry.content,
+        intent,
+    ):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="bundle run-intent subject digest does not match run-intent",
+                evidence_path=bundle_path,
+            )
+        ]
+
+    role_capability = intent.get("role_capability")
+    if not isinstance(role_capability, dict):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent role_capability is required",
+                evidence_path=run_intent_path,
+            )
+        ]
+    declared_write_scope = _as_str_list(role_capability.get("declared_write_scope"))
+    if not declared_write_scope:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent role_capability.declared_write_scope is required",
+                evidence_path=run_intent_path,
+            )
+        ]
+
+    for touched in touched_files:
+        if not _path_allowed_by_scope(touched, declared_write_scope):
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION,
+                    message=(
+                        "touched file is outside declared role capability "
+                        f"write_scope: {touched}"
+                    ),
+                    evidence_path=touched,
+                )
+            ]
+    return []
 
 
 def _diff_file_path(header: str) -> str | None:
@@ -324,6 +554,13 @@ def validate_evidence_contract(
                 ),
             )
             break
+
+    for entry in _validate_role_capability_write_scope(
+        evidence,
+        contract,
+        touched_files,
+    ):
+        _append_unique_entry(results, entry)
 
     test_patterns = _as_str_list(contract.get("test_file_patterns"))
     forbidden_test_files = set(_as_str_list(contract.get("forbidden_test_files")))

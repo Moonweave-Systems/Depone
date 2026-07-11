@@ -1,0 +1,1 @@
+{"kind":"depone-evidence-substrate-bundle","schema_version":"1.0","statement":{"_type":"https://in-toto.io/Statement/v1","predicate":{"schema_version":"1.0"},"predicateType":"https://depone.dev/attestations/evidence/v1","subject":[{"digest":{"sha256":"26f0b00f4e7967837eee923a79e0743aa663ba78af2c995138d223b34215d3e8"},"name":"run-intent"}]}}

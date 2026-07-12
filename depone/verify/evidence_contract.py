@@ -22,6 +22,9 @@ class EvidenceContractEntry:
 _EVIDENCE_CONTRACT_FILENAME = "evidence-contract.json"
 _CONTRACT_SCHEMA_VERSION = "v105.verify_wedge"
 _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION = "v106.role_capability_write_scope"
+_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION = (
+    "v107.role_capability_tool_calls"
+)
 _ROOT_CONTROL_FILENAMES = frozenset(
     {"evidence-contract.json", "git-diff-name-only.txt", "git-diff.patch"}
 )
@@ -36,6 +39,30 @@ _ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING = "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSIN
 _ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID = "ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID"
 _ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = (
     "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
+)
+_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING = (
+    "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING"
+)
+_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID = (
+    "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID"
+)
+_ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING = "ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING"
+_ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH = (
+    "ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH"
+)
+_ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT = (
+    "ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT"
+)
+_ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING = (
+    "ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING"
+)
+_ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED = "ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED"
+_ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH = (
+    "ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH"
+)
+_ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP = "ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP"
+_ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH = (
+    "ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH"
 )
 
 
@@ -139,6 +166,8 @@ def _has_enforcement_directive(contract: dict[str, Any]) -> bool:
         return True
     if isinstance(contract.get("role_capability_write_scope"), dict):
         return True
+    if isinstance(contract.get("role_capability_tool_calls"), dict):
+        return True
     return contract.get("forbid_test_weakening") is True and _has_non_empty_str_list(
         contract,
         "test_file_patterns",
@@ -152,13 +181,15 @@ def _validate_contract_semantics(
     if schema_version not in {
         _CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
                 "evidence-contract.json must declare schema_version "
                 f"{_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -171,6 +202,18 @@ def _validate_contract_semantics(
             message=(
                 "role_capability_write_scope requires schema_version "
                 f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r}"
+            ),
+            evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+        )
+    if (
+        isinstance(contract.get("role_capability_tool_calls"), dict)
+        and schema_version != _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION
+    ):
+        return EvidenceContractEntry(
+            code=_ERR_CONTRACT_INVALID,
+            message=(
+                "role_capability_tool_calls requires schema_version "
+                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -211,18 +254,19 @@ def _touched_files(evidence: EvidenceContext) -> list[str]:
 def _json_object(
     content: str,
     path: str,
+    error_code: str = _ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
 ) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError:
         return None, EvidenceContractEntry(
-            code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+            code=error_code,
             message=f"{path} is not valid JSON",
             evidence_path=path,
         )
     if not isinstance(parsed, dict):
         return None, EvidenceContractEntry(
-            code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+            code=error_code,
             message=f"{path} must contain a JSON object",
             evidence_path=path,
         )
@@ -278,6 +322,31 @@ def _run_intent_digest_matches(
     # the verifier remains compatible with both producers while still requiring
     # the DSSE payload and intent object to match.
     return expected_digest in {raw_digest, canonical_hash(intent)}
+
+
+def _raw_artifact_digest_matches(expected_digest: str, content: str) -> bool:
+    return expected_digest == hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _canonical_decision_hash(decision: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            decision,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _decision_receipt_key(item: dict[str, Any]) -> tuple[str, str] | None:
+    canonical_tool_name = item.get("canonical_tool_name")
+    request_sha256 = item.get("canonical_request_sha256")
+    if not isinstance(canonical_tool_name, str) or not isinstance(
+        request_sha256,
+        str,
+    ):
+        return None
+    return canonical_tool_name, request_sha256
 
 
 def _validate_role_capability_write_scope(
@@ -397,6 +466,337 @@ def _validate_role_capability_write_scope(
                 )
             ]
     return []
+
+
+def _load_bound_run_intent(
+    evidence: EvidenceContext,
+    run_intent_path: str,
+    bundle_path: str,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[EvidenceContractEntry]]:
+    run_intent_entry = _evidence_file_entry(evidence, run_intent_path)
+    if run_intent_entry is None:
+        return None, None, [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING,
+                message=f"role capability tool_calls requires {run_intent_path}",
+                evidence_path=run_intent_path,
+            )
+        ]
+
+    run_intent_artifact, invalid = _json_object(
+        run_intent_entry.content,
+        run_intent_path,
+    )
+    if invalid is not None:
+        return None, None, [invalid]
+
+    bundle_entry = _evidence_file_entry(evidence, bundle_path)
+    if bundle_entry is None:
+        return None, None, [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message=f"role capability tool_calls requires {bundle_path}",
+                evidence_path=bundle_path,
+            )
+        ]
+    bundle, invalid = _json_object(bundle_entry.content, bundle_path)
+    if invalid is not None:
+        return None, None, [invalid]
+
+    intent = run_intent_artifact.get("intent")
+    if not isinstance(intent, dict):
+        return None, None, [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent.json must contain intent object",
+                evidence_path=run_intent_path,
+            )
+        ]
+    payload = _run_intent_payload(run_intent_artifact)
+    if payload != intent:
+        return None, None, [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent DSSE payload must match intent object",
+                evidence_path=run_intent_path,
+            )
+        ]
+
+    expected_digest = _subject_digest(bundle, "run-intent")
+    if expected_digest is None:
+        return None, None, [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="bundle.json must bind run-intent as a subject",
+                evidence_path=bundle_path,
+            )
+        ]
+    if not _run_intent_digest_matches(
+        expected_digest,
+        run_intent_entry.content,
+        intent,
+    ):
+        return None, None, [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="bundle run-intent subject digest does not match run-intent",
+                evidence_path=bundle_path,
+            )
+        ]
+    return intent, bundle, []
+
+
+def _validate_role_capability_tool_calls(
+    evidence: EvidenceContext,
+    contract: dict[str, Any],
+) -> list[EvidenceContractEntry]:
+    directive = contract.get("role_capability_tool_calls")
+    if not isinstance(directive, dict):
+        return []
+
+    run_intent_path = directive.get("run_intent_path")
+    if not isinstance(run_intent_path, str) or not run_intent_path:
+        run_intent_path = "run-intent.json"
+    bundle_path = directive.get("bundle_path")
+    if not isinstance(bundle_path, str) or not bundle_path:
+        bundle_path = "bundle.json"
+    receipts_path = directive.get("decision_receipts_path")
+    if not isinstance(receipts_path, str) or not receipts_path:
+        receipts_path = "tool-call-decision-receipts.json"
+
+    intent, bundle, errors = _load_bound_run_intent(
+        evidence,
+        run_intent_path,
+        bundle_path,
+    )
+    if errors:
+        return errors
+    if intent is None or bundle is None:
+        return []
+
+    role_capability = intent.get("role_capability")
+    if not isinstance(role_capability, dict):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent role_capability is required",
+                evidence_path=run_intent_path,
+            )
+        ]
+    declared_tools = role_capability.get("declared_tools")
+    if not isinstance(declared_tools, dict):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING,
+                message="run-intent role_capability.declared_tools is required",
+                evidence_path=run_intent_path,
+            )
+        ]
+    allowed_tools = set(_as_str_list(declared_tools.get("allow")))
+
+    receipts_entry = _evidence_file_entry(evidence, receipts_path)
+    if receipts_entry is None:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING,
+                message=f"role capability tool_calls requires {receipts_path}",
+                evidence_path=receipts_path,
+            )
+        ]
+    receipts, invalid = _json_object(
+        receipts_entry.content,
+        receipts_path,
+        _ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+    )
+    if invalid is not None:
+        return [invalid]
+
+    expected_receipts_digest = _subject_digest(
+        bundle,
+        "tool-call-decision-receipts",
+    )
+    if expected_receipts_digest is None:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH,
+                message="bundle.json must bind tool-call-decision-receipts as a subject",
+                evidence_path=bundle_path,
+            )
+        ]
+    if not _raw_artifact_digest_matches(
+        expected_receipts_digest,
+        receipts_entry.content,
+    ):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH,
+                message=(
+                    "bundle tool-call-decision-receipts subject digest does not "
+                    "match receipts artifact"
+                ),
+                evidence_path=bundle_path,
+            )
+        ]
+
+    decisions = receipts.get("decisions")
+    observed_calls = receipts.get("observed_mcp_tool_calls")
+    if not isinstance(decisions, list) or not isinstance(observed_calls, list):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                message=(
+                    "tool-call decision receipts must contain decisions and "
+                    "observed_mcp_tool_calls lists"
+                ),
+                evidence_path=receipts_path,
+            )
+        ]
+
+    results: list[EvidenceContractEntry] = []
+    decision_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    decision_names: dict[str, list[dict[str, Any]]] = {}
+    previous_hash: str | None = None
+    for index, item in enumerate(decisions, start=1):
+        if not isinstance(item, dict):
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                    message="tool-call decision entries must be JSON objects",
+                    evidence_path=receipts_path,
+                )
+            ]
+        if item.get("sequence") != index or item.get(
+            "previous_decision_sha256"
+        ) != previous_hash:
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP,
+                    message="tool-call decision sequence must be contiguous and linked",
+                    evidence_path=receipts_path,
+                ),
+            )
+            break
+        previous_hash = _canonical_decision_hash(item)
+
+        key = _decision_receipt_key(item)
+        if key is None:
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                    message=(
+                        "tool-call decision requires canonical_tool_name and "
+                        "canonical_request_sha256"
+                    ),
+                    evidence_path=receipts_path,
+                ),
+            )
+            continue
+        canonical_tool_name, _ = key
+        if not canonical_tool_name.startswith("mcp__"):
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                    message=(
+                        "role_capability_tool_calls only accepts MCP tool "
+                        f"decisions: {canonical_tool_name}"
+                    ),
+                    evidence_path=receipts_path,
+                ),
+            )
+            continue
+
+        decision_by_key[key] = item
+        decision_names.setdefault(canonical_tool_name, []).append(item)
+        decision = item.get("decision")
+        is_granted = canonical_tool_name in allowed_tools
+        if decision == "allow" and not is_granted:
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT,
+                    message=f"tool-call allow is outside declared grant: {canonical_tool_name}",
+                    evidence_path=receipts_path,
+                ),
+            )
+        elif decision == "deny" and is_granted:
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH,
+                    message=f"granted MCP tool-call must be allowed: {canonical_tool_name}",
+                    evidence_path=receipts_path,
+                ),
+            )
+        elif decision not in {"allow", "deny"}:
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                    message=f"unknown tool-call decision: {decision!r}",
+                    evidence_path=receipts_path,
+                ),
+            )
+
+    for item in observed_calls:
+        if not isinstance(item, dict):
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                    message="observed MCP tool-call entries must be JSON objects",
+                    evidence_path=receipts_path,
+                )
+            ]
+        key = _decision_receipt_key(item)
+        if key is None:
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID,
+                    message=(
+                        "observed MCP tool-call requires canonical_tool_name and "
+                        "canonical_request_sha256"
+                    ),
+                    evidence_path=receipts_path,
+                ),
+            )
+            continue
+        canonical_tool_name, _ = key
+        matching_decision = decision_by_key.get(key)
+        if matching_decision is None:
+            code = (
+                _ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH
+                if canonical_tool_name in decision_names
+                else _ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING
+            )
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=code,
+                    message=(
+                        "observed MCP tool-call does not match a sealed "
+                        f"decision receipt: {canonical_tool_name}"
+                    ),
+                    evidence_path=receipts_path,
+                ),
+            )
+            continue
+        if (
+            matching_decision.get("decision") == "deny"
+            and item.get("result_status") == "success"
+        ):
+            _append_unique_entry(
+                results,
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED,
+                    message=f"denied MCP tool-call has a successful observed result: {canonical_tool_name}",
+                    evidence_path=receipts_path,
+                ),
+            )
+
+    return results
 
 
 def _diff_file_path(header: str) -> str | None:
@@ -560,6 +960,8 @@ def validate_evidence_contract(
         contract,
         touched_files,
     ):
+        _append_unique_entry(results, entry)
+    for entry in _validate_role_capability_tool_calls(evidence, contract):
         _append_unique_entry(results, entry)
 
     test_patterns = _as_str_list(contract.get("test_file_patterns"))

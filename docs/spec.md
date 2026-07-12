@@ -257,7 +257,65 @@ Violations refute the verdict with Depone-owned error codes:
 witnessd-local `write-scope-declaration.json` remains advisory; it must not be
 trusted as this verdict input.
 
-### 5.2 ORRO wrapper artifact classification
+### 5.2 Role-capability tool-call conformance
+
+`evidence-contract.json` schema version `v107.role_capability_tool_calls`
+adds a verdict-bearing MCP tool-call conformance axis.
+
+The declared MCP tool grant is read from the pre-execution `run-intent.json`
+artifact. Tool-call decision receipts are read from a verifier-recognized
+bundle subject, not from witnessd-local advisory artifacts. The contract
+directive is:
+
+```json
+{
+  "schema_version": "v107.role_capability_tool_calls",
+  "role_capability_tool_calls": {
+    "run_intent_path": "run-intent.json",
+    "bundle_path": "bundle.json",
+    "decision_receipts_path": "tool-call-decision-receipts.json"
+  }
+}
+```
+
+Depone re-derives conformance by checking:
+
+- `bundle.json` binds the `run-intent` subject digest and the
+  `tool-call-decision-receipts` subject digest.
+- The run-intent DSSE payload decodes to the same object as the artifact
+  `intent`.
+- `intent.role_capability.declared_tools.allow` declares the exact MCP tool
+  names that may be allowed.
+- Every decision receipt is for an MCP canonical tool name, has contiguous
+  sequence linkage, and matches the declared grant: granted MCP tools must be
+  allowed, non-granted MCP tools must be denied.
+- Every observed MCP tool-call has a matching sealed receipt and request hash.
+- A denied MCP tool-call must not have a successful observed result.
+
+This axis verifies sealed policy/decision/observation consistency. It does not
+claim host-wide omniscience outside the signed evidence bytes, and it does not
+govern Claude built-in tools or other non-MCP tool surfaces. Its trust upgrade
+over write-scope is that the decision receipt represents a pre-call PEP decision
+at the runtime boundary; Depone still verifies the sealed evidence, not live
+runtime state.
+
+Violations refute the verdict with Depone-owned error codes including:
+
+- `ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING`
+- `ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID`
+- `ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING`
+- `ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH`
+- `ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT`
+- `ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING`
+- `ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED`
+- `ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH`
+- `ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP`
+- `ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH`
+
+witnessd-local `moonweave-tool-call-decision-advisory` remains advisory; it must
+not be trusted as this verdict input.
+
+### 5.3 ORRO wrapper artifact classification
 
 ORRO wrapper artifacts may be useful context for humans, ORRO reports, and
 handoff packaging, but Depone proofcheck must not count them as execution proof

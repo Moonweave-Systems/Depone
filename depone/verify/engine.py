@@ -127,46 +127,61 @@ def _compute_plan_hash(plan: dict[str, Any]) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def _has_role_capability_write_scope_contract(evidence: EvidenceContext) -> bool:
+def _role_capability_contract_axes(evidence: EvidenceContext) -> list[str]:
     for entry in evidence.files:
         if entry.path != "evidence-contract.json":
             continue
         try:
             contract = json.loads(entry.content)
         except json.JSONDecodeError:
-            return False
-        return isinstance(contract, dict) and isinstance(
-            contract.get("role_capability_write_scope"),
-            dict,
-        )
-    return False
+            return []
+        if not isinstance(contract, dict):
+            return []
+        axes: list[str] = []
+        if isinstance(contract.get("role_capability_tool_calls"), dict):
+            axes.append("tool_calls")
+        if isinstance(contract.get("role_capability_write_scope"), dict):
+            axes.append("write_scope")
+        return axes
+    return []
 
 
 def _role_capability_conformance(
     evidence: EvidenceContext,
     evidence_contract: list[EvidenceContractEntry],
 ) -> list[RoleCapabilityConformance]:
-    if not _has_role_capability_write_scope_contract(evidence):
+    axes = _role_capability_contract_axes(evidence)
+    if not axes:
         return []
-    failure = next(
-        (
-            entry
-            for entry in evidence_contract
-            if entry.code.startswith("ERR_ROLE_CAPABILITY_")
-            or entry.code == "ERR_EVIDENCE_CONTRACT_INVALID"
-        ),
-        None,
-    )
-    if failure is None:
-        return [RoleCapabilityConformance(axis="write_scope", status="pass")]
-    return [
-        RoleCapabilityConformance(
-            axis="write_scope",
-            status="fail",
-            evidence_path=failure.evidence_path,
-            error_code=failure.code,
+
+    results: list[RoleCapabilityConformance] = []
+    for axis in axes:
+        if axis == "tool_calls":
+            prefix = "ERR_ROLE_CAPABILITY_TOOL_"
+        else:
+            prefix = "ERR_ROLE_CAPABILITY_WRITE_SCOPE"
+        failure = next(
+            (
+                entry
+                for entry in evidence_contract
+                if entry.code.startswith(prefix)
+                or entry.code.startswith("ERR_ROLE_CAPABILITY_RUN_INTENT_")
+                or entry.code == "ERR_EVIDENCE_CONTRACT_INVALID"
+            ),
+            None,
         )
-    ]
+        if failure is None:
+            results.append(RoleCapabilityConformance(axis=axis, status="pass"))
+            continue
+        results.append(
+            RoleCapabilityConformance(
+                axis=axis,
+                status="fail",
+                evidence_path=failure.evidence_path,
+                error_code=failure.code,
+            )
+        )
+    return results
 
 
 def _resolve_handoff_path(

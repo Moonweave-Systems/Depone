@@ -1,0 +1,1 @@
+{"expected_exit_code":0,"role_capability_tool_calls":{"bundle_path":"bundle.json","decision_receipts_path":"tool-call-decision-receipts.json","run_intent_path":"run-intent.json"},"schema_version":"v107.role_capability_tool_calls"}

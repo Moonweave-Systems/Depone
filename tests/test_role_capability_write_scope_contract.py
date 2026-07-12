@@ -87,6 +87,145 @@ def _bundle_for(run_intent_artifact: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _tool_bundle_for(
+    run_intent_artifact: dict[str, object],
+    receipts_artifact: dict[str, object],
+) -> dict[str, object]:
+    run_intent_text = json.dumps(
+        run_intent_artifact,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    receipts_text = json.dumps(
+        receipts_artifact,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return {
+        "kind": "depone-evidence-substrate-bundle",
+        "schema_version": "1.0",
+        "statement": {
+            "_type": "https://in-toto.io/Statement/v1",
+            "subject": [
+                {
+                    "name": "run-intent",
+                    "digest": {
+                        "sha256": hashlib.sha256(
+                            run_intent_text.encode("utf-8")
+                        ).hexdigest()
+                    },
+                },
+                {
+                    "name": "tool-call-decision-receipts",
+                    "digest": {
+                        "sha256": hashlib.sha256(
+                            receipts_text.encode("utf-8")
+                        ).hexdigest()
+                    },
+                },
+            ],
+            "predicateType": "https://depone.dev/attestations/evidence/v1",
+            "predicate": {"schema_version": "1.0"},
+        },
+    }
+
+
+def _tool_run_intent(allow: list[str]) -> dict[str, object]:
+    intent = {
+        "schema_version": "1.2",
+        "run_id": "role-capability-tool-test",
+        "allowed_paths": ["pkg/**"],
+        "approval": {"policy": "never"},
+        "sandbox": {"mode": "workspace-write"},
+        "provider": {"name": "claude", "adapter_version": "test"},
+        "instruction_hashes": {},
+        "budgets": {},
+        "capture_profile": "full",
+        "role_capability": {
+            "schema_version": "1.1",
+            "role_id": "runner",
+            "capability": "execute",
+            "declared_write_scope": ["pkg/**"],
+            "declared_tools": {
+                "mcp": ["neutral_probe"],
+                "allow": list(allow),
+            },
+        },
+    }
+    payload = json.dumps(
+        intent,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return {
+        "kind": "moonweave-run-intent-artifact",
+        "schema_version": "1.2",
+        "intent": intent,
+        "dsse_envelope": {
+            "payloadType": "application/vnd.moonweave.run-intent+json",
+            "payload": base64.b64encode(payload).decode("ascii"),
+            "signatures": [{"keyid": "test", "sig": "not-verified-here"}],
+        },
+    }
+
+
+def _decision_sha(decision: dict[str, object]) -> str:
+    return hashlib.sha256(
+        json.dumps(decision, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _tool_receipts(
+    decisions: list[dict[str, object]],
+    observed_calls: list[dict[str, object]],
+) -> dict[str, object]:
+    previous: str | None = None
+    linked_decisions: list[dict[str, object]] = []
+    for decision in decisions:
+        current = dict(decision)
+        current.setdefault("previous_decision_sha256", previous)
+        linked_decisions.append(current)
+        previous = _decision_sha(current)
+    return {
+        "kind": "moonweave-tool-call-decision-receipts",
+        "schema_version": "1.0",
+        "adapter": "claude",
+        "role_id": "runner",
+        "capability": "execute",
+        "decisions": linked_decisions,
+        "observed_mcp_tool_calls": list(observed_calls),
+    }
+
+
+def _tool_decision(
+    sequence: int,
+    canonical_tool_name: str,
+    request_sha256: str,
+    decision: str,
+) -> dict[str, object]:
+    return {
+        "sequence": sequence,
+        "canonical_tool_name": canonical_tool_name,
+        "canonical_request_sha256": request_sha256,
+        "decision": decision,
+        "reason_code": "ROLE_CAPABILITY_TOOL_GRANTED"
+        if decision == "allow"
+        else "ROLE_CAPABILITY_TOOL_DENIED",
+    }
+
+
+def _observed_tool_call(
+    canonical_tool_name: str,
+    request_sha256: str,
+    result_status: str = "success",
+) -> dict[str, object]:
+    return {
+        "canonical_tool_name": canonical_tool_name,
+        "canonical_request_sha256": request_sha256,
+        "result_status": result_status,
+    }
+
+
 def _canonical_bundle_for(run_intent_artifact: dict[str, object]) -> dict[str, object]:
     intent = run_intent_artifact["intent"]
     if not isinstance(intent, dict):
@@ -137,6 +276,40 @@ def _evidence_with_contract(contract: dict[str, object]) -> EvidenceContext:
         run_id="role-capability-test",
         files=[
             _file("evidence-contract.json", contract),
+            _file("git-diff-name-only.txt", "pkg/a.py\n"),
+            _file("exit-code.txt", "0\n"),
+        ],
+        raw={},
+    )
+
+
+def _tool_evidence(
+    *,
+    allow: list[str],
+    decisions: list[dict[str, object]],
+    observed_calls: list[dict[str, object]],
+    bundle_override: dict[str, object] | None = None,
+) -> EvidenceContext:
+    run_intent = _tool_run_intent(allow)
+    receipts = _tool_receipts(decisions, observed_calls)
+    return EvidenceContext(
+        run_id="role-capability-tool-test",
+        files=[
+            _file(
+                "evidence-contract.json",
+                {
+                    "schema_version": "v107.role_capability_tool_calls",
+                    "role_capability_tool_calls": {
+                        "run_intent_path": "run-intent.json",
+                        "bundle_path": "bundle.json",
+                        "decision_receipts_path": "tool-call-decision-receipts.json",
+                    },
+                    "expected_exit_code": 0,
+                },
+            ),
+            _file("run-intent.json", run_intent),
+            _file("bundle.json", bundle_override or _tool_bundle_for(run_intent, receipts)),
+            _file("tool-call-decision-receipts.json", receipts),
             _file("git-diff-name-only.txt", "pkg/a.py\n"),
             _file("exit-code.txt", "0\n"),
         ],
@@ -262,6 +435,257 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                 for error in fail_errors
             ),
             fail_errors,
+        )
+
+    def test_committed_tool_call_fixtures_capture_pass_and_fail(self) -> None:
+        pass_errors = validate_evidence_contract(
+            read_evidence(str(FIXTURE_ROOT / "tool_calls_pass"))
+        )
+        fail_errors = validate_evidence_contract(
+            read_evidence(str(FIXTURE_ROOT / "tool_calls_fail_allow_outside_grant"))
+        )
+
+        self.assertEqual(pass_errors, [])
+        self.assertTrue(
+            any(
+                error.code == "ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT"
+                for error in fail_errors
+            ),
+            fail_errors,
+        )
+
+    def test_v107_tool_calls_allow_declared_mcp_tool(self) -> None:
+        request_sha = "a" * 64
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                    )
+                ],
+            )
+        )
+
+        self.assertEqual(errors, [])
+
+    def test_v107_tool_calls_reject_allow_outside_grant(self) -> None:
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__unlisted_echo",
+                        "b" * 64,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__unlisted_echo",
+                        "b" * 64,
+                    )
+                ],
+            )
+        )
+
+        self.assertTrue(
+            any(
+                error.code == "ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT"
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_v107_tool_calls_reject_observed_call_without_receipt(self) -> None:
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        "c" * 64,
+                    )
+                ],
+            )
+        )
+
+        self.assertTrue(
+            any(
+                error.code == "ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING"
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_v107_tool_calls_reject_deny_followed_by_success(self) -> None:
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__unlisted_echo",
+                        "d" * 64,
+                        "deny",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__unlisted_echo",
+                        "d" * 64,
+                        "success",
+                    )
+                ],
+            )
+        )
+
+        self.assertTrue(
+            any(
+                error.code == "ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED"
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_v107_tool_calls_reject_request_hash_mismatch(self) -> None:
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__allowed_echo",
+                        "e" * 64,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        "f" * 64,
+                    )
+                ],
+            )
+        )
+
+        self.assertTrue(
+            any(
+                error.code == "ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH"
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_v107_tool_calls_reject_sequence_gap(self) -> None:
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        2,
+                        "mcp__neutral_probe__allowed_echo",
+                        "1" * 64,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        "1" * 64,
+                    )
+                ],
+            )
+        )
+
+        self.assertTrue(
+            any(
+                error.code == "ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP"
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_v107_tool_calls_report_surfaces_verdict_axis(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-tool-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__unlisted_echo",
+                        "2" * 64,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__unlisted_echo",
+                        "2" * 64,
+                    )
+                ],
+            ),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.decision, "fail")
+        self.assertEqual(report.role_capability_conformance[0].axis, "tool_calls")
+        self.assertEqual(report.role_capability_conformance[0].status, "fail")
+        self.assertEqual(
+            report.role_capability_conformance[0].error_code,
+            "ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT",
+        )
+
+    def test_v107_tool_calls_report_maps_shared_run_intent_errors_to_axis(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-tool-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            EvidenceContext(
+                run_id="role-capability-tool-test",
+                files=[
+                    _file(
+                        "evidence-contract.json",
+                        {
+                            "schema_version": "v107.role_capability_tool_calls",
+                            "role_capability_tool_calls": {
+                                "run_intent_path": "run-intent.json",
+                                "bundle_path": "bundle.json",
+                                "decision_receipts_path": "tool-call-decision-receipts.json",
+                            },
+                            "expected_exit_code": 0,
+                        },
+                    ),
+                    _file("exit-code.txt", "0\n"),
+                ],
+                raw={},
+            ),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.role_capability_conformance[0].axis, "tool_calls")
+        self.assertEqual(report.role_capability_conformance[0].status, "fail")
+        self.assertEqual(
+            report.role_capability_conformance[0].error_code,
+            "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING",
         )
 
 

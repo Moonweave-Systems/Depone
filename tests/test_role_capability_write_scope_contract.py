@@ -289,24 +289,28 @@ def _tool_evidence(
     decisions: list[dict[str, object]],
     observed_calls: list[dict[str, object]],
     bundle_override: dict[str, object] | None = None,
+    include_write_scope: bool = False,
 ) -> EvidenceContext:
     run_intent = _tool_run_intent(allow)
     receipts = _tool_receipts(decisions, observed_calls)
+    contract: dict[str, object] = {
+        "schema_version": "v107.role_capability_tool_calls",
+        "role_capability_tool_calls": {
+            "run_intent_path": "run-intent.json",
+            "bundle_path": "bundle.json",
+            "decision_receipts_path": "tool-call-decision-receipts.json",
+        },
+        "expected_exit_code": 0,
+    }
+    if include_write_scope:
+        contract["role_capability_write_scope"] = {
+            "run_intent_path": "run-intent.json",
+            "bundle_path": "bundle.json",
+        }
     return EvidenceContext(
         run_id="role-capability-tool-test",
         files=[
-            _file(
-                "evidence-contract.json",
-                {
-                    "schema_version": "v107.role_capability_tool_calls",
-                    "role_capability_tool_calls": {
-                        "run_intent_path": "run-intent.json",
-                        "bundle_path": "bundle.json",
-                        "decision_receipts_path": "tool-call-decision-receipts.json",
-                    },
-                    "expected_exit_code": 0,
-                },
-            ),
+            _file("evidence-contract.json", contract),
             _file("run-intent.json", run_intent),
             _file("bundle.json", bundle_override or _tool_bundle_for(run_intent, receipts)),
             _file("tool-call-decision-receipts.json", receipts),
@@ -473,6 +477,31 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                         request_sha,
                     )
                 ],
+            )
+        )
+
+        self.assertEqual(errors, [])
+
+    def test_v107_tool_calls_can_coexist_with_write_scope_axis(self) -> None:
+        request_sha = "a" * 64
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                    )
+                ],
+                include_write_scope=True,
             )
         )
 

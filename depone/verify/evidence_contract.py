@@ -195,13 +195,18 @@ def _validate_contract_semantics(
         )
     if (
         isinstance(contract.get("role_capability_write_scope"), dict)
-        and schema_version != _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION
+        and schema_version
+        not in {
+            _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
+            _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
+        }
     ):
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
                 "role_capability_write_scope requires schema_version "
-                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )

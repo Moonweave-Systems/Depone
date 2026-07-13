@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "axis": "separate-validator",
+      "summary": "Independent track"
+    },
+    {
+      "axis": "execution-verdict",
+      "summary": "Fold into proofcheck"
+    }
+  ],
+  "chosen": {
+    "confidence": "high",
+    "direction": "separate-validator",
+    "reason": "Preserves the honesty boundary.",
+    "what_would_change_it": "A contract requirement to aggregate tracks."
+  },
+  "criteria": [
+    "sealed",
+    "non-executing"
+  ],
+  "decision_record": "Select the separate advisory validator.",
+  "frame": "Choose a small verifier seam.",
+  "kind": "orro-sketch",
+  "no_gos": [
+    "claim correctness"
+  ],
+  "rabbit_holes": [],
+  "rejected": [
+    {
+      "option": "separate-validator",
+      "why_lost": "Would conflate tracks."
+    }
+  ]
+}

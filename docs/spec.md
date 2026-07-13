@@ -217,15 +217,19 @@ Rules:
 
 ### 5.1 Role-capability write-scope conformance
 
-`evidence-contract.json` schema version `v106.role_capability_write_scope`
-adds one verdict-bearing axis: role-capability write-scope conformance.
+`evidence-contract.json` schema versions `v106.role_capability_write_scope` and
+`v109.role_capability_write_scope` add one verdict-bearing axis:
+role-capability write-scope conformance. Version `v109` strengthens that axis by
+binding the git-diff observation into the signed evidence bundle. The prior
+`v106` behavior, including its use in a combined `v107` contract, remains
+unchanged for compatibility while witnessd adopts the new subject.
 
 The declared write scope is read from the pre-execution `run-intent.json`
 artifact, not from witnessd advisory artifacts. The contract directive is:
 
 ```json
 {
-  "schema_version": "v106.role_capability_write_scope",
+  "schema_version": "v109.role_capability_write_scope",
   "role_capability_write_scope": {
     "run_intent_path": "run-intent.json",
     "bundle_path": "bundle.json"
@@ -244,6 +248,11 @@ Depone re-derives conformance by checking:
   object (Depone evidence-substrate compatibility mode).
 - The run-intent DSSE payload decodes to the same object as the artifact
   `intent`.
+- Under `v109.role_capability_write_scope`, `bundle.json` names
+  `git-diff-name-only.txt` as a subject and its declared SHA-256 digest matches
+  the observed file bytes. The observation is tamper-evident only when this
+  digest binding is present and the bundle signature verifies under the M1
+  signature gate.
 - `intent.role_capability.declared_write_scope` is a non-empty list of glob
   strings.
 - Every path in `git-diff-name-only.txt` is allowed by that write scope.
@@ -259,6 +268,8 @@ Violations refute the verdict with Depone-owned error codes:
 - `ERR_ROLE_CAPABILITY_SIGNATURE_INVALID`
 - `ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING`
 - `ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID`
+- `ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND`
+- `ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH`
 - `ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION`
 
 witnessd-local `write-scope-declaration.json` remains advisory; it must not be

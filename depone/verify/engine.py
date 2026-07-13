@@ -157,14 +157,17 @@ def _role_capability_conformance(
     results: list[RoleCapabilityConformance] = []
     for axis in axes:
         if axis == "tool_calls":
-            prefix = "ERR_ROLE_CAPABILITY_TOOL_"
+            prefixes = ("ERR_ROLE_CAPABILITY_TOOL_",)
         else:
-            prefix = "ERR_ROLE_CAPABILITY_WRITE_SCOPE"
+            prefixes = (
+                "ERR_ROLE_CAPABILITY_WRITE_SCOPE",
+                "ERR_ROLE_CAPABILITY_OBSERVATION_",
+            )
         failure = next(
             (
                 entry
                 for entry in evidence_contract
-                if entry.code.startswith(prefix)
+                if entry.code.startswith(prefixes)
                 or entry.code.startswith("ERR_ROLE_CAPABILITY_RUN_INTENT_")
                 or entry.code.startswith("ERR_ROLE_CAPABILITY_SIGNATURE_")
                 or entry.code == "ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"

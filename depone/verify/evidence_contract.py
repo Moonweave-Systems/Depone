@@ -28,6 +28,9 @@ _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION = (
     "v107.role_capability_tool_calls"
 )
 _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION = "v108.advisory_provenance"
+_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION = (
+    "v109.role_capability_write_scope"
+)
 _ROOT_CONTROL_FILENAMES = frozenset(
     {"evidence-contract.json", "git-diff-name-only.txt", "git-diff.patch"}
 )
@@ -47,6 +50,12 @@ _ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING = (
 )
 _ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = (
     "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
+)
+_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND = (
+    "ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"
+)
+_ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH = (
+    "ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"
 )
 _ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING = (
     "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING"
@@ -217,6 +226,7 @@ def _validate_contract_semantics(
         _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
         _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
@@ -225,7 +235,8 @@ def _validate_contract_semantics(
                 f"{_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -235,6 +246,7 @@ def _validate_contract_semantics(
         not in {
             _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
             _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
+            _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
         }
     ):
         return EvidenceContractEntry(
@@ -242,7 +254,8 @@ def _validate_contract_semantics(
             message=(
                 "role_capability_write_scope requires schema_version "
                 f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -518,7 +531,7 @@ def _validate_role_capability_write_scope(
     bundle_path = directive.get("bundle_path")
     if not isinstance(bundle_path, str) or not bundle_path:
         bundle_path = "bundle.json"
-    intent, _, errors = _load_bound_run_intent(
+    intent, bundle, errors = _load_bound_run_intent(
         evidence,
         run_intent_path,
         bundle_path,
@@ -527,6 +540,46 @@ def _validate_role_capability_write_scope(
         return errors
     if intent is None:
         return []
+
+    if (
+        contract.get("schema_version")
+        == _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
+    ):
+        expected_observation_digest = (
+            _subject_digest(bundle, "git-diff-name-only.txt")
+            if bundle is not None
+            else None
+        )
+        if expected_observation_digest is None:
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND,
+                    message=(
+                        "git-diff-name-only.txt observation is not bound to the "
+                        "signed bundle as a named digest subject"
+                    ),
+                    evidence_path=bundle_path,
+                )
+            ]
+        observation_entry = _evidence_file_entry(
+            evidence,
+            "git-diff-name-only.txt",
+        )
+        if observation_entry is None or not _raw_artifact_digest_matches(
+            expected_observation_digest,
+            observation_entry.content,
+        ):
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH,
+                    message=(
+                        "git-diff-name-only.txt observation digest does not match "
+                        "the signed bundle subject; the observation is not "
+                        "re-derivable as tamper-evident"
+                    ),
+                    evidence_path="git-diff-name-only.txt",
+                )
+            ]
 
     role_capability = intent.get("role_capability")
     if not isinstance(role_capability, dict):

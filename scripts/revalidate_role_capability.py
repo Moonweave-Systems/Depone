@@ -31,6 +31,15 @@ CASES = {
         "REFUTE",
         ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
     ),
+    "write_scope_pass_bound_observation": ("PASS", []),
+    "write_scope_fail_observation_unbound": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"],
+    ),
+    "write_scope_fail_observation_tampered": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"],
+    ),
 }
 
 
@@ -38,10 +47,15 @@ def main() -> None:
     # The committed test key is a sibling of every fixture evidence directory,
     # matching the v108 harness pattern. Production loading separately enforces
     # this out-of-band boundary in the generic adapter.
-    public_key = (FIXTURE_ROOT / "advisory-public-key.pem").resolve()
     for name, (expected_verdict, expected_codes) in CASES.items():
         evidence = read_evidence(str(FIXTURE_ROOT / name))
         if name != "write_scope_fail_no_trust_anchor":
+            public_key_name = (
+                "observation-public-key.pem"
+                if "observation" in name
+                else "advisory-public-key.pem"
+            )
+            public_key = (FIXTURE_ROOT / public_key_name).resolve()
             evidence.raw["trusted_observer_public_key_file"] = str(public_key)
 
         errors = validate_evidence_contract(evidence)

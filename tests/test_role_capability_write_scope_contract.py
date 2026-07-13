@@ -64,8 +64,13 @@ def _fixture_evidence(
 ) -> EvidenceContext:
     evidence = read_evidence(str(FIXTURE_ROOT / name))
     if include_trust_anchor:
+        public_key_name = (
+            "observation-public-key.pem"
+            if "observation" in name
+            else "advisory-public-key.pem"
+        )
         evidence.raw["trusted_observer_public_key_file"] = str(
-            (FIXTURE_ROOT / "advisory-public-key.pem").resolve()
+            (FIXTURE_ROOT / public_key_name).resolve()
         )
     return evidence
 
@@ -486,6 +491,53 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                 for error in fail_errors
             ),
             fail_errors,
+        )
+
+    def test_v109_bound_git_diff_observation_passes(self) -> None:
+        errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_pass_bound_observation")
+        )
+
+        self.assertEqual(errors, [])
+
+    def test_v109_unbound_git_diff_observation_refutes(self) -> None:
+        errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_fail_observation_unbound")
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"],
+        )
+        self.assertIn("not bound to the signed bundle", errors[0].message)
+
+    def test_v109_tampered_git_diff_observation_refutes(self) -> None:
+        errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_fail_observation_tampered")
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"],
+        )
+        self.assertIn("not re-derivable as tamper-evident", errors[0].message)
+
+    def test_v109_observation_failure_surfaces_on_write_scope_axis(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-observation-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _fixture_evidence("write_scope_fail_observation_tampered"),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.role_capability_conformance[0].axis, "write_scope")
+        self.assertEqual(report.role_capability_conformance[0].status, "fail")
+        self.assertEqual(
+            report.role_capability_conformance[0].error_code,
+            "ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH",
         )
 
     def test_committed_tool_call_fixtures_capture_pass_and_fail(self) -> None:

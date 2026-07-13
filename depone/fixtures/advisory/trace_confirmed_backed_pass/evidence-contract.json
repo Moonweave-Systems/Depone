@@ -1,0 +1,7 @@
+{
+  "advisory_provenance": {
+    "bundle_path": "advisory-provenance-bundle.json",
+    "decision_path": "orro-trace.json"
+  },
+  "schema_version": "v108.advisory_provenance"
+}

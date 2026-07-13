@@ -1,0 +1,10 @@
+{
+  "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsic2NoZW1hX3ZlcnNpb24iOiJ2MTA4LmFkdmlzb3J5X3Byb3ZlbmFuY2UifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vZGVwb25lLmRldi9hdHRlc3RhdGlvbnMvYWR2aXNvcnktcHJvdmVuYW5jZS92MTA4Iiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNoYTI1NiI6IjFmYjJiYjQ2NWU3ZWRmNWQzZmE3MTlhOTAxZGFhN2EzNzljNzcxNDBjM2E5YzFiM2ZlMGU2NWVmZDQxZmM5YzQifSwibmFtZSI6Im9ycm8tdHJhY2UuanNvbiJ9LHsiZGlnZXN0Ijp7InNoYTI1NiI6ImE1ZDA2MzMxZTQwNTkwNDEzMTRkY2RlNzY3MThjZWIzZTYyODNmYjU1NDdkNTcwNWVhZTY4MjA2NDRkNjhlNjQifSwibmFtZSI6Im9ycm8tdHJhY2UtcmVwcm9kdWN0aW9uLmpzb24ifV19",
+  "payloadType": "application/vnd.in-toto+json",
+  "signatures": [
+    {
+      "keyid": "v108-advisory-fixture-key",
+      "sig": "FJY7gAx8mPtE4t6tgMOjHYpHIgtNyXw/im4PXZ4gWTwbugjoLUb8AOMhRM0Gj5CAo7mEY7sqvlZ/kITyh4yQBw=="
+    }
+  ]
+}

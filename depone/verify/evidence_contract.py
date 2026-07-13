@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from depone.agent_fabric.claim_gate import canonical_hash
+from depone.agent_fabric.evidence_substrate import decode_dsse_payload
+from depone.agent_fabric.sign import verify_dsse_envelope
 from depone.verify.adapters.base import EvidenceContext
 
 
@@ -25,6 +27,7 @@ _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION = "v106.role_capability_write_scope"
 _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION = (
     "v107.role_capability_tool_calls"
 )
+_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION = "v108.advisory_provenance"
 _ROOT_CONTROL_FILENAMES = frozenset(
     {"evidence-contract.json", "git-diff-name-only.txt", "git-diff.patch"}
 )
@@ -64,6 +67,27 @@ _ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP = "ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP"
 _ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH = (
     "ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH"
 )
+_ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID = (
+    "ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID"
+)
+_ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES = (
+    "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES"
+)
+_ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING = (
+    "ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING"
+)
+_ERR_ADVISORY_SKETCH_TAMPER = "ERR_ADVISORY_SKETCH_TAMPER"
+_ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED = (
+    "ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED"
+)
+_ERR_ADVISORY_TRACE_UNRELATED_RED = "ERR_ADVISORY_TRACE_UNRELATED_RED"
+_ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT = (
+    "ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT"
+)
+_ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH = (
+    "ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH"
+)
+_ERR_ADVISORY_TRACE_TAMPER = "ERR_ADVISORY_TRACE_TAMPER"
 
 
 def _evidence_map(evidence: EvidenceContext) -> dict[str, Any]:
@@ -168,6 +192,8 @@ def _has_enforcement_directive(contract: dict[str, Any]) -> bool:
         return True
     if isinstance(contract.get("role_capability_tool_calls"), dict):
         return True
+    if isinstance(contract.get("advisory_provenance"), dict):
+        return True
     return contract.get("forbid_test_weakening") is True and _has_non_empty_str_list(
         contract,
         "test_file_patterns",
@@ -182,6 +208,7 @@ def _validate_contract_semantics(
         _CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
+        _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
@@ -189,7 +216,8 @@ def _validate_contract_semantics(
                 "evidence-contract.json must declare schema_version "
                 f"{_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -219,6 +247,18 @@ def _validate_contract_semantics(
             message=(
                 "role_capability_tool_calls requires schema_version "
                 f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
+            ),
+            evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+        )
+    if (
+        isinstance(contract.get("advisory_provenance"), dict)
+        and schema_version != _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION
+    ):
+        return EvidenceContractEntry(
+            code=_ERR_CONTRACT_INVALID,
+            message=(
+                "advisory_provenance requires schema_version "
+                f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -802,6 +842,361 @@ def _validate_role_capability_tool_calls(
             )
 
     return results
+
+
+def _advisory_entry(
+    code: str,
+    detail: str,
+    evidence_path: str,
+) -> EvidenceContractEntry:
+    return EvidenceContractEntry(
+        code=code,
+        message=(
+            f"{detail}; the claim is not re-derivable from sealed bytes. "
+            "This verdict does not assess whether the advisory decision is correct."
+        ),
+        evidence_path=evidence_path,
+    )
+
+
+def _advisory_json_object(
+    evidence: EvidenceContext,
+    path: str,
+    error_code: str,
+) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
+    entry = _evidence_file_entry(evidence, path)
+    if entry is None:
+        return None, _advisory_entry(
+            error_code,
+            f"required advisory artifact is missing: {path}",
+            path,
+        )
+    parsed, invalid = _json_object(entry.content, path, error_code)
+    if invalid is not None:
+        return None, _advisory_entry(
+            error_code,
+            f"advisory artifact is not a JSON object: {path}",
+            path,
+        )
+    return parsed, None
+
+
+def _sealed_advisory_statement(
+    evidence: EvidenceContext,
+    bundle_path: str,
+    tamper_code: str,
+) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
+    envelope, invalid = _advisory_json_object(evidence, bundle_path, tamper_code)
+    if invalid is not None:
+        return None, invalid
+    public_key_path = evidence.raw.get("trusted_observer_public_key_file")
+    if not isinstance(public_key_path, str) or not verify_dsse_envelope(
+        envelope,
+        public_key_path,
+    ):
+        return None, _advisory_entry(
+            tamper_code,
+            "advisory DSSE signature is missing or invalid",
+            bundle_path,
+        )
+    try:
+        statement = decode_dsse_payload(envelope)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None, _advisory_entry(
+            tamper_code,
+            "advisory DSSE payload is not a valid in-toto statement",
+            bundle_path,
+        )
+    predicate = statement.get("predicate")
+    if (
+        statement.get("predicateType")
+        != "https://depone.dev/attestations/advisory-provenance/v108"
+        or not isinstance(predicate, dict)
+        or predicate.get("schema_version")
+        != _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION
+    ):
+        return None, _advisory_entry(
+            tamper_code,
+            "advisory DSSE statement does not declare the v108 predicate",
+            bundle_path,
+        )
+    return statement, None
+
+
+def _advisory_subject_matches(
+    statement: dict[str, Any],
+    path: str,
+    artifact: dict[str, Any],
+) -> bool:
+    expected_digest = _subject_digest({"statement": statement}, path)
+    return expected_digest is not None and expected_digest == canonical_hash(artifact)
+
+
+def _validate_advisory_sketch(
+    decision: dict[str, Any],
+    decision_path: str,
+) -> list[EvidenceContractEntry]:
+    candidates = decision.get("candidates")
+    chosen = decision.get("chosen")
+    candidate_axes = {
+        item.get("axis")
+        for item in candidates
+        if isinstance(item, dict) and isinstance(item.get("axis"), str)
+    } if isinstance(candidates, list) else set()
+    direction = chosen.get("direction") if isinstance(chosen, dict) else None
+    if not isinstance(direction, str) or direction not in candidate_axes:
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES,
+                "sealed sketch chosen.direction is absent from candidates[].axis",
+                decision_path,
+            )
+        ]
+
+    rejected = decision.get("rejected")
+    if not isinstance(rejected, list) or any(
+        not isinstance(item, dict)
+        or not isinstance(item.get("why_lost"), str)
+        or not item["why_lost"].strip()
+        for item in rejected
+    ):
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING,
+                "sealed sketch has a rejected option without non-empty why_lost",
+                decision_path,
+            )
+        ]
+    return []
+
+
+def _trace_receipt_reference(
+    trace: dict[str, Any],
+) -> str | None:
+    reproduction = trace.get("reproduction")
+    if not isinstance(reproduction, dict):
+        return None
+    receipt_sha256 = reproduction.get("receipt_sha256")
+    return receipt_sha256 if isinstance(receipt_sha256, str) and receipt_sha256 else None
+
+
+def _validate_advisory_trace(
+    evidence: EvidenceContext,
+    trace: dict[str, Any],
+    decision_path: str,
+    statement: dict[str, Any],
+) -> list[EvidenceContractEntry]:
+    receipt_path = "orro-trace-reproduction.json"
+    receipt_entry = _evidence_file_entry(evidence, receipt_path)
+    receipt: dict[str, Any] | None = None
+    if receipt_entry is not None:
+        receipt, invalid = _advisory_json_object(
+            evidence,
+            receipt_path,
+            _ERR_ADVISORY_TRACE_TAMPER,
+        )
+        if invalid is not None:
+            return [invalid]
+        if receipt is None or not _advisory_subject_matches(
+            statement,
+            receipt_path,
+            receipt,
+        ):
+            return [
+                _advisory_entry(
+                    _ERR_ADVISORY_TRACE_TAMPER,
+                    "sealed trace reproduction subject digest does not match its bytes",
+                    receipt_path,
+                )
+            ]
+
+    root_cause = trace.get("root_cause")
+    tier = root_cause.get("tier") if isinstance(root_cause, dict) else None
+    receipt_reference = _trace_receipt_reference(trace)
+    receipt_reference_matches = (
+        receipt is not None
+        and receipt_reference is not None
+        and receipt_reference == canonical_hash(receipt)
+    )
+
+    if tier in {"suspected", "speculative"} or isinstance(
+        trace.get("unconfirmed"),
+        dict,
+    ):
+        if receipt_reference is not None and not receipt_reference_matches:
+            return [
+                _advisory_entry(
+                    _ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH,
+                    "sealed trace references a reproduction receipt whose hash does not match",
+                    receipt_path,
+                )
+            ]
+        return []
+
+    if tier != "confirmed":
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
+                "trace must contain unconfirmed or a recognized root_cause tier",
+                decision_path,
+            )
+        ]
+
+    reproduction = trace.get("reproduction")
+    if (
+        not isinstance(reproduction, dict)
+        or reproduction.get("red_observed") is not True
+        or not receipt_reference_matches
+    ):
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED,
+                "confirmed tier lacks red_observed and a matching sealed reproduction receipt",
+                decision_path,
+            )
+        ]
+
+    hypotheses = trace.get("hypotheses")
+    hypothesis_index = root_cause.get("hypothesis_index")
+    hypothesis = (
+        hypotheses[hypothesis_index]
+        if isinstance(hypotheses, list)
+        and isinstance(hypothesis_index, int)
+        and 0 <= hypothesis_index < len(hypotheses)
+        and isinstance(hypotheses[hypothesis_index], dict)
+        else None
+    )
+    symptom = reproduction.get("symptom")
+    probe = hypothesis.get("discriminating_probe") if hypothesis is not None else None
+    output = receipt.get("output") if receipt is not None else None
+    if (
+        not isinstance(symptom, str)
+        or not symptom
+        or not isinstance(probe, str)
+        or not probe
+        or not isinstance(output, str)
+        or symptom not in output
+        or probe not in output
+    ):
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_TRACE_UNRELATED_RED,
+                "recorded red output is not bound to the symptom and confirmed probe",
+                receipt_path,
+            )
+        ]
+
+    confirmation = trace.get("confirmation")
+    ruled_out = (
+        confirmation.get("rival_hypotheses_ruled_out")
+        if isinstance(confirmation, dict)
+        else None
+    )
+    has_ruled_out_rival = isinstance(ruled_out, list) and any(
+        isinstance(index, int)
+        and isinstance(hypotheses, list)
+        and 0 <= index < len(hypotheses)
+        and index != hypothesis_index
+        for index in ruled_out
+    )
+    if not has_ruled_out_rival:
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT,
+                "confirmed tier does not seal an actively ruled-out rival hypothesis",
+                decision_path,
+            )
+        ]
+    return []
+
+
+def validate_advisory_provenance(
+    evidence: EvidenceContext,
+    contract: dict[str, Any],
+) -> list[EvidenceContractEntry]:
+    """Re-derive advisory record consistency without changing execution verdicts."""
+
+    directive = contract.get("advisory_provenance")
+    if (
+        contract.get("schema_version")
+        != _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION
+        or not isinstance(directive, dict)
+    ):
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
+                "advisory provenance requires the v108 directive",
+                _EVIDENCE_CONTRACT_FILENAME,
+            )
+        ]
+    decision_path = directive.get("decision_path")
+    bundle_path = directive.get("bundle_path")
+    if (
+        not isinstance(decision_path, str)
+        or not decision_path
+        or not isinstance(bundle_path, str)
+        or not bundle_path
+    ):
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
+                "advisory provenance requires decision_path and bundle_path",
+                _EVIDENCE_CONTRACT_FILENAME,
+            )
+        ]
+
+    decision, invalid = _advisory_json_object(
+        evidence,
+        decision_path,
+        _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
+    )
+    if invalid is not None:
+        return [invalid]
+    if decision is None:
+        return []
+    kind = decision.get("kind")
+    if kind not in {"orro-sketch", "orro-trace"}:
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
+                "advisory decision kind must be orro-sketch or orro-trace",
+                decision_path,
+            )
+        ]
+
+    tamper_code = (
+        _ERR_ADVISORY_SKETCH_TAMPER
+        if kind == "orro-sketch"
+        else _ERR_ADVISORY_TRACE_TAMPER
+    )
+    statement, invalid = _sealed_advisory_statement(
+        evidence,
+        bundle_path,
+        tamper_code,
+    )
+    if invalid is not None:
+        return [invalid]
+    if statement is None or not _advisory_subject_matches(
+        statement,
+        decision_path,
+        decision,
+    ):
+        return [
+            _advisory_entry(
+                tamper_code,
+                "sealed advisory decision subject digest does not match its bytes",
+                decision_path,
+            )
+        ]
+
+    if kind == "orro-sketch":
+        return _validate_advisory_sketch(decision, decision_path)
+    return _validate_advisory_trace(
+        evidence,
+        decision,
+        decision_path,
+        statement,
+    )
 
 
 def _diff_file_path(header: str) -> str | None:

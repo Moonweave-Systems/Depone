@@ -1,0 +1,10 @@
+{
+  "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsic2NoZW1hX3ZlcnNpb24iOiJ2MTA4LmFkdmlzb3J5X3Byb3ZlbmFuY2UifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vZGVwb25lLmRldi9hdHRlc3RhdGlvbnMvYWR2aXNvcnktcHJvdmVuYW5jZS92MTA4Iiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNoYTI1NiI6IjIzMDBmM2MwZDI2OTlkZGJhYTU3OTZlM2IxY2E0YWQ1MTQ3NGZmNzZhNGE2NTE4OGRmYWU4MDI4ZDZkNjFlNjQifSwibmFtZSI6Im9ycm8tc2tldGNoLmpzb24ifV19",
+  "payloadType": "application/vnd.in-toto+json",
+  "signatures": [
+    {
+      "keyid": "v108-advisory-fixture-key",
+      "sig": "yHewIEB0rSBf5vWNMegtdHepD/SPaOZjbx6MN+0FNgq2VBurbUbO5O5/eX1wNj8YRlXeQoVLShSEZMfRSyxJBg=="
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "error_codes": [
+    "ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED"
+  ],
+  "verdict": "REFUTE"
+}

@@ -353,6 +353,7 @@ supply its own trust root.
 For `orro-sketch`, Depone re-derives:
 
 - `chosen.direction` exactly matches one `candidates[].axis` value.
+- `chosen.direction` does not also appear in `rejected[].option`.
 - Every `rejected[]` entry has a non-empty `why_lost`.
 - The signed subject digest matches the canonical decision bytes.
 
@@ -377,6 +378,7 @@ Violations REFUTE only the advisory-provenance track with Depone-owned codes:
 
 - `ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID`
 - `ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES`
+- `ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED`
 - `ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING`
 - `ERR_ADVISORY_SKETCH_TAMPER`
 - `ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED`

@@ -1,0 +1,10 @@
+{
+  "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsic2NoZW1hX3ZlcnNpb24iOiJ2MTA4LmFkdmlzb3J5X3Byb3ZlbmFuY2UifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vZGVwb25lLmRldi9hdHRlc3RhdGlvbnMvYWR2aXNvcnktcHJvdmVuYW5jZS92MTA4Iiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNoYTI1NiI6ImNjOGU2NWQ2NjA1NmUxMTA3MWQxMjliNGZkNmIxMDc5ZTliYzU1MTY0MzMyMGZjOGQ4N2FjNGM1ZTBkNjUwYzMifSwibmFtZSI6Im9ycm8tc2tldGNoLmpzb24ifV19",
+  "payloadType": "application/vnd.in-toto+json",
+  "signatures": [
+    {
+      "keyid": "v108-chosen-also-rejected-fixture-key",
+      "sig": "ER8fZ//CXtlAP5zQfl+qiUYLOqmf52xyAf2Jqw5roAUGpvg9kJwa36i/ye6p/lkUvYGOl8rdJpFaokaVlFFICA=="
+    }
+  ]
+}

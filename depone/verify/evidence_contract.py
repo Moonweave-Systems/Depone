@@ -73,6 +73,9 @@ _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID = (
 _ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES = (
     "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES"
 )
+_ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED = (
+    "ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED"
+)
 _ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING = (
     "ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING"
 )
@@ -964,6 +967,17 @@ def _validate_advisory_sketch(
             _advisory_entry(
                 _ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING,
                 "sealed sketch has a rejected option without non-empty why_lost",
+                decision_path,
+            )
+        ]
+    if any(item.get("option") == direction for item in rejected):
+        return [
+            _advisory_entry(
+                _ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED,
+                (
+                    "sealed sketch is internally inconsistent because "
+                    "chosen.direction also appears in rejected[].option"
+                ),
                 decision_path,
             )
         ]

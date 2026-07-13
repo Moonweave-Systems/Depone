@@ -12,10 +12,16 @@ FIXTURE_ROOT = Path("depone/fixtures/advisory")
 CASES = (
     "sketch_pass",
     "sketch_fail_chosen_not_in_candidates",
+    "sketch_fail_chosen_also_rejected",
     "trace_confirmed_backed_pass",
     "trace_confirmed_unbacked_fail",
     "trace_unrelated_red_fail",
 )
+CASE_PUBLIC_KEYS = {
+    "sketch_fail_chosen_also_rejected": (
+        FIXTURE_ROOT / "sketch-chosen-also-rejected-public-key.pem"
+    ),
+}
 
 
 def _read_object(path: Path) -> dict[str, object]:
@@ -26,10 +32,11 @@ def _read_object(path: Path) -> dict[str, object]:
 
 
 def main() -> None:
-    public_key = (FIXTURE_ROOT / "advisory-public-key.pem").resolve()
+    default_public_key = FIXTURE_ROOT / "advisory-public-key.pem"
     for name in CASES:
         case_root = FIXTURE_ROOT / name
         evidence = read_evidence(str(case_root))
+        public_key = CASE_PUBLIC_KEYS.get(name, default_public_key).resolve()
         evidence.raw["trusted_observer_public_key_file"] = str(public_key)
         contract = _read_object(case_root / "evidence-contract.json")
         expected = _read_object(case_root / "expected-verdict.json")

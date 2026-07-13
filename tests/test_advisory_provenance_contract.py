@@ -200,6 +200,18 @@ class AdvisoryProvenanceContractTests(unittest.TestCase):
             "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES",
         )
 
+    def test_sketch_refutes_choice_also_listed_as_rejected(self) -> None:
+        sketch = _sketch()
+        sketch["rejected"][0]["option"] = sketch["chosen"]["direction"]
+        evidence, contract = _signed_evidence(
+            sketch, private_key=self.private_key, public_key=self.public_key
+        )
+
+        self.assert_error_code(
+            _validate(evidence, contract),
+            "ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED",
+        )
+
     def test_sketch_refutes_rejection_without_reason(self) -> None:
         sketch = _sketch()
         sketch["rejected"][0]["why_lost"] = ""

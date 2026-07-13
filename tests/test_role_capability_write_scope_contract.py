@@ -1,19 +1,34 @@
 from __future__ import annotations
 
+import atexit
 import base64
 import hashlib
 import json
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
+from depone.agent_fabric.evidence_substrate import (
+    build_evidence_bundle,
+    wrap_statement_in_dsse,
+)
+from depone.agent_fabric.sign import (
+    _generate_ed25519_keypair,
+    sign_dsse_envelope,
+)
 from depone.verify.adapters.base import EvidenceContext, EvidenceFile
 from depone.verify.adapters.generic import read_evidence
 from depone.verify.engine import run_verification
 from depone.verify.evidence_contract import validate_evidence_contract
-from depone.agent_fabric.evidence_substrate import build_evidence_bundle
 
 
 FIXTURE_ROOT = Path("depone/fixtures/role_capability")
+_TEST_KEY_DIRECTORY = Path(tempfile.mkdtemp())
+atexit.register(shutil.rmtree, _TEST_KEY_DIRECTORY, ignore_errors=True)
+_TEST_PRIVATE_KEY, _TEST_PUBLIC_KEY = _generate_ed25519_keypair(
+    _TEST_KEY_DIRECTORY
+)
 
 
 def _sha(text: str) -> str:
@@ -27,6 +42,32 @@ def _file(path: str, value: object) -> EvidenceFile:
         else json.dumps(value, sort_keys=True, separators=(",", ":"))
     )
     return EvidenceFile(path=path, content=content, sha256=_sha(content))
+
+
+def _sign_bundle(bundle: dict[str, object]) -> dict[str, object]:
+    statement = bundle.get("statement")
+    if not isinstance(statement, dict):
+        raise AssertionError("test bundle must contain a statement object")
+    signed = dict(bundle)
+    signed["dsse_envelope"] = sign_dsse_envelope(
+        wrap_statement_in_dsse(statement),
+        str(_TEST_PRIVATE_KEY),
+        key_id="role-capability-test-key",
+    )
+    return signed
+
+
+def _fixture_evidence(
+    name: str,
+    *,
+    include_trust_anchor: bool = True,
+) -> EvidenceContext:
+    evidence = read_evidence(str(FIXTURE_ROOT / name))
+    if include_trust_anchor:
+        evidence.raw["trusted_observer_public_key_file"] = str(
+            (FIXTURE_ROOT / "advisory-public-key.pem").resolve()
+        )
+    return evidence
 
 
 def _run_intent(write_scope: list[str]) -> dict[str, object]:
@@ -70,21 +111,27 @@ def _bundle_for(run_intent_artifact: dict[str, object]) -> dict[str, object]:
         sort_keys=True,
         separators=(",", ":"),
     )
-    return {
-        "kind": "depone-evidence-substrate-bundle",
-        "schema_version": "1.0",
-        "statement": {
-            "_type": "https://in-toto.io/Statement/v1",
-            "subject": [
-                {
-                    "name": "run-intent",
-                    "digest": {"sha256": hashlib.sha256(run_intent_text.encode("utf-8")).hexdigest()},
-                }
-            ],
-            "predicateType": "https://depone.dev/attestations/evidence/v1",
-            "predicate": {"schema_version": "1.0"},
-        },
-    }
+    return _sign_bundle(
+        {
+            "kind": "depone-evidence-substrate-bundle",
+            "schema_version": "1.0",
+            "statement": {
+                "_type": "https://in-toto.io/Statement/v1",
+                "subject": [
+                    {
+                        "name": "run-intent",
+                        "digest": {
+                            "sha256": hashlib.sha256(
+                                run_intent_text.encode("utf-8")
+                            ).hexdigest()
+                        },
+                    }
+                ],
+                "predicateType": "https://depone.dev/attestations/evidence/v1",
+                "predicate": {"schema_version": "1.0"},
+            },
+        }
+    )
 
 
 def _tool_bundle_for(
@@ -101,33 +148,35 @@ def _tool_bundle_for(
         sort_keys=True,
         separators=(",", ":"),
     )
-    return {
-        "kind": "depone-evidence-substrate-bundle",
-        "schema_version": "1.0",
-        "statement": {
-            "_type": "https://in-toto.io/Statement/v1",
-            "subject": [
-                {
-                    "name": "run-intent",
-                    "digest": {
-                        "sha256": hashlib.sha256(
-                            run_intent_text.encode("utf-8")
-                        ).hexdigest()
+    return _sign_bundle(
+        {
+            "kind": "depone-evidence-substrate-bundle",
+            "schema_version": "1.0",
+            "statement": {
+                "_type": "https://in-toto.io/Statement/v1",
+                "subject": [
+                    {
+                        "name": "run-intent",
+                        "digest": {
+                            "sha256": hashlib.sha256(
+                                run_intent_text.encode("utf-8")
+                            ).hexdigest()
+                        },
                     },
-                },
-                {
-                    "name": "tool-call-decision-receipts",
-                    "digest": {
-                        "sha256": hashlib.sha256(
-                            receipts_text.encode("utf-8")
-                        ).hexdigest()
+                    {
+                        "name": "tool-call-decision-receipts",
+                        "digest": {
+                            "sha256": hashlib.sha256(
+                                receipts_text.encode("utf-8")
+                            ).hexdigest()
+                        },
                     },
-                },
-            ],
-            "predicateType": "https://depone.dev/attestations/evidence/v1",
-            "predicate": {"schema_version": "1.0"},
-        },
-    }
+                ],
+                "predicateType": "https://depone.dev/attestations/evidence/v1",
+                "predicate": {"schema_version": "1.0"},
+            },
+        }
+    )
 
 
 def _tool_run_intent(allow: list[str]) -> dict[str, object]:
@@ -230,24 +279,26 @@ def _canonical_bundle_for(run_intent_artifact: dict[str, object]) -> dict[str, o
     intent = run_intent_artifact["intent"]
     if not isinstance(intent, dict):
         raise AssertionError("test run-intent must contain an intent object")
-    return build_evidence_bundle(
-        {
-            "kind": "agent-fabric-capture-manifest",
-            "assurance": "A1-local-observed",
-            "decision": "observed-local-capture",
-            "source_fixture_hash": "fixture-hash",
-            "observer_capture": {
-                "observed_by": "depone-observer",
+    return _sign_bundle(
+        build_evidence_bundle(
+            {
+                "kind": "agent-fabric-capture-manifest",
+                "assurance": "A1-local-observed",
+                "decision": "observed-local-capture",
                 "source_fixture_hash": "fixture-hash",
-                "touched_files": ["pkg/a.py"],
-                "test_output": {"status": "passed"},
-                "command_receipts": [],
+                "observer_capture": {
+                    "observed_by": "depone-observer",
+                    "source_fixture_hash": "fixture-hash",
+                    "touched_files": ["pkg/a.py"],
+                    "test_output": {"status": "passed"},
+                    "command_receipts": [],
+                },
+                "observer_capture_hash": "observer-hash",
+                "allowed_touched_files": ["pkg/a.py"],
+                "schema_version": "1.0",
             },
-            "observer_capture_hash": "observer-hash",
-            "allowed_touched_files": ["pkg/a.py"],
-            "schema_version": "1.0",
-        },
-        run_intent=intent,
+            run_intent=intent,
+        )
     )
 
 
@@ -267,7 +318,7 @@ def _evidence(write_scope: list[str], touched_files: list[str]) -> EvidenceConte
             _file("git-diff-name-only.txt", "".join(f"{path}\n" for path in touched_files)),
             _file("exit-code.txt", "0\n"),
         ],
-        raw={},
+        raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
     )
 
 
@@ -317,7 +368,7 @@ def _tool_evidence(
             _file("git-diff-name-only.txt", "pkg/a.py\n"),
             _file("exit-code.txt", "0\n"),
         ],
-        raw={},
+        raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
     )
 
 
@@ -359,7 +410,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                 _file("git-diff-name-only.txt", "pkg/a.py\n"),
                 _file("exit-code.txt", "0\n"),
             ],
-            raw={},
+            raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
         )
 
         self.assertEqual(validate_evidence_contract(evidence), [])
@@ -425,12 +476,8 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         )
 
     def test_committed_write_scope_fixtures_capture_pass_and_fail(self) -> None:
-        pass_errors = validate_evidence_contract(
-            read_evidence(str(FIXTURE_ROOT / "write_scope_pass"))
-        )
-        fail_errors = validate_evidence_contract(
-            read_evidence(str(FIXTURE_ROOT / "write_scope_fail"))
-        )
+        pass_errors = validate_evidence_contract(_fixture_evidence("write_scope_pass"))
+        fail_errors = validate_evidence_contract(_fixture_evidence("write_scope_fail"))
 
         self.assertEqual(pass_errors, [])
         self.assertTrue(
@@ -442,11 +489,9 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         )
 
     def test_committed_tool_call_fixtures_capture_pass_and_fail(self) -> None:
-        pass_errors = validate_evidence_contract(
-            read_evidence(str(FIXTURE_ROOT / "tool_calls_pass"))
-        )
+        pass_errors = validate_evidence_contract(_fixture_evidence("tool_calls_pass"))
         fail_errors = validate_evidence_contract(
-            read_evidence(str(FIXTURE_ROOT / "tool_calls_fail_allow_outside_grant"))
+            _fixture_evidence("tool_calls_fail_allow_outside_grant")
         )
 
         self.assertEqual(pass_errors, [])
@@ -456,6 +501,205 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                 for error in fail_errors
             ),
             fail_errors,
+        )
+
+    def test_v106_unsigned_bundle_refutes_before_subject_digest(self) -> None:
+        errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_fail_unsigned")
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
+        )
+        self.assertIn("not re-derivable from a trusted anchor", errors[0].message)
+
+    def test_v106_bad_signature_refutes_before_subject_digest(self) -> None:
+        errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_fail_bad_signature")
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"],
+        )
+        self.assertIn("not verifiable", errors[0].message)
+
+    def test_v106_malformed_signature_refutes_as_missing(self) -> None:
+        run_intent = _run_intent(["pkg/**"])
+        malformed_bundle = _bundle_for(run_intent)
+        envelope = malformed_bundle["dsse_envelope"]
+        if not isinstance(envelope, dict):
+            raise AssertionError("test bundle must contain a DSSE envelope")
+        envelope["signatures"] = [{"keyid": "malformed", "sig": "%%%"}]
+        evidence = _evidence(["pkg/**"], ["pkg/a.py"])
+        evidence.files = [
+            _file("bundle.json", malformed_bundle)
+            if entry.path == "bundle.json"
+            else entry
+            for entry in evidence.files
+        ]
+
+        errors = validate_evidence_contract(evidence)
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
+        )
+
+    def test_v106_subject_digest_comes_from_signed_statement(self) -> None:
+        run_intent = _run_intent(["pkg/**"])
+        bundle = _bundle_for(run_intent)
+        statement = bundle["statement"]
+        if not isinstance(statement, dict):
+            raise AssertionError("test bundle must contain a statement")
+        subjects = statement["subject"]
+        if not isinstance(subjects, list) or not isinstance(subjects[0], dict):
+            raise AssertionError("test statement must contain a subject")
+        subjects[0]["digest"] = {"sha256": "0" * 64}
+        evidence = _evidence(["pkg/**"], ["pkg/a.py"])
+        evidence.files = [
+            _file("bundle.json", bundle)
+            if entry.path == "bundle.json"
+            else entry
+            for entry in evidence.files
+        ]
+
+        errors = validate_evidence_contract(evidence)
+
+        self.assertEqual(errors, [])
+
+    def test_v106_missing_trust_anchor_refutes_before_subject_digest(self) -> None:
+        errors = validate_evidence_contract(
+            _fixture_evidence(
+                "write_scope_fail_no_trust_anchor",
+                include_trust_anchor=False,
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
+        )
+        self.assertIn("trusted anchor", errors[0].message)
+
+    def test_v107_unsigned_bundle_refutes_before_subject_digest(self) -> None:
+        request_sha = "a" * 64
+        run_intent = _tool_run_intent(["mcp__neutral_probe__allowed_echo"])
+        receipts = _tool_receipts(
+            [
+                _tool_decision(
+                    1,
+                    "mcp__neutral_probe__allowed_echo",
+                    request_sha,
+                    "allow",
+                )
+            ],
+            [
+                _observed_tool_call(
+                    "mcp__neutral_probe__allowed_echo",
+                    request_sha,
+                )
+            ],
+        )
+        unsigned_bundle = _tool_bundle_for(run_intent, receipts)
+        unsigned_bundle.pop("dsse_envelope")
+
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                    )
+                ],
+                bundle_override=unsigned_bundle,
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
+        )
+
+    def test_v107_bad_signature_refutes_before_subject_digest(self) -> None:
+        request_sha = "a" * 64
+        run_intent = _tool_run_intent(["mcp__neutral_probe__allowed_echo"])
+        decisions = [
+            _tool_decision(
+                1,
+                "mcp__neutral_probe__allowed_echo",
+                request_sha,
+                "allow",
+            )
+        ]
+        observed_calls = [
+            _observed_tool_call(
+                "mcp__neutral_probe__allowed_echo",
+                request_sha,
+            )
+        ]
+        receipts = _tool_receipts(decisions, observed_calls)
+        bad_bundle = _tool_bundle_for(run_intent, receipts)
+        envelope = bad_bundle["dsse_envelope"]
+        if not isinstance(envelope, dict):
+            raise AssertionError("test bundle must contain a DSSE envelope")
+        signatures = envelope["signatures"]
+        if not isinstance(signatures, list) or not isinstance(signatures[0], dict):
+            raise AssertionError("test DSSE envelope must contain a signature")
+        signatures[0]["sig"] = base64.b64encode(b"invalid signature").decode(
+            "ascii"
+        )
+
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=decisions,
+                observed_calls=observed_calls,
+                bundle_override=bad_bundle,
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"],
+        )
+
+    def test_v107_missing_trust_anchor_refutes_before_subject_digest(self) -> None:
+        request_sha = "a" * 64
+        evidence = _tool_evidence(
+            allow=["mcp__neutral_probe__allowed_echo"],
+            decisions=[
+                _tool_decision(
+                    1,
+                    "mcp__neutral_probe__allowed_echo",
+                    request_sha,
+                    "allow",
+                )
+            ],
+            observed_calls=[
+                _observed_tool_call(
+                    "mcp__neutral_probe__allowed_echo",
+                    request_sha,
+                )
+            ],
+        )
+        evidence.raw = {}
+
+        errors = validate_evidence_contract(evidence)
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
         )
 
     def test_v107_tool_calls_allow_declared_mcp_tool(self) -> None:
@@ -715,6 +959,64 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         self.assertEqual(
             report.role_capability_conformance[0].error_code,
             "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING",
+        )
+
+    def test_signature_failure_maps_to_both_role_capability_axes(self) -> None:
+        request_sha = "a" * 64
+        decisions = [
+            _tool_decision(
+                1,
+                "mcp__neutral_probe__allowed_echo",
+                request_sha,
+                "allow",
+            )
+        ]
+        observed_calls = [
+            _observed_tool_call(
+                "mcp__neutral_probe__allowed_echo",
+                request_sha,
+            )
+        ]
+        run_intent = _tool_run_intent(["mcp__neutral_probe__allowed_echo"])
+        unsigned_bundle = _tool_bundle_for(
+            run_intent,
+            _tool_receipts(decisions, observed_calls),
+        )
+        unsigned_bundle.pop("dsse_envelope")
+
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-shared-signature-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=decisions,
+                observed_calls=observed_calls,
+                bundle_override=unsigned_bundle,
+                include_write_scope=True,
+            ),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [
+                (
+                    "tool_calls",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING",
+                ),
+                (
+                    "write_scope",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING",
+                ),
+            ],
         )
 
 

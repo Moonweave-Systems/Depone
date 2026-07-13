@@ -166,6 +166,8 @@ def _role_capability_conformance(
                 for entry in evidence_contract
                 if entry.code.startswith(prefix)
                 or entry.code.startswith("ERR_ROLE_CAPABILITY_RUN_INTENT_")
+                or entry.code.startswith("ERR_ROLE_CAPABILITY_SIGNATURE_")
+                or entry.code == "ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"
                 or entry.code == "ERR_EVIDENCE_CONTRACT_INVALID"
             ),
             None,

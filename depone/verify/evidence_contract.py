@@ -40,6 +40,11 @@ _ERR_FORBIDDEN_FILE_TOUCHED = "ERR_FORBIDDEN_FILE_TOUCHED"
 _ERR_TEST_WEAKENED = "ERR_TEST_WEAKENED"
 _ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING = "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING"
 _ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID = "ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID"
+_ERR_ROLE_CAPABILITY_SIGNATURE_MISSING = "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"
+_ERR_ROLE_CAPABILITY_SIGNATURE_INVALID = "ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"
+_ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING = (
+    "ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"
+)
 _ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = (
     "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
 )
@@ -397,6 +402,107 @@ def _decision_receipt_key(item: dict[str, Any]) -> tuple[str, str] | None:
     return canonical_tool_name, request_sha256
 
 
+def _role_capability_signature_entry(
+    code: str,
+    detail: str,
+    bundle_path: str,
+) -> EvidenceContractEntry:
+    return EvidenceContractEntry(
+        code=code,
+        message=(
+            f"{detail}; this does not assess whether the work itself is correct"
+        ),
+        evidence_path=bundle_path,
+    )
+
+
+def _has_well_formed_dsse_signature(signatures: Any) -> bool:
+    if not isinstance(signatures, list):
+        return False
+    for signature in signatures:
+        if not isinstance(signature, dict):
+            continue
+        signature_text = signature.get("sig")
+        if not isinstance(signature_text, str) or not signature_text:
+            continue
+        try:
+            signature_bytes = base64.b64decode(
+                signature_text.encode("ascii"),
+                validate=True,
+            )
+        except (UnicodeEncodeError, ValueError):
+            continue
+        if signature_bytes:
+            return True
+    return False
+
+
+def _verified_role_capability_bundle(
+    evidence: EvidenceContext,
+    bundle: dict[str, Any],
+    bundle_path: str,
+) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
+    public_key_path = evidence.raw.get("trusted_observer_public_key_file")
+    if not isinstance(public_key_path, str) or not public_key_path:
+        return None, _role_capability_signature_entry(
+            _ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING,
+            (
+                "bundle DSSE signature is not re-derivable from a trusted anchor "
+                "because no trusted observer public key is configured"
+            ),
+            bundle_path,
+        )
+
+    envelope = bundle.get("dsse_envelope")
+    if not isinstance(envelope, dict):
+        return None, _role_capability_signature_entry(
+            _ERR_ROLE_CAPABILITY_SIGNATURE_MISSING,
+            (
+                "bundle DSSE signature is not re-derivable from a trusted anchor "
+                "because the envelope is missing or malformed"
+            ),
+            bundle_path,
+        )
+    signatures = envelope.get("signatures")
+    if not _has_well_formed_dsse_signature(signatures):
+        return None, _role_capability_signature_entry(
+            _ERR_ROLE_CAPABILITY_SIGNATURE_MISSING,
+            (
+                "bundle DSSE signature is not re-derivable from a trusted anchor "
+                "because the envelope signature is missing or malformed"
+            ),
+            bundle_path,
+        )
+    try:
+        signed_statement = decode_dsse_payload(envelope)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None, _role_capability_signature_entry(
+            _ERR_ROLE_CAPABILITY_SIGNATURE_MISSING,
+            (
+                "bundle DSSE signature is not re-derivable from a trusted anchor "
+                "because the envelope is missing or malformed"
+            ),
+            bundle_path,
+        )
+    if not verify_dsse_envelope(envelope, public_key_path):
+        return None, _role_capability_signature_entry(
+            _ERR_ROLE_CAPABILITY_SIGNATURE_INVALID,
+            (
+                "bundle DSSE signature is not verifiable under the configured "
+                "trusted observer public key"
+            ),
+            bundle_path,
+        )
+
+    # M1 closes the no-signature-checked hole. A valid signature under this
+    # configured key does not establish that the anchor is independent of the
+    # executor; that requires an operator-provided key and real observer/runner
+    # separation (M7).
+    verified_bundle = dict(bundle)
+    verified_bundle["statement"] = signed_statement
+    return verified_bundle, None
+
+
 def _validate_role_capability_write_scope(
     evidence: EvidenceContext,
     contract: dict[str, Any],
@@ -409,78 +515,18 @@ def _validate_role_capability_write_scope(
     run_intent_path = directive.get("run_intent_path")
     if not isinstance(run_intent_path, str) or not run_intent_path:
         run_intent_path = "run-intent.json"
-    run_intent_entry = _evidence_file_entry(evidence, run_intent_path)
-    if run_intent_entry is None:
-        return [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING,
-                message=f"role capability write_scope requires {run_intent_path}",
-                evidence_path=run_intent_path,
-            )
-        ]
-
-    run_intent_artifact, invalid = _json_object(
-        run_intent_entry.content,
-        run_intent_path,
-    )
-    if invalid is not None:
-        return [invalid]
-
     bundle_path = directive.get("bundle_path")
     if not isinstance(bundle_path, str) or not bundle_path:
         bundle_path = "bundle.json"
-    bundle_entry = _evidence_file_entry(evidence, bundle_path)
-    if bundle_entry is None:
-        return [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message=f"role capability write_scope requires {bundle_path}",
-                evidence_path=bundle_path,
-            )
-        ]
-    bundle, invalid = _json_object(bundle_entry.content, bundle_path)
-    if invalid is not None:
-        return [invalid]
-    intent = run_intent_artifact.get("intent")
-    if not isinstance(intent, dict):
-        return [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="run-intent.json must contain intent object",
-                evidence_path=run_intent_path,
-            )
-        ]
-    payload = _run_intent_payload(run_intent_artifact)
-    if payload != intent:
-        return [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="run-intent DSSE payload must match intent object",
-                evidence_path=run_intent_path,
-            )
-        ]
-
-    expected_digest = _subject_digest(bundle, "run-intent")
-    if expected_digest is None:
-        return [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="bundle.json must bind run-intent as a subject",
-                evidence_path=bundle_path,
-            )
-        ]
-    if not _run_intent_digest_matches(
-        expected_digest,
-        run_intent_entry.content,
-        intent,
-    ):
-        return [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="bundle run-intent subject digest does not match run-intent",
-                evidence_path=bundle_path,
-            )
-        ]
+    intent, _, errors = _load_bound_run_intent(
+        evidence,
+        run_intent_path,
+        bundle_path,
+    )
+    if errors:
+        return errors
+    if intent is None:
+        return []
 
     role_capability = intent.get("role_capability")
     if not isinstance(role_capability, dict):
@@ -526,7 +572,7 @@ def _load_bound_run_intent(
         return None, None, [
             EvidenceContractEntry(
                 code=_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING,
-                message=f"role capability tool_calls requires {run_intent_path}",
+                message=f"role capability verification requires {run_intent_path}",
                 evidence_path=run_intent_path,
             )
         ]
@@ -543,13 +589,22 @@ def _load_bound_run_intent(
         return None, None, [
             EvidenceContractEntry(
                 code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message=f"role capability tool_calls requires {bundle_path}",
+                message=f"role capability verification requires {bundle_path}",
                 evidence_path=bundle_path,
             )
         ]
     bundle, invalid = _json_object(bundle_entry.content, bundle_path)
     if invalid is not None:
         return None, None, [invalid]
+    bundle, signature_error = _verified_role_capability_bundle(
+        evidence,
+        bundle,
+        bundle_path,
+    )
+    if signature_error is not None:
+        return None, None, [signature_error]
+    if bundle is None:
+        return None, None, []
 
     intent = run_intent_artifact.get("intent")
     if not isinstance(intent, dict):

@@ -235,6 +235,10 @@ artifact, not from witnessd advisory artifacts. The contract directive is:
 
 Depone re-derives conformance by checking:
 
+- `bundle.json` carries a well-formed DSSE envelope whose signature verifies
+  under the out-of-band `trusted_observer_public_key_file`; without that trust
+  anchor, or when the signature is missing or invalid, Depone does not trust
+  any declared subject digest.
 - `bundle.json` binds the `run-intent` subject digest either to the observed
   `run-intent.json` bytes (witnessd bundle mode) or to the canonical run-intent
   object (Depone evidence-substrate compatibility mode).
@@ -250,6 +254,9 @@ change the older exact-match meaning of `allowed_touched_files`.
 
 Violations refute the verdict with Depone-owned error codes:
 
+- `ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING`
+- `ERR_ROLE_CAPABILITY_SIGNATURE_MISSING`
+- `ERR_ROLE_CAPABILITY_SIGNATURE_INVALID`
 - `ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING`
 - `ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID`
 - `ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION`
@@ -280,6 +287,9 @@ directive is:
 
 Depone re-derives conformance by checking:
 
+- `bundle.json` carries a well-formed DSSE envelope whose signature verifies
+  under the out-of-band `trusted_observer_public_key_file`; subject digests are
+  read from the verified DSSE payload rather than an unsigned duplicate.
 - `bundle.json` binds the `run-intent` subject digest and the
   `tool-call-decision-receipts` subject digest.
 - The run-intent DSSE payload decodes to the same object as the artifact
@@ -301,6 +311,9 @@ runtime state.
 
 Violations refute the verdict with Depone-owned error codes including:
 
+- `ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING`
+- `ERR_ROLE_CAPABILITY_SIGNATURE_MISSING`
+- `ERR_ROLE_CAPABILITY_SIGNATURE_INVALID`
 - `ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING`
 - `ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID`
 - `ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING`
@@ -314,6 +327,12 @@ Violations refute the verdict with Depone-owned error codes including:
 
 witnessd-local `moonweave-tool-call-decision-advisory` remains advisory; it must
 not be trusted as this verdict input.
+
+The v106/v107 signature gate closes audit finding M1: Depone no longer accepts
+role-capability subject digests without checking a signature. It establishes a
+valid signature under the configured trust anchor only. It does not establish
+that the anchor is independent of the executor; closing that separate M7
+boundary requires an operator-provided key plus real observer/runner separation.
 
 ### 5.3 Advisory provenance consistency
 

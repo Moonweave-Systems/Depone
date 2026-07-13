@@ -1,0 +1,40 @@
+{
+  "confirmation": {
+    "rival_hypotheses_ruled_out": [
+      1
+    ]
+  },
+  "fix_scope": {
+    "cause_site": "widget/totals.py:42"
+  },
+  "hypotheses": [
+    {
+      "confidence": "high",
+      "discriminating_probe": "discount application count=2",
+      "mechanism": "Discount is applied twice.",
+      "prediction": "The total is lower by one discount."
+    },
+    {
+      "confidence": "low",
+      "discriminating_probe": "fractional-only mismatch",
+      "mechanism": "Tax rounding changed.",
+      "prediction": "Only fractional totals differ."
+    }
+  ],
+  "kind": "orro-trace",
+  "localization": "widget/totals.py:42",
+  "logbook": [
+    "Reproduced the symptom and inspected the discount count."
+  ],
+  "reproduction": {
+    "non_reproducible_reason": "",
+    "receipt_sha256": "263f1f8aaf1e1c694c38f1e41a81be63b8259b9c256f01e783ff996bd698e124",
+    "red_observed": true,
+    "symptom": "Widget total was 7, expected 9"
+  },
+  "root_cause": {
+    "hypothesis_index": 0,
+    "summary": "Discount is applied twice.",
+    "tier": "confirmed"
+  }
+}

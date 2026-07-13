@@ -1,0 +1,6 @@
+{
+  "error_codes": [
+    "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES"
+  ],
+  "verdict": "REFUTE"
+}

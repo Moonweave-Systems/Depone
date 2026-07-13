@@ -315,7 +315,82 @@ Violations refute the verdict with Depone-owned error codes including:
 witnessd-local `moonweave-tool-call-decision-advisory` remains advisory; it must
 not be trusted as this verdict input.
 
-### 5.3 ORRO wrapper artifact classification
+### 5.3 Advisory provenance consistency
+
+`evidence-contract.json` schema version `v108.advisory_provenance` adds a
+separate advisory-provenance verdict track for sealed `orro-sketch` and
+`orro-trace` records. It does not add an execution-evidence axis and is never
+aggregated by `validate_evidence_contract`. Its execution-verdict semantics are
+`can_change_evidence_verdict=false`.
+
+This track re-derives consistency and tamper-evidence only. A PASS means the
+record's strongest advisory claim is supported by the sealed bytes and the
+record matches its signed canonical digest. It does not mean a sketch chose the
+right approach, a confirmed-tier root cause is correct, or the proposed fix is
+sound. This is the same sealed-declaration versus sealed-observation boundary
+used for role-capability conformance: Depone checks agreement, not ground truth.
+
+The contract directive is:
+
+```json
+{
+  "schema_version": "v108.advisory_provenance",
+  "advisory_provenance": {
+    "decision_path": "orro-trace.json",
+    "bundle_path": "advisory-provenance-bundle.json"
+  }
+}
+```
+
+The bundle is a DSSE-signed in-toto statement with predicate type
+`https://depone.dev/attestations/advisory-provenance/v108`. It binds the
+decision path to the canonical SHA-256 of the decision object. A trace that
+references `orro-trace-reproduction.json` also binds that fixed subject name to
+the receipt's canonical SHA-256. Signature verification uses Depone's existing
+out-of-band trusted observer public-key path; an evidence directory cannot
+supply its own trust root.
+
+For `orro-sketch`, Depone re-derives:
+
+- `chosen.direction` exactly matches one `candidates[].axis` value.
+- Every `rejected[]` entry has a non-empty `why_lost`.
+- The signed subject digest matches the canonical decision bytes.
+
+For `orro-trace`, `reproduction.receipt_sha256` is the canonical hash reference
+to `orro-trace-reproduction.json`. A `confirmed` root cause additionally uses
+`root_cause.hypothesis_index` to select the hypothesis whose
+`discriminating_probe` must appear verbatim in the receipt output, while
+`reproduction.symptom` must also appear verbatim in that output. This exact
+binding is the unrelated-red guard. `confirmation.rival_hypotheses_ruled_out`
+must contain at least one valid hypothesis index other than the confirmed
+hypothesis.
+
+A confirmed trace requires `reproduction.red_observed=true`, a present and
+hash-matching sealed reproduction receipt, output bound to both the symptom and
+the confirmed probe, and at least one actively ruled-out rival. Suspected,
+speculative, and `unconfirmed` traces do not require red-to-green backing, but
+any non-empty receipt reference must match a present sealed receipt. The receipt
+records the prior-run command, exit status, and output verbatim; Depone does not
+execute that command.
+
+Violations REFUTE only the advisory-provenance track with Depone-owned codes:
+
+- `ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID`
+- `ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES`
+- `ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING`
+- `ERR_ADVISORY_SKETCH_TAMPER`
+- `ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED`
+- `ERR_ADVISORY_TRACE_UNRELATED_RED`
+- `ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT`
+- `ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH`
+- `ERR_ADVISORY_TRACE_TAMPER`
+
+Every REFUTE message states that the claim is not re-derivable from sealed
+bytes; it does not state that the approach or root cause is wrong. Committed
+fixtures live under `depone/fixtures/advisory/` and are re-derived by
+`scripts/revalidate_v108_advisory_provenance.py`.
+
+### 5.4 ORRO wrapper artifact classification
 
 ORRO wrapper artifacts may be useful context for humans, ORRO reports, and
 handoff packaging, but Depone proofcheck must not count them as execution proof

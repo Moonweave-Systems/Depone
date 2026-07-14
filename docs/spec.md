@@ -218,6 +218,27 @@ Rules:
 
 ### 5.1 Role-capability write-scope conformance
 
+Plans may declare a minimum set of role-capability axes that the evidence
+contract must enforce:
+
+```json
+{
+  "required_role_capability_axes": ["write_scope", "tool_calls"]
+}
+```
+
+The supported values are `write_scope` and `tool_calls`. For each required
+axis, `evidence-contract.json` must declare the corresponding
+`role_capability_write_scope` or `role_capability_tool_calls` directive. An
+omitted required axis produces a `role_capability_conformance` failure with
+`ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED` and makes the overall
+verdict at least `insufficient-evidence`. A present field that is not a list of
+supported string values fails closed with
+`ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID`. When the directive is
+present, its existing role-capability validation runs unchanged and can still
+refute the verdict. Plans that omit `required_role_capability_axes` retain the
+historical evidence-contract-driven behavior.
+
 `evidence-contract.json` schema versions `v106.role_capability_write_scope` and
 `v109.role_capability_write_scope` add one verdict-bearing axis:
 role-capability write-scope conformance. Version `v109` strengthens that axis by

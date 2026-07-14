@@ -339,6 +339,17 @@ def _evidence_with_contract(contract: dict[str, object]) -> EvidenceContext:
     )
 
 
+def _verification_plan(*, require_write_scope: bool) -> dict[str, object]:
+    plan: dict[str, object] = {
+        "schema_version": "0.5",
+        "plan_id": "role-capability-plan",
+        "phases": [{"id": "phase-1"}],
+    }
+    if require_write_scope:
+        plan["required_role_capability_axes"] = ["write_scope"]
+    return plan
+
+
 def _tool_evidence(
     *,
     allow: list[str],
@@ -378,6 +389,118 @@ def _tool_evidence(
 
 
 class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
+    def test_plan_required_write_scope_omission_fails_closed(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            _evidence_with_contract(
+                {
+                    "schema_version": "v105.verify_wedge",
+                    "expected_exit_code": 0,
+                }
+            ),
+        )
+
+        self.assertEqual(report.verdict, "insufficient-evidence")
+        self.assertEqual(report.decision, "inconclusive")
+        self.assertEqual(len(report.role_capability_conformance), 1)
+        self.assertEqual(report.role_capability_conformance[0].axis, "write_scope")
+        self.assertEqual(report.role_capability_conformance[0].status, "fail")
+        self.assertEqual(
+            report.role_capability_conformance[0].error_code,
+            "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED",
+        )
+
+    def test_plan_required_write_scope_present_and_conforming_verifies(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            _evidence(["pkg/**"], ["pkg/a.py"]),
+        )
+
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(report.role_capability_conformance[0].axis, "write_scope")
+        self.assertEqual(report.role_capability_conformance[0].status, "pass")
+
+    def test_plan_required_write_scope_present_and_violated_refutes(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            _evidence(["pkg/**"], ["secrets.txt"]),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.role_capability_conformance[0].axis, "write_scope")
+        self.assertEqual(report.role_capability_conformance[0].status, "fail")
+        self.assertEqual(
+            report.role_capability_conformance[0].error_code,
+            "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION",
+        )
+
+    def test_plan_required_tool_calls_omission_fails_closed(self) -> None:
+        plan = _verification_plan(require_write_scope=True)
+        plan["required_role_capability_axes"] = ["write_scope", "tool_calls"]
+
+        report = run_verification(plan, _evidence(["pkg/**"], ["pkg/a.py"]))
+
+        self.assertEqual(report.verdict, "insufficient-evidence")
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [
+                ("write_scope", "pass", None),
+                (
+                    "tool_calls",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED",
+                ),
+            ],
+        )
+
+    def test_plan_without_required_axes_preserves_v105_verified_verdict(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=False),
+            _evidence_with_contract(
+                {
+                    "schema_version": "v105.verify_wedge",
+                    "expected_exit_code": 0,
+                }
+            ),
+        )
+
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(report.role_capability_conformance, [])
+
+    def test_malformed_plan_required_axes_fail_closed(self) -> None:
+        malformed_values: list[object] = [
+            "write_scope",
+            [7],
+            ["network_access"],
+        ]
+        evidence = _evidence_with_contract(
+            {
+                "schema_version": "v105.verify_wedge",
+                "expected_exit_code": 0,
+            }
+        )
+
+        for malformed in malformed_values:
+            with self.subTest(required_role_capability_axes=malformed):
+                plan = _verification_plan(require_write_scope=False)
+                plan["required_role_capability_axes"] = malformed
+
+                report = run_verification(plan, evidence)
+
+                self.assertEqual(report.verdict, "insufficient-evidence")
+                self.assertEqual(len(report.role_capability_conformance), 1)
+                self.assertEqual(
+                    report.role_capability_conformance[0].axis,
+                    "required_role_capability_axes",
+                )
+                self.assertEqual(
+                    report.role_capability_conformance[0].error_code,
+                    "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID",
+                )
+
     def test_v106_write_scope_violation_refutes_from_run_intent(self) -> None:
         errors = validate_evidence_contract(_evidence(["pkg/**"], ["secrets.txt"]))
 

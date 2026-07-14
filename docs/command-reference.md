@@ -84,7 +84,6 @@ allowed only while non-executing.
 
 ```bash
 python -m depone next --evidence-dir ../observer/evidence-run --previous-capture ../observer/previous/capture-manifest.json --out evidence-next.json --json
-python -m depone team-launch-preflight --team-dry-run docs/team-dry-run/team-dry-run.json --repo . --base-commit <base_commit> --launch-intent plan-only --out docs/team-launch-preflight/team-launch-preflight.json --team-ledger-out docs/team-launch-preflight/team-ledger.json --json
 ```
 
 A gate that would spawn, retry, mutate worktrees, call MCP servers, or call a live
@@ -95,27 +94,20 @@ paths.
 
 ## 4. Receipt and artifact helper commands
 
-These commands produce or inspect local artifacts that Depone can later verify.
-Some are compatibility surfaces retained for existing fixtures.
+These commands produce or inspect local artifacts without launching workers or
+running verification commands.
 
 ```bash
-python -m depone observe --runner-sandbox ./runner-worktree --source-fixture-hash <sha256> --out ../observer/observer-capture.json --log ../observer/verify-log.json -- python -m unittest
 python -m depone evidence-substrate --capture-manifest capture-manifest.json --out evidence-bundle.json --json
-python -m depone team-worktree-prep --team-launch-preflight docs/team-launch-preflight/team-launch-preflight.json --repo . --worktree-root /tmp/depone-worktrees --create-worktree --out docs/team-worktree-prep/team-worktree-prep.json --json
 python -m depone team-pr-artifact --input saved-pr.json --expected-head-sha <head_sha> --out docs/team-pr-artifact/pr-artifact.json --json
 python -m depone team-merge-attempt --repo . --base <base_sha> --head <head_sha> --out docs/team-merge-attempt/merge-attempt.json --json
 python -m depone team-ledger-merge-receipt --lane worker-1 --lane worker-2 --file depone/agent_fabric/team_ledger.py --out team-merge-receipt.json --json
 python -m depone worktree-lane-receipt --worktree ./worker-1 --base-commit <sha> --evidence-dir out/team/worker-1 --out out/team/worker-1/worktree-receipt.json --json
-python -m depone codex-local-capability --repo . --codex-binary definitely-missing-codex-for-committed-fixture --instruction-file AGENTS.md --instruction-file CLAUDE.md --out docs/codex-local-capability/capability.json --json
 ```
 
-Important boundary: these commands may exist to create deterministic receipts or
-compatibility fixtures, but the flagship runtime path belongs in witnessd. Do not
-present these helpers as a full ORRO engine. `team-launch-preflight`,
-`team-worktree-prep`, `team-shell-lane-launch`, and `codex-local-capability` are
-deprecated compatibility surfaces under the TCB extraction plan. Depone now keeps
-only validation/preflight builders and thin compatibility shims; provider
-probing, worktree mutation, and lane execution are delegated to witnessd.
+The migrated `team-launch-preflight`, `team-worktree-prep`,
+`team-shell-lane-launch`, and `codex-local-capability` commands are no longer
+registered by Depone. Their runtime implementations belong to witnessd.
 
 ---
 
@@ -126,15 +118,12 @@ They are not the canonical product UX.
 
 ```bash
 python -m depone demo --out out/depone-quickstart --json
-python -m depone run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
-python -m depone evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run --allow-touched-file sample.txt --json -- python -m unittest
-python -m depone advance --evidence-dir ../observer/evidence-run --runner-sandbox ./runner-worktree --source-fixture depone/fixtures/agent_fabric/reference_adapter_shell.json --out ../observer/evidence-run-next --advance-out advance-decision.json --json -- python -m unittest
 python -m depone mcp
 ```
 
-`run`, `evidence-run`, and `advance` are compatibility evidence-loop surfaces.
-They do not make Depone the final runtime engine and must not be used to claim
-that Depone is the product shell.
+The former `observe`, `run`/`evidence-run`, and `advance` compatibility loops
+executed caller-provided verification commands. They are removed from the
+Depone CLI; witnessd owns execution and emits the bytes Depone verifies.
 
 ---
 

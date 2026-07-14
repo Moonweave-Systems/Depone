@@ -11,9 +11,6 @@ from depone.agent_fabric._witnessd_shim import (
 
 ALLOWED_WITNESSD_IMPORTING_MODULES = {
     Path("depone/agent_fabric/_witnessd_shim.py"),
-    Path("depone/agent_fabric/codex_local_capability.py"),
-    Path("depone/agent_fabric/team_shell_lane_launch.py"),
-    Path("depone/agent_fabric/team_worktree_prep.py"),
 }
 
 
@@ -27,9 +24,8 @@ class WitnessdShimTests(unittest.TestCase):
         )
 
     def test_no_other_depone_module_imports_witnessd(self) -> None:
-        # Mentions of "witnessd" in comments/docstrings (deprecation notices,
-        # migration_target strings) are fine; only an actual import wires the
-        # verifier to the runtime, so only that is a violation.
+        # Only the migration error shim may know how to locate witnessd. The
+        # verifier modules must not wire themselves to the runtime.
         repo = Path(__file__).resolve().parents[1]
         violations: list[str] = []
         for path in sorted((repo / "depone").rglob("*.py")):

@@ -5,7 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-from depone.agent_fabric.observe import canonical_json_pretty
 from depone.agent_fabric.seal import _self_test as seal_self_test
 from depone.agent_fabric.seal import seal_capture
 
@@ -33,7 +32,9 @@ def run(args: argparse.Namespace) -> None:
         seal = seal_capture(capture, key, key_id=key_id)
         out_abs = Path(out_path).expanduser().resolve(strict=False)
         out_abs.parent.mkdir(parents=True, exist_ok=True)
-        out_abs.write_text(canonical_json_pretty(seal), encoding="utf-8")
+        out_abs.write_text(
+            f"{json.dumps(seal, indent=2, sort_keys=True)}\n", encoding="utf-8"
+        )
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(1)

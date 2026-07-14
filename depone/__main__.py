@@ -18,31 +18,23 @@ _LAZY_MODULES = {
     "agent_fabric_evidence_ingest": "depone.cli.agent_fabric_evidence_ingest",
     "agent_fabric_evidence_substrate": "depone.cli.agent_fabric_evidence_substrate",
     "agent_fabric_harness_snapshot": "depone.cli.agent_fabric_harness_snapshot",
-    "agent_fabric_observe": "depone.cli.agent_fabric_observe",
     "agent_fabric_paired_evidence": "depone.cli.agent_fabric_paired_evidence",
-    "agent_fabric_paired_run": "depone.cli.agent_fabric_paired_run",
     "agent_fabric_seal": "depone.cli.agent_fabric_seal",
     "agent_fabric_sign": "depone.cli.agent_fabric_sign",
     "agent_fabric_smoke": "depone.cli.agent_fabric_smoke",
     "agent_fabric_team_ledger": "depone.cli.agent_fabric_team_ledger",
     "agent_fabric_verify_seal": "depone.cli.agent_fabric_verify_seal",
     "agent_fabric_verify_signature": "depone.cli.agent_fabric_verify_signature",
-    "advance": "depone.cli.advance",
-    "codex_local_capability": "depone.cli.codex_local_capability",
     "compile_mod": "depone.compile",
     "demo": "depone.cli.demo",
     "design": "depone.cli.design",
     "doctor": "depone.cli.doctor",
     "evidence_next": "depone.cli.evidence_next",
-    "evidence_run": "depone.cli.evidence_run",
     "mcp_server": "depone.mcp.server",
     "proofcheck": "depone.cli.proofcheck",
     "team_dry_run": "depone.cli.team_dry_run",
-    "team_launch_preflight": "depone.cli.team_launch_preflight",
     "team_merge_attempt": "depone.cli.team_merge_attempt",
     "team_pr_artifact": "depone.cli.team_pr_artifact",
-    "team_shell_lane_launch": "depone.cli.team_shell_lane_launch",
-    "team_worktree_prep": "depone.cli.team_worktree_prep",
     "validate": "depone.cli.validate",
     "validate_contracts": "depone.cli.validate_contracts",
     "verify_mod": "depone.verify",
@@ -83,56 +75,6 @@ def _add_json_arg(parser: argparse.ArgumentParser) -> None:
         "--json",
         action="store_true",
         help="Emit one machine-readable JSON object on stdout",
-    )
-
-
-def _add_observe_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--runner-sandbox",
-        required=False,
-        default="",
-        help="Runner worktree/sandbox to observe read-only",
-    )
-    parser.add_argument(
-        "--source-fixture-hash",
-        required=False,
-        default="",
-        help="Expected source fixture hash for the observer capture",
-    )
-    parser.add_argument(
-        "--out",
-        default="observer-capture.json",
-        help="Observer-owned output path for observer-capture.json",
-    )
-    parser.add_argument(
-        "--log",
-        default="verify-log.json",
-        help="Observer-owned verification command log path",
-    )
-    parser.add_argument(
-        "--timeout-seconds",
-        type=int,
-        default=120,
-        help="Verification command timeout",
-    )
-    parser.add_argument(
-        "--seal-key-file",
-        default="",
-        help="Optional observer-held HMAC key file outside the runner sandbox",
-    )
-    parser.add_argument(
-        "--seal-key-id",
-        default="",
-        help="Optional non-secret observer HMAC key label",
-    )
-    parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    _add_json_arg(parser)
-    parser.add_argument(
-        "verification_command",
-        nargs=argparse.REMAINDER,
-        help="Observer-chosen verification command to run after --",
     )
 
 
@@ -218,151 +160,6 @@ def _add_evidence_chain_args(parser: argparse.ArgumentParser) -> None:
         "--self-test", action="store_true", help="Run self-test and exit"
     )
     _add_json_arg(parser)
-
-
-def _add_evidence_run_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--runner-sandbox",
-        required=False,
-        default="",
-        help="Runner worktree/sandbox to observe read-only",
-    )
-    parser.add_argument(
-        "--source-fixture",
-        required=False,
-        default="",
-        help="Reference adapter/source fixture JSON to hash-bind",
-    )
-    parser.add_argument(
-        "--runner-uid",
-        type=int,
-        default=None,
-        help=(
-            "OS uid the runner/agent ran under, when the observer launched it "
-            "isolated (different user/container). Enables A2 only if the "
-            "observer output dir is not writable by that uid; omit for A1."
-        ),
-    )
-    parser.add_argument(
-        "--runner-user",
-        default="",
-        help=(
-            "OS user for an observer-launched uid runner. Provide with "
-            "--runner-command to bind the runner uid to an observer launch receipt."
-        ),
-    )
-    parser.add_argument(
-        "--runner-command",
-        default="",
-        help=(
-            "Shell command to run as --runner-user inside --runner-sandbox before "
-            "observer capture."
-        ),
-    )
-    parser.add_argument(
-        "--runner-container-id",
-        default="",
-        help=(
-            "Docker container id to inspect as externally launched runner context. "
-            "This records container facts but does not by itself raise assurance "
-            "to A2. Mutually exclusive with --runner-uid and observer-launched "
-            "container options."
-        ),
-    )
-    parser.add_argument(
-        "--runner-container-image",
-        default="",
-        help=(
-            "Docker image for an observer-launched runner container. Provide with "
-            "--runner-container-command to bind the inspected container id to the "
-            "runner launch."
-        ),
-    )
-    parser.add_argument(
-        "--runner-container-command",
-        default="",
-        help=(
-            "Shell command to run inside the observer-launched runner container "
-            "with --runner-sandbox mounted at /work."
-        ),
-    )
-    parser.add_argument(
-        "--runner-container-hold-seconds",
-        type=int,
-        default=600,
-        help=(
-            "Seconds to keep the observer-launched runner container alive after "
-            "its command succeeds so the observer can inspect it."
-        ),
-    )
-    parser.add_argument(
-        "--sign-private-key",
-        default="",
-        help=(
-            "Ed25519 private key PEM for optional operator-key DSSE signing of "
-            "the evidence bundle."
-        ),
-    )
-    parser.add_argument(
-        "--sign-key-id",
-        default="",
-        help="Non-secret key label to embed in the optional evidence-run signature.",
-    )
-    parser.add_argument(
-        "--sign-public-key",
-        default="",
-        help=(
-            "Optional Ed25519 public key PEM used to verify the signed bundle "
-            "immediately after evidence-run signs it."
-        ),
-    )
-    parser.add_argument(
-        "--out",
-        default="evidence-run",
-        help="Output directory for all evidence-run artifacts",
-    )
-    parser.add_argument(
-        "--allow-touched-file",
-        action="append",
-        default=[],
-        help="Allowed touched file for capture manifest validation; repeatable",
-    )
-    parser.add_argument(
-        "--verify-plan",
-        default="",
-        help="Optional plan JSON for the final Depone verify step",
-    )
-    parser.add_argument(
-        "--verify-evidence",
-        default="",
-        help="Optional evidence directory for the final Depone verify step",
-    )
-    parser.add_argument(
-        "--verify-adapter",
-        default="generic",
-        help="Evidence adapter for the final Depone verify step",
-    )
-    parser.add_argument(
-        "--operator-view-out",
-        default="",
-        help="Optional operator view path for the final Depone verify step",
-    )
-    parser.add_argument(
-        "--timeout-seconds",
-        type=int,
-        default=120,
-        help="Observer verification command timeout",
-    )
-    parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    _add_json_arg(parser)
-    parser.add_argument(
-        "verification_command",
-        nargs=argparse.REMAINDER,
-        help="Observer-chosen verification command to run after --",
-    )
-
 
 
 def _add_team_pr_artifact_args(parser: argparse.ArgumentParser) -> None:
@@ -466,168 +263,6 @@ def _add_team_dry_run_args(parser: argparse.ArgumentParser) -> None:
         "--out-dir",
         default="out/team-dry-run",
         help="Repo-relative output directory for dry-run artifacts",
-    )
-    parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    _add_json_arg(parser)
-
-
-def _add_team_launch_preflight_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--team-dry-run",
-        default="",
-        help="Team dry-run artifact JSON path",
-    )
-    parser.add_argument(
-        "--repo",
-        default=".",
-        help="Repository root recorded in the preflight artifact",
-    )
-    parser.add_argument(
-        "--base-commit",
-        default="",
-        help="Base commit to validate; defaults to the team dry-run artifact base_commit",
-    )
-    parser.add_argument(
-        "--launch-intent",
-        default="plan-only",
-        choices=("plan-only", "launch-ready"),
-        help="Preflight strictness; plan-only remains non-executing",
-    )
-    parser.add_argument(
-        "--adapter-availability",
-        default="",
-        help="Optional adapter availability JSON path",
-    )
-    parser.add_argument(
-        "--out",
-        default="",
-        help="Optional output path for the team launch preflight JSON",
-    )
-    parser.add_argument(
-        "--team-ledger-out",
-        default="",
-        help="Optional output path for Team Ledger JSON generated from the preflight lanes",
-    )
-    parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    _add_json_arg(parser)
-
-
-def _add_team_shell_lane_launch_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--allowlist",
-        default="",
-        help="JSON allowlist with commands entries containing id and argv",
-    )
-    parser.add_argument(
-        "--command-id",
-        default="",
-        help="Allowlisted command id to execute",
-    )
-    parser.add_argument(
-        "--cwd",
-        default=".",
-        help="Working directory for the allowlisted argv command",
-    )
-    parser.add_argument(
-        "--out",
-        default="",
-        help="Output path for the shell lane command receipt JSON",
-    )
-    parser.add_argument(
-        "--transcript",
-        default="",
-        help="Output path for the stdout/stderr transcript JSON",
-    )
-    parser.add_argument(
-        "--timeout-seconds",
-        type=int,
-        default=120,
-        help="Command timeout in seconds",
-    )
-    parser.add_argument(
-        "--agent-role-id",
-        default="worker",
-        help="Existing V22 role id to bind into the lane receipt agent contract",
-    )
-    parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    _add_json_arg(parser)
-
-
-def _add_team_worktree_prep_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--team-launch-preflight",
-        default="",
-        help="Team launch preflight JSON path",
-    )
-    parser.add_argument(
-        "--repo",
-        default=".",
-        help="Source repository root used for git worktree add/select",
-    )
-    parser.add_argument(
-        "--worktree-root",
-        default=".",
-        help="Root directory under which planned_worktree paths are resolved",
-    )
-    parser.add_argument(
-        "--create-worktree",
-        action="store_true",
-        help="Allow git worktree add for missing planned worktrees",
-    )
-    parser.add_argument(
-        "--out",
-        default="",
-        help="Optional output path for the team worktree prep JSON",
-    )
-    parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    _add_json_arg(parser)
-
-
-def _add_codex_local_capability_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--repo",
-        default=".",
-        help="Repository root or worktree to inspect",
-    )
-    parser.add_argument(
-        "--codex-binary",
-        default="codex",
-        help="Codex executable name or path",
-    )
-    parser.add_argument(
-        "--sandbox-mode",
-        default="workspace-write",
-        help="Requested Codex sandbox mode",
-    )
-    parser.add_argument(
-        "--approval-policy",
-        default="on-request",
-        help="Requested Codex approval policy",
-    )
-    parser.add_argument(
-        "--version-timeout-seconds",
-        type=float,
-        default=10,
-        help="Timeout for capability-only codex --version probing",
-    )
-    parser.add_argument(
-        "--instruction-file",
-        action="append",
-        default=[],
-        help="Instruction file path, relative to --repo; repeatable",
-    )
-    parser.add_argument(
-        "--out",
-        default="codex-local-capability.json",
-        help="Output receipt JSON",
     )
     parser.add_argument(
         "--self-test", action="store_true", help="Run self-test and exit"
@@ -750,25 +385,6 @@ def _add_proofcheck_args(parser: argparse.ArgumentParser) -> None:
         help="Optional output path for the proofcheck verdict JSON",
     )
     _add_json_arg(parser)
-
-
-def _add_advance_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--evidence-dir",
-        default="",
-        help="Previous evidence-run artifact directory to re-validate before one continuation",
-    )
-    parser.add_argument(
-        "--advance-out",
-        default="",
-        help="Output path for the advance decision artifact; defaults to <out>/advance-decision.json",
-    )
-    parser.add_argument(
-        "--previous-source-fixture",
-        default="",
-        help="Optional source fixture override used only for the previous evidence-next gate",
-    )
-    _add_evidence_run_args(parser)
 
 
 def main() -> None:
@@ -1064,114 +680,6 @@ def main() -> None:
         "--self-test", action="store_true", help="Run self-test and exit"
     )
 
-    # agent-fabric-paired-run
-    paired_run_parser = sub.add_parser(
-        "agent-fabric-paired-run",
-        help="Export V126 observer captures and runner receipts for paired runs",
-    )
-    paired_run_parser.add_argument("--repo", default=".", help="Observed repo path")
-    paired_run_parser.add_argument(
-        "--source-fixture-hash",
-        help="Expected source fixture hash for the observer capture",
-    )
-    paired_run_parser.add_argument(
-        "--out",
-        default="observer-capture.json",
-        help="Output path for observer capture JSON",
-    )
-    paired_run_parser.add_argument(
-        "--log",
-        default=None,
-        help="Output path for verification command log JSON",
-    )
-    paired_run_parser.add_argument(
-        "--timeout-seconds",
-        type=int,
-        default=120,
-        help="Verification command timeout",
-    )
-    paired_run_parser.add_argument(
-        "--runner-receipt-out",
-        default=None,
-        help="Optional output path for runner receipt JSON",
-    )
-    paired_run_parser.add_argument(
-        "--runner-kind",
-        default="manual",
-        choices=["codex-cli", "manual"],
-        help="Runner that performed the agent arm",
-    )
-    paired_run_parser.add_argument(
-        "--arm",
-        default="direct",
-        choices=["direct", "governed"],
-        help="Paired-run arm being observed",
-    )
-    paired_run_parser.add_argument("--task-id", default="manual-task")
-    paired_run_parser.add_argument(
-        "--runner-invocation",
-        action="append",
-        default=[],
-        help="Runner invocation token; repeat for each argv item",
-    )
-    paired_run_parser.add_argument("--transcript-path", default="")
-    paired_run_parser.add_argument(
-        "--runner-log",
-        default="",
-        help="Optional Codex runner stdout/stderr log JSON path",
-    )
-    paired_run_parser.add_argument(
-        "--codex-prompt",
-        default=None,
-        help="Run codex exec with this prompt before observer verification",
-    )
-    paired_run_parser.add_argument(
-        "--codex-prompt-file",
-        default=None,
-        help="Read codex exec prompt from this UTF-8 file",
-    )
-    paired_run_parser.add_argument(
-        "--codex-sandbox",
-        default="workspace-write",
-        choices=["read-only", "workspace-write", "danger-full-access"],
-        help="Sandbox mode passed to codex exec",
-    )
-    paired_run_parser.add_argument(
-        "--report-out",
-        default=None,
-        help="Write a paired-run report from existing direct/governed artifacts",
-    )
-    paired_run_parser.add_argument("--direct-runner", default="")
-    paired_run_parser.add_argument("--direct-observer", default="")
-    paired_run_parser.add_argument("--governed-runner", default="")
-    paired_run_parser.add_argument("--governed-observer", default="")
-    paired_run_parser.add_argument("--runner-exit-code", type=int, default=0)
-    paired_run_parser.add_argument("--started-at", default="")
-    paired_run_parser.add_argument("--ended-at", default="")
-    paired_run_parser.add_argument("--human-intervened", action="store_true")
-    paired_run_parser.add_argument(
-        "--self-test", action="store_true", help="Run self-test and exit"
-    )
-    paired_run_parser.add_argument(
-        "verification_command",
-        nargs=argparse.REMAINDER,
-        help="Verification command to run after --",
-    )
-
-    # agent-fabric-observe
-    observe_parser = sub.add_parser(
-        "agent-fabric-observe",
-        help="Run a separated observer-owned capture over a runner sandbox",
-    )
-    _add_observe_args(observe_parser)
-
-    # observe (agent-facing alias)
-    observe_alias_parser = sub.add_parser(
-        "observe",
-        help="Run a separated observer-owned capture over a runner sandbox",
-    )
-    _add_observe_args(observe_alias_parser)
-
     # agent-fabric-seal
     seal_parser = sub.add_parser(
         "agent-fabric-seal",
@@ -1283,20 +791,6 @@ def main() -> None:
     )
     _add_evidence_chain_args(evidence_chain_alias_parser)
 
-    # evidence-run
-    evidence_run_parser = sub.add_parser(
-        "evidence-run",
-        help="Run observe -> evidence-substrate -> evidence-ingest -> verify",
-    )
-    _add_evidence_run_args(evidence_run_parser)
-
-    # run (native runner alias)
-    run_parser = sub.add_parser(
-        "run",
-        help="Compatibility alias for evidence-run",
-    )
-    _add_evidence_run_args(run_parser)
-
     # evidence-next
     evidence_next_parser = sub.add_parser(
         "evidence-next",
@@ -1310,14 +804,6 @@ def main() -> None:
         help="Compatibility alias for evidence-next",
     )
     _add_evidence_next_args(next_parser)
-
-    # advance
-    advance_parser = sub.add_parser(
-        "advance",
-        help="Gate and run exactly one evidence-run continuation after evidence-next",
-    )
-    _add_advance_args(advance_parser)
-
 
     team_pr_artifact_parser = sub.add_parser(
         "team-pr-artifact",
@@ -1361,30 +847,6 @@ def main() -> None:
         help="Plan Team Ledger lanes without launching workers",
     )
     _add_team_dry_run_args(team_dry_run_parser)
-
-    team_launch_preflight_parser = sub.add_parser(
-        "team-launch-preflight",
-        help="Preflight planned team lanes without launching workers",
-    )
-    _add_team_launch_preflight_args(team_launch_preflight_parser)
-
-    team_worktree_prep_parser = sub.add_parser(
-        "team-worktree-prep",
-        help="Create/select local lane worktrees without launching workers",
-    )
-    _add_team_worktree_prep_args(team_worktree_prep_parser)
-
-    team_shell_lane_launch_parser = sub.add_parser(
-        "team-shell-lane-launch",
-        help="Run one explicit allowlisted argv command for a shell lane",
-    )
-    _add_team_shell_lane_launch_args(team_shell_lane_launch_parser)
-
-    codex_local_capability_parser = sub.add_parser(
-        "codex-local-capability",
-        help="Detect local Codex adapter capability without launching a task",
-    )
-    _add_codex_local_capability_args(codex_local_capability_parser)
 
     # agent-fabric-claim-gate
     claim_gate_parser = sub.add_parser(
@@ -1456,10 +918,6 @@ def main() -> None:
             _load("agent_fabric_dogfood_evidence").run(args)
         elif args.command == "agent-fabric-paired-evidence":
             _load("agent_fabric_paired_evidence").run(args)
-        elif args.command == "agent-fabric-paired-run":
-            _load("agent_fabric_paired_run").run(args)
-        elif args.command in ("agent-fabric-observe", "observe"):
-            _load("agent_fabric_observe").run(args)
         elif args.command == "agent-fabric-seal":
             _load("agent_fabric_seal").run(args)
         elif args.command == "agent-fabric-verify-seal":
@@ -1486,20 +944,8 @@ def main() -> None:
             _load("agent_fabric_team_ledger").run_worktree_receipt(args)
         elif args.command == "team-dry-run":
             _load("team_dry_run").run(args)
-        elif args.command == "team-launch-preflight":
-            _load("team_launch_preflight").run(args)
-        elif args.command == "team-worktree-prep":
-            _load("team_worktree_prep").run(args)
-        elif args.command == "team-shell-lane-launch":
-            _load("team_shell_lane_launch").run(args)
-        elif args.command == "codex-local-capability":
-            _load("codex_local_capability").run(args)
-        elif args.command in ("evidence-run", "run"):
-            _load("evidence_run").run(args)
         elif args.command in ("evidence-next", "next"):
             _load("evidence_next").run(args)
-        elif args.command == "advance":
-            _load("advance").run(args)
         elif args.command == "agent-fabric-claim-gate":
             _load("agent_fabric_claim_gate").run(args)
         elif args.command == "demo":

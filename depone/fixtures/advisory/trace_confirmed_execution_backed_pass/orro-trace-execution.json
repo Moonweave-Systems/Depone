@@ -1,0 +1,26 @@
+{
+  "arm": "governed",
+  "command": "python3 -m unittest tests.test_widget.WidgetTests.test_regression",
+  "ended_at": "2026-07-14T00:00:01Z",
+  "exit_code": 1,
+  "human_intervened": false,
+  "invocation": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_widget.WidgetTests.test_regression"
+  ],
+  "kind": "agent-fabric-runner-receipt",
+  "runner_kind": "manual",
+  "schema_version": "1.0",
+  "source_hashes": {
+    "receipt": "40e895d81496429fece0abb4dbd1bdf68fd48a9aa049466e043ec1f96f2a8c32"
+  },
+  "started_at": "2026-07-14T00:00:00Z",
+  "task_id": "trace-red",
+  "touched_files": [],
+  "transcript": "Widget total was 7, expected 9\ndiscount application count=2\nFAILED",
+  "transcript_path": "orro-trace-execution.log",
+  "transcript_sha256": "37b31fee42bb57e40de12482675abdbf27293ff373112474d873e1670842f047",
+  "worktree": "/tmp/trace-red"
+}

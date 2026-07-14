@@ -10,6 +10,7 @@ from typing import Any
 
 from depone.agent_fabric.claim_gate import canonical_hash
 from depone.agent_fabric.evidence_substrate import decode_dsse_payload
+from depone.agent_fabric.paired_run import validate_runner_receipt
 from depone.agent_fabric.sign import verify_dsse_envelope
 from depone.verify.adapters.base import EvidenceContext
 
@@ -28,6 +29,9 @@ _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION = (
     "v107.role_capability_tool_calls"
 )
 _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION = "v108.advisory_provenance"
+_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION = (
+    "v110.advisory_provenance"
+)
 _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION = (
     "v109.role_capability_write_scope"
 )
@@ -104,6 +108,7 @@ _ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT = (
 _ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH = (
     "ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH"
 )
+_ERR_ADVISORY_TRACE_RED_NOT_EXECUTED = "ERR_ADVISORY_TRACE_RED_NOT_EXECUTED"
 _ERR_ADVISORY_TRACE_TAMPER = "ERR_ADVISORY_TRACE_TAMPER"
 
 
@@ -226,6 +231,7 @@ def _validate_contract_semantics(
         _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
         _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
+        _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
@@ -236,6 +242,7 @@ def _validate_contract_semantics(
                 f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
@@ -273,13 +280,18 @@ def _validate_contract_semantics(
         )
     if (
         isinstance(contract.get("advisory_provenance"), dict)
-        and schema_version != _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION
+        and schema_version
+        not in {
+            _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
+            _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
+        }
     ):
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
                 "advisory_provenance requires schema_version "
-                f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -996,6 +1008,7 @@ def _sealed_advisory_statement(
     evidence: EvidenceContext,
     bundle_path: str,
     tamper_code: str,
+    schema_version: str,
 ) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
     envelope, invalid = _advisory_json_object(evidence, bundle_path, tamper_code)
     if invalid is not None:
@@ -1019,16 +1032,16 @@ def _sealed_advisory_statement(
             bundle_path,
         )
     predicate = statement.get("predicate")
+    schema_number = schema_version.split(".", 1)[0]
     if (
         statement.get("predicateType")
-        != "https://depone.dev/attestations/advisory-provenance/v108"
+        != f"https://depone.dev/attestations/advisory-provenance/{schema_number}"
         or not isinstance(predicate, dict)
-        or predicate.get("schema_version")
-        != _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION
+        or predicate.get("schema_version") != schema_version
     ):
         return None, _advisory_entry(
             tamper_code,
-            "advisory DSSE statement does not declare the v108 predicate",
+            f"advisory DSSE statement does not declare the {schema_number} predicate",
             bundle_path,
         )
     return statement, None
@@ -1102,11 +1115,80 @@ def _trace_receipt_reference(
     return receipt_sha256 if isinstance(receipt_sha256, str) and receipt_sha256 else None
 
 
+def _trace_execution_receipt(
+    evidence: EvidenceContext,
+    statement: dict[str, Any],
+    reproduction: dict[str, Any],
+    decision_path: str,
+) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
+    """Validate a recorded execution without claiming the diagnosed cause is true."""
+
+    execution_path = "orro-trace-execution.json"
+    execution_entry = _evidence_file_entry(evidence, execution_path)
+    if execution_entry is None:
+        return None, _advisory_entry(
+            _ERR_ADVISORY_TRACE_RED_NOT_EXECUTED,
+            "confirmed tier lacks a bound executed-red receipt",
+            decision_path,
+        )
+    execution, invalid = _advisory_json_object(
+        evidence,
+        execution_path,
+        _ERR_ADVISORY_TRACE_RED_NOT_EXECUTED,
+    )
+    if invalid is not None:
+        return None, invalid
+    execution_reference = reproduction.get("execution_receipt_sha256")
+    if (
+        execution is None
+        or not _advisory_subject_matches(statement, execution_path, execution)
+        or not isinstance(execution_reference, str)
+        or execution_reference != canonical_hash(execution)
+    ):
+        return None, _advisory_entry(
+            _ERR_ADVISORY_TRACE_RED_NOT_EXECUTED,
+            "confirmed tier references an execution receipt whose digest does not match",
+            execution_path,
+        )
+
+    command = execution.get("command")
+    transcript = execution.get("transcript")
+    transcript_sha256 = execution.get("transcript_sha256")
+    transcript_matches = (
+        isinstance(transcript, str)
+        and bool(transcript)
+        and isinstance(transcript_sha256, str)
+        and transcript_sha256
+        == hashlib.sha256(transcript.encode("utf-8")).hexdigest()
+    )
+    recorded_failure = (
+        isinstance(execution.get("exit_code"), int)
+        and execution.get("exit_code") != 0
+    ) or execution.get("status") == "failed"
+    if (
+        validate_runner_receipt(execution)
+        or not isinstance(command, str)
+        or not command.strip()
+        or not transcript_matches
+        or not recorded_failure
+    ):
+        return None, _advisory_entry(
+            _ERR_ADVISORY_TRACE_RED_NOT_EXECUTED,
+            (
+                "confirmed tier execution receipt must bind a command, failing "
+                "exit or status, and matching transcript digest"
+            ),
+            execution_path,
+        )
+    return execution, None
+
+
 def _validate_advisory_trace(
     evidence: EvidenceContext,
     trace: dict[str, Any],
     decision_path: str,
     statement: dict[str, Any],
+    require_executed_red: bool,
 ) -> list[EvidenceContractEntry]:
     receipt_path = "orro-trace-reproduction.json"
     receipt_entry = _evidence_file_entry(evidence, receipt_path)
@@ -1190,7 +1272,18 @@ def _validate_advisory_trace(
     )
     symptom = reproduction.get("symptom")
     probe = hypothesis.get("discriminating_probe") if hypothesis is not None else None
-    output = receipt.get("output") if receipt is not None else None
+    if require_executed_red:
+        execution, invalid = _trace_execution_receipt(
+            evidence,
+            statement,
+            reproduction,
+            decision_path,
+        )
+        if invalid is not None:
+            return [invalid]
+        output = execution.get("transcript") if execution is not None else None
+    else:
+        output = receipt.get("output") if receipt is not None else None
     if (
         not isinstance(symptom, str)
         or not symptom
@@ -1239,15 +1332,19 @@ def validate_advisory_provenance(
     """Re-derive advisory record consistency without changing execution verdicts."""
 
     directive = contract.get("advisory_provenance")
+    schema_version = contract.get("schema_version")
     if (
-        contract.get("schema_version")
-        != _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION
+        schema_version
+        not in {
+            _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
+            _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
+        }
         or not isinstance(directive, dict)
     ):
         return [
             _advisory_entry(
                 _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
-                "advisory provenance requires the v108 directive",
+                "advisory provenance requires the v108 or v110 directive",
                 _EVIDENCE_CONTRACT_FILENAME,
             )
         ]
@@ -1295,6 +1392,7 @@ def validate_advisory_provenance(
         evidence,
         bundle_path,
         tamper_code,
+        schema_version,
     )
     if invalid is not None:
         return [invalid]
@@ -1318,6 +1416,8 @@ def validate_advisory_provenance(
         decision,
         decision_path,
         statement,
+        schema_version
+        == _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
     )
 
 

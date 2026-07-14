@@ -9,6 +9,7 @@ from typing import Any
 
 from depone.agent_fabric.claim_gate import canonical_hash
 from depone.agent_fabric.evidence_substrate import wrap_statement_in_dsse
+from depone.agent_fabric.paired_run import build_runner_receipt
 from depone.agent_fabric.sign import _generate_ed25519_keypair, sign_dsse_envelope
 from depone.verify import evidence_contract
 from depone.verify.adapters.base import EvidenceContext, EvidenceFile
@@ -60,6 +61,37 @@ def _receipt(output: str) -> dict[str, Any]:
     }
 
 
+def _execution_receipt(transcript: str) -> dict[str, Any]:
+    command = "python3 -m unittest tests.test_widget.WidgetTests.test_regression"
+    receipt = build_runner_receipt(
+        runner_kind="manual",
+        arm="governed",
+        task_id="trace-red",
+        worktree="/tmp/trace-red",
+        invocation=command.split(),
+        transcript_path="orro-trace-execution.log",
+        exit_code=1,
+        touched_files=[],
+        started_at="2026-07-14T00:00:00Z",
+        ended_at="2026-07-14T00:00:01Z",
+    )
+    receipt.update(
+        {
+            "command": command,
+            "transcript": transcript,
+            "transcript_sha256": hashlib.sha256(
+                transcript.encode("utf-8")
+            ).hexdigest(),
+        }
+    )
+    receipt["source_hashes"] = {
+        "receipt": canonical_hash(
+            {key: value for key, value in receipt.items() if key != "source_hashes"}
+        )
+    }
+    return receipt
+
+
 def _trace(receipt: dict[str, Any], *, tier: str = "confirmed") -> dict[str, Any]:
     return {
         "kind": "orro-trace",
@@ -103,6 +135,9 @@ def _signed_evidence(
     receipt: dict[str, Any] | None = None,
     signed_decision: dict[str, Any] | None = None,
     signed_receipt: dict[str, Any] | None = None,
+    execution_receipt: dict[str, Any] | None = None,
+    signed_execution_receipt: dict[str, Any] | None = None,
+    schema_version: str = "v108.advisory_provenance",
 ) -> tuple[EvidenceContext, dict[str, Any]]:
     decision_path = f"{decision['kind']}.json"
     subjects = [
@@ -124,11 +159,27 @@ def _signed_evidence(
             }
         )
         files.append(_file("orro-trace-reproduction.json", receipt))
+    if execution_receipt is not None:
+        subjects.append(
+            {
+                "name": "orro-trace-execution.json",
+                "digest": {
+                    "sha256": canonical_hash(
+                        signed_execution_receipt or execution_receipt
+                    ),
+                },
+            }
+        )
+        files.append(_file("orro-trace-execution.json", execution_receipt))
+    schema_number = schema_version.split(".", 1)[0]
     statement = {
         "_type": "https://in-toto.io/Statement/v1",
         "subject": subjects,
-        "predicateType": "https://depone.dev/attestations/advisory-provenance/v108",
-        "predicate": {"schema_version": "v108.advisory_provenance"},
+        "predicateType": (
+            "https://depone.dev/attestations/advisory-provenance/"
+            f"{schema_number}"
+        ),
+        "predicate": {"schema_version": schema_version},
     }
     envelope = sign_dsse_envelope(
         wrap_statement_in_dsse(statement),
@@ -137,7 +188,7 @@ def _signed_evidence(
     )
     files.append(_file("advisory-provenance-bundle.json", envelope))
     contract = {
-        "schema_version": "v108.advisory_provenance",
+        "schema_version": schema_version,
         "advisory_provenance": {
             "decision_path": decision_path,
             "bundle_path": "advisory-provenance-bundle.json",
@@ -252,6 +303,72 @@ class AdvisoryProvenanceContractTests(unittest.TestCase):
         )
 
         self.assertEqual(_validate(evidence, contract), [])
+
+    def test_v110_confirmed_trace_passes_with_bound_executed_red(self) -> None:
+        output = (
+            "Widget total was 7, expected 9\n"
+            "discount application count=2\nFAILED"
+        )
+        receipt = _receipt(output)
+        execution_receipt = _execution_receipt(output)
+        trace = _trace(receipt)
+        trace["reproduction"]["execution_receipt_sha256"] = canonical_hash(
+            execution_receipt
+        )
+        evidence, contract = _signed_evidence(
+            trace,
+            receipt=receipt,
+            execution_receipt=execution_receipt,
+            schema_version="v110.advisory_provenance",
+            private_key=self.private_key,
+            public_key=self.public_key,
+        )
+
+        self.assertEqual(_validate(evidence, contract), [])
+
+    def test_v110_confirmed_trace_refutes_freetext_only_red(self) -> None:
+        receipt = _receipt(
+            "Widget total was 7, expected 9\n"
+            "discount application count=2\nFAILED"
+        )
+        trace = _trace(receipt)
+        evidence, contract = _signed_evidence(
+            trace,
+            receipt=receipt,
+            schema_version="v110.advisory_provenance",
+            private_key=self.private_key,
+            public_key=self.public_key,
+        )
+
+        self.assert_error_code(
+            _validate(evidence, contract),
+            "ERR_ADVISORY_TRACE_RED_NOT_EXECUTED",
+        )
+
+    def test_v110_confirmed_trace_refutes_execution_receipt_hash_mismatch(
+        self,
+    ) -> None:
+        output = (
+            "Widget total was 7, expected 9\n"
+            "discount application count=2\nFAILED"
+        )
+        receipt = _receipt(output)
+        execution_receipt = _execution_receipt(output)
+        trace = _trace(receipt)
+        trace["reproduction"]["execution_receipt_sha256"] = "f" * 64
+        evidence, contract = _signed_evidence(
+            trace,
+            receipt=receipt,
+            execution_receipt=execution_receipt,
+            schema_version="v110.advisory_provenance",
+            private_key=self.private_key,
+            public_key=self.public_key,
+        )
+
+        self.assert_error_code(
+            _validate(evidence, contract),
+            "ERR_ADVISORY_TRACE_RED_NOT_EXECUTED",
+        )
 
     def test_confirmed_trace_refutes_missing_backing_receipt(self) -> None:
         receipt = _receipt("Widget total was 7, expected 9")

@@ -1,78 +1,15 @@
 from __future__ import annotations
 
-import subprocess
-import sys
-import tempfile
 import unittest
-import json
-from pathlib import Path
-
-from depone.agent_fabric.capture_bridge import (
-    build_capture_manifest,
-    validate_capture_manifest,
-)
 from depone.agent_fabric.paired_run import (
     build_paired_run_report,
-    build_observer_capture,
     build_runner_receipt,
     now_utc,
     validate_runner_receipt,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
-
 
 class AgentFabricPairedRunTests(unittest.TestCase):
-    def test_observer_capture_records_diff_and_command_receipt(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            repo = root / "repo"
-            repo.mkdir()
-            subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
-            (repo / "task.txt").write_text("before\n", encoding="utf-8")
-            subprocess.run(["git", "add", "task.txt"], cwd=repo, check=True)
-            subprocess.run(
-                [
-                    "git",
-                    "-c",
-                    "user.name=Depone",
-                    "-c",
-                    "user.email=depone@example.com",
-                    "commit",
-                    "-m",
-                    "seed",
-                ],
-                cwd=repo,
-                check=True,
-                capture_output=True,
-            )
-            (repo / "task.txt").write_text("after\n", encoding="utf-8")
-
-            capture = build_observer_capture(
-                repo,
-                source_fixture_hash="fixture-hash",
-                verification_command=[sys.executable, "--version"],
-                log_path=root / "verification.log",
-            )
-
-            self.assertEqual(capture["observed_by"], "depone-observer")
-            self.assertEqual(capture["touched_files"], ["task.txt"])
-            self.assertEqual(capture["test_output"]["status"], "passed")
-            self.assertEqual(capture["command_receipts"][0]["exit_code"], 0)
-
-            fixture = json.loads(
-                (
-                    ROOT / "depone/fixtures/agent_fabric/reference_adapter_shell.json"
-                ).read_text(encoding="utf-8")
-            )
-            capture["source_fixture_hash"] = ""
-            manifest = build_capture_manifest(
-                fixture,
-                observer_capture=capture,
-                allowed_touched_files=["task.txt"],
-            )
-            self.assertEqual(validate_capture_manifest(manifest), [])
-
     def test_runner_receipt_requires_transcript_and_valid_arm(self) -> None:
         receipt = build_runner_receipt(
             runner_kind="codex-cli",

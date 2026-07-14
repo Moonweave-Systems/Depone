@@ -149,10 +149,11 @@ All Depone commands must be classified as one of these surfaces:
 | Verifier | Stable engine calls for `proofcheck`; bytes in, verdict out. | `proofcheck`, `evidence-ingest`, `evidence-chain`, `team-ledger`, verification-receipt validation, capture/receipt validation library calls |
 | Contract | Plan or evidence-contract validation without worker launch. | `validate`, `compile`, evidence-contract validators, verification-recipe schema checks |
 | Gate | Non-executing next-action or preflight decisions. | `next`, non-executing preflight checks |
-| Fixture/demo | Deterministic local fixture generation or compatibility workflows. | `demo`, `observe`, `evidence-substrate`, `run`/`evidence-run`, `advance`, internal `agent-fabric-*` surfaces |
+| Fixture/demo | Deterministic, non-executing local fixture generation. | `demo`, `evidence-substrate`, source-only internal `agent-fabric-*` surfaces |
 
-Fixture/demo and compatibility commands may remain for existing automation, but
-docs must label them as such. They are not the canonical ORRO user surface.
+Fixture/demo commands may remain only when they do not launch workers or run
+verification commands. Runtime compatibility commands belong in witnessd, not
+the Depone command table.
 
 ---
 

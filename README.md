@@ -139,8 +139,8 @@ or make a new evidence directory pass.
 | --- | --- | --- |
 | Verifier commands | `proofcheck`, `evidence-ingest`, `evidence-chain`, `team-ledger` | Stable engine calls for `proofcheck`. |
 | Contract commands | `validate`, `compile`, evidence-contract validation | Planning/contract helpers for `flowplan`. |
-| Gate commands | `next`, `team-launch-preflight` | Non-executing gates for wrapper workflows. |
-| Compatibility/demo commands | `demo`, `observe`, `evidence-substrate`, internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
+| Gate commands | `next` | Non-executing gates for wrapper workflows. |
+| Compatibility/demo commands | `demo`, `evidence-substrate`, source-only internal `agent-fabric-*` surfaces | Useful for fixtures and development, not the final user surface. |
 
 Commands that launch workers, own sessions, retry, call external MCP/tools, or
 mutate active worktrees belong in witnessd or in the future ORRO wrapper calling

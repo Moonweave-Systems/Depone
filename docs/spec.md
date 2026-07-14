@@ -405,6 +405,24 @@ any non-empty receipt reference must match a present sealed receipt. The receipt
 records the prior-run command, exit status, and output verbatim; Depone does not
 execute that command.
 
+Schema version `v110.advisory_provenance` strengthens only the confirmed trace
+path. In addition to the v108 checks, `reproduction.execution_receipt_sha256`
+must reference a signed `orro-trace-execution.json` subject shaped as a valid
+runner receipt. The execution receipt binds a non-empty `command`, an
+`exit_code` or failed status that records the red, and a `transcript` whose
+`transcript_sha256` matches its bytes. The symptom and confirmed hypothesis's
+discriminating probe must occur in that bound execution transcript, not merely
+in the reproduction receipt's self-authored free-text output. Missing, invalid,
+or digest-mismatched execution evidence REFUTES with
+`ERR_ADVISORY_TRACE_RED_NOT_EXECUTED`. Suspected, speculative, and unconfirmed
+tiers retain the v108 rules and do not require an execution receipt.
+
+This requirement establishes only that a failing execution was recorded and
+bound consistently into the signed evidence. Depone still does not re-execute
+the command and does not establish that the claimed root cause is correct. The
+prior `v108.advisory_provenance` behavior remains available unchanged until
+producers emit the v110 execution binding.
+
 Violations REFUTE only the advisory-provenance track with Depone-owned codes:
 
 - `ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID`
@@ -416,6 +434,7 @@ Violations REFUTE only the advisory-provenance track with Depone-owned codes:
 - `ERR_ADVISORY_TRACE_UNRELATED_RED`
 - `ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT`
 - `ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH`
+- `ERR_ADVISORY_TRACE_RED_NOT_EXECUTED`
 - `ERR_ADVISORY_TRACE_TAMPER`
 
 Every REFUTE message states that the claim is not re-derivable from sealed

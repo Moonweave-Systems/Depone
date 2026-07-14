@@ -16,10 +16,22 @@ CASES = (
     "trace_confirmed_backed_pass",
     "trace_confirmed_unbacked_fail",
     "trace_unrelated_red_fail",
+    "trace_confirmed_execution_backed_pass",
+    "trace_confirmed_freetext_only_fail",
+    "trace_confirmed_execution_hash_mismatch_fail",
 )
 CASE_PUBLIC_KEYS = {
     "sketch_fail_chosen_also_rejected": (
         FIXTURE_ROOT / "sketch-chosen-also-rejected-public-key.pem"
+    ),
+    "trace_confirmed_execution_backed_pass": (
+        FIXTURE_ROOT / "advisory-v110-public-key.pem"
+    ),
+    "trace_confirmed_freetext_only_fail": (
+        FIXTURE_ROOT / "advisory-v110-public-key.pem"
+    ),
+    "trace_confirmed_execution_hash_mismatch_fail": (
+        FIXTURE_ROOT / "advisory-v110-public-key.pem"
     ),
 }
 
@@ -56,7 +68,7 @@ def main() -> None:
             )
         print(f"{name}: {actual_verdict} {actual_codes}")
 
-    print("v108 advisory provenance fixtures: pass")
+    print("v108/v110 advisory provenance fixtures: pass")
 
 
 if __name__ == "__main__":

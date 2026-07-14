@@ -1,0 +1,10 @@
+{
+  "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsic2NoZW1hX3ZlcnNpb24iOiJ2MTEwLmFkdmlzb3J5X3Byb3ZlbmFuY2UifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vZGVwb25lLmRldi9hdHRlc3RhdGlvbnMvYWR2aXNvcnktcHJvdmVuYW5jZS92MTEwIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNoYTI1NiI6IjUxMzdmZDZkYWJjNzc0NzBmYjRkZWM0OWYxMjA5NGYwNWYxODI3Mjc3YTY5ZTNhMzE2ZTYyMDg4ZDNhMmQ2N2YifSwibmFtZSI6Im9ycm8tdHJhY2UuanNvbiJ9LHsiZGlnZXN0Ijp7InNoYTI1NiI6IjI2M2YxZjhhYWYxZTFjNjk0YzM4ZjFlNDFhODFiZTYzYjgyNTliOWMyNTZmMDFlNzgzZmY5OTZiZDY5OGUxMjQifSwibmFtZSI6Im9ycm8tdHJhY2UtcmVwcm9kdWN0aW9uLmpzb24ifSx7ImRpZ2VzdCI6eyJzaGEyNTYiOiJjYzg1ZjdiOWM0ODc0NWE1ZmRmOTZkZTE4NDA4MTg1MGI1YjQ2MGU3ZGRmZTFhYjY0NmQyMmJiMjFmZjY4NzBhIn0sIm5hbWUiOiJvcnJvLXRyYWNlLWV4ZWN1dGlvbi5qc29uIn1dfQ==",
+  "payloadType": "application/vnd.in-toto+json",
+  "signatures": [
+    {
+      "keyid": "advisory-test-key",
+      "sig": "d3WvNL1phKSGBoizoyd2fDgzD5r/oMbN2bCFie3CRiumvBEbVUF5qjMRT2ujwG8L7ZjnOHSdAmAK6iokWnsYBQ=="
+    }
+  ]
+}

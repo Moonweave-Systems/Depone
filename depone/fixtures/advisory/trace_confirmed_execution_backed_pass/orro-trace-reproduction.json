@@ -1,0 +1,6 @@
+{
+  "command": "python3 -m unittest tests.test_widget.WidgetTests.test_regression",
+  "exit_status": 1,
+  "kind": "orro-trace-reproduction",
+  "output": "Widget total was 7, expected 9\ndiscount application count=2\nFAILED"
+}

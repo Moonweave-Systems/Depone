@@ -21,6 +21,15 @@ from depone.verify.evidence_contract import (
 )
 
 
+_ROLE_CAPABILITY_AXES = frozenset({"tool_calls", "write_scope"})
+_ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED = (
+    "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED"
+)
+_ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID = (
+    "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID"
+)
+
+
 @dataclass
 class GateCheck:
     gate_id: str
@@ -146,12 +155,34 @@ def _role_capability_contract_axes(evidence: EvidenceContext) -> list[str]:
     return []
 
 
+def _plan_required_role_capability_axes(
+    plan: dict[str, Any],
+) -> tuple[list[str], bool]:
+    if "required_role_capability_axes" not in plan:
+        return [], False
+    required = plan["required_role_capability_axes"]
+    if not isinstance(required, list):
+        return [], True
+    invalid = any(
+        not isinstance(axis, str) or axis not in _ROLE_CAPABILITY_AXES
+        for axis in required
+    )
+    axes = [
+        axis
+        for axis in required
+        if isinstance(axis, str) and axis in _ROLE_CAPABILITY_AXES
+    ]
+    return list(dict.fromkeys(axes)), invalid
+
+
 def _role_capability_conformance(
+    plan: dict[str, Any],
     evidence: EvidenceContext,
     evidence_contract: list[EvidenceContractEntry],
 ) -> list[RoleCapabilityConformance]:
     axes = _role_capability_contract_axes(evidence)
-    if not axes:
+    required_axes, required_axes_invalid = _plan_required_role_capability_axes(plan)
+    if not axes and not required_axes and not required_axes_invalid:
         return []
 
     results: list[RoleCapabilityConformance] = []
@@ -184,6 +215,25 @@ def _role_capability_conformance(
                 status="fail",
                 evidence_path=failure.evidence_path,
                 error_code=failure.code,
+            )
+        )
+    for axis in required_axes:
+        if axis in axes:
+            continue
+        results.append(
+            RoleCapabilityConformance(
+                axis=axis,
+                status="fail",
+                evidence_path="evidence-contract.json",
+                error_code=_ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED,
+            )
+        )
+    if required_axes_invalid:
+        results.append(
+            RoleCapabilityConformance(
+                axis="required_role_capability_axes",
+                status="fail",
+                error_code=_ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID,
             )
         )
     return results
@@ -583,6 +633,7 @@ def run_verification(
     budget = check_budget_adherence(plan, evidence)
     evidence_contract = validate_evidence_contract(evidence)
     role_capability_conformance = _role_capability_conformance(
+        plan,
         evidence,
         evidence_contract,
     )
@@ -639,6 +690,15 @@ def run_verification(
 
     if evidence_contract:
         any_refuted = True
+    if any(
+        entry.error_code
+        in {
+            _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED,
+            _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID,
+        }
+        for entry in role_capability_conformance
+    ):
+        any_insufficient = True
     if any(not capture.valid for capture in agent_fabric_captures):
         any_refuted = True
 

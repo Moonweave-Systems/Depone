@@ -466,6 +466,8 @@ def _verified_role_capability_bundle(
     evidence: EvidenceContext,
     bundle: dict[str, Any],
     bundle_path: str,
+    *,
+    verified_signature_anchors: set[str] | None = None,
 ) -> tuple[dict[str, Any] | None, EvidenceContractEntry | None]:
     public_key_path = evidence.raw.get("trusted_observer_public_key_file")
     if not isinstance(public_key_path, str) or not public_key_path:
@@ -518,6 +520,8 @@ def _verified_role_capability_bundle(
             ),
             bundle_path,
         )
+    if verified_signature_anchors is not None:
+        verified_signature_anchors.add(public_key_path)
 
     # M1 closes the no-signature-checked hole. A valid signature under this
     # configured key does not establish that the anchor is independent of the
@@ -532,6 +536,8 @@ def _validate_role_capability_write_scope(
     evidence: EvidenceContext,
     contract: dict[str, Any],
     touched_files: list[str],
+    *,
+    verified_signature_anchors: set[str] | None = None,
 ) -> list[EvidenceContractEntry]:
     directive = contract.get("role_capability_write_scope")
     if not isinstance(directive, dict):
@@ -547,6 +553,7 @@ def _validate_role_capability_write_scope(
         evidence,
         run_intent_path,
         bundle_path,
+        verified_signature_anchors=verified_signature_anchors,
     )
     if errors:
         return errors
@@ -631,6 +638,8 @@ def _load_bound_run_intent(
     evidence: EvidenceContext,
     run_intent_path: str,
     bundle_path: str,
+    *,
+    verified_signature_anchors: set[str] | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[EvidenceContractEntry]]:
     run_intent_entry = _evidence_file_entry(evidence, run_intent_path)
     if run_intent_entry is None:
@@ -665,6 +674,7 @@ def _load_bound_run_intent(
         evidence,
         bundle,
         bundle_path,
+        verified_signature_anchors=verified_signature_anchors,
     )
     if signature_error is not None:
         return None, None, [signature_error]
@@ -717,6 +727,8 @@ def _load_bound_run_intent(
 def _validate_role_capability_tool_calls(
     evidence: EvidenceContext,
     contract: dict[str, Any],
+    *,
+    verified_signature_anchors: set[str] | None = None,
 ) -> list[EvidenceContractEntry]:
     directive = contract.get("role_capability_tool_calls")
     if not isinstance(directive, dict):
@@ -736,6 +748,7 @@ def _validate_role_capability_tool_calls(
         evidence,
         run_intent_path,
         bundle_path,
+        verified_signature_anchors=verified_signature_anchors,
     )
     if errors:
         return errors
@@ -1473,6 +1486,8 @@ def _append_unique_entry(
 
 def validate_evidence_contract(
     evidence: EvidenceContext,
+    *,
+    verified_signature_anchors: set[str] | None = None,
 ) -> list[EvidenceContractEntry]:
     shadowed = _find_control_shadow(evidence)
     if shadowed is not None:
@@ -1581,9 +1596,14 @@ def validate_evidence_contract(
         evidence,
         contract,
         touched_files,
+        verified_signature_anchors=verified_signature_anchors,
     ):
         _append_unique_entry(results, entry)
-    for entry in _validate_role_capability_tool_calls(evidence, contract):
+    for entry in _validate_role_capability_tool_calls(
+        evidence,
+        contract,
+        verified_signature_anchors=verified_signature_anchors,
+    ):
         _append_unique_entry(results, entry)
 
     test_patterns = _as_str_list(contract.get("test_file_patterns"))

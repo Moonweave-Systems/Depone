@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal
 
 from depone.agent_fabric.capture_bridge import (
@@ -114,6 +115,12 @@ class RoleCapabilityConformance:
 
 @dataclass
 class VerificationReport:
+    """Verification result.
+
+    A1/A2 assurance is relative to the recorded trust anchor and does not by
+    itself establish that the anchor is independent of the executor.
+    """
+
     schema_version: str = "1.0"
     plan_hash: str = ""
     framework: str = "generic"
@@ -122,6 +129,8 @@ class VerificationReport:
     evidence_contract: list[EvidenceContractEntry] = field(default_factory=list)
     decision: Literal["pass", "fail", "inconclusive"] = "pass"
     assurance: str = "A0-claims-only"
+    signature_checked: bool = False
+    trust_anchor: dict[str, str] | None = None
     agent_fabric_captures: list[AgentFabricCaptureCheck] = field(default_factory=list)
     claim_evaluations: list[ClaimEvaluation] = field(default_factory=list)
     review_signals: list[ReviewSignal] = field(default_factory=list)
@@ -515,6 +524,7 @@ def _handoffs_for_phase(
 
 def _read_agent_fabric_captures(
     evidence: EvidenceContext,
+    verified_signature_anchors_by_assurance: dict[str, set[str]],
 ) -> list[AgentFabricCaptureCheck]:
     captures: list[AgentFabricCaptureCheck] = []
     for evidence_file in evidence.files:
@@ -533,6 +543,7 @@ def _read_agent_fabric_captures(
         trusted_provenance = False
         assurance = str(parsed.get("assurance", "A0-claims-only"))
         if not errors and assurance in (ASSURANCE_A1, ASSURANCE_A2):
+            capture_signature_anchors: set[str] = set()
             provenance_errors = validate_trusted_observer_provenance(
                 parsed,
                 evidence_path=evidence_file.path,
@@ -541,9 +552,15 @@ def _read_agent_fabric_captures(
                 public_key_path=evidence.raw.get(
                     "trusted_observer_public_key_file"
                 ),
+                verified_signature_anchors=capture_signature_anchors,
             )
             errors.extend(provenance_errors)
             trusted_provenance = not provenance_errors
+            if trusted_provenance and capture_signature_anchors:
+                verified_signature_anchors_by_assurance.setdefault(
+                    assurance,
+                    set(),
+                ).update(capture_signature_anchors)
         captures.append(
             AgentFabricCaptureCheck(
                 evidence_path=evidence_file.path,
@@ -615,6 +632,45 @@ def _decision_for_verdict(
     return "inconclusive"
 
 
+def _trust_anchor_for_assurance(
+    assurance: str,
+    evidence: EvidenceContext,
+    captures: list[AgentFabricCaptureCheck],
+    observer_signature_anchors: set[str],
+) -> dict[str, str] | None:
+    if assurance not in (ASSURANCE_A1, ASSURANCE_A2):
+        return None
+    if observer_signature_anchors:
+        public_key_path = sorted(observer_signature_anchors)[0]
+        anchor = {
+            "kind": "public_key",
+            "public_key_path": public_key_path,
+        }
+        try:
+            anchor["public_key_sha256"] = hashlib.sha256(
+                Path(public_key_path).read_bytes()
+            ).hexdigest()
+        except OSError:
+            pass
+        return anchor
+    seal_key = evidence.raw.get("trusted_observer_seal_key")
+    if (
+        isinstance(seal_key, bytes)
+        and seal_key
+        and any(
+            capture.valid
+            and capture.trusted_observer_provenance
+            and capture.assurance == assurance
+            for capture in captures
+        )
+    ):
+        return {
+            "kind": "shared_seal_key",
+            "key_sha256": hashlib.sha256(seal_key).hexdigest(),
+        }
+    return None
+
+
 def run_verification(
     plan: dict[str, Any],
     evidence: EvidenceContext,
@@ -631,13 +687,21 @@ def run_verification(
     claim_evals = evaluate_claims(plan, evidence)
     adv_checks = _adversarial_from_claims(claim_evals)
     budget = check_budget_adherence(plan, evidence)
-    evidence_contract = validate_evidence_contract(evidence)
+    contract_signature_anchors: set[str] = set()
+    evidence_contract = validate_evidence_contract(
+        evidence,
+        verified_signature_anchors=contract_signature_anchors,
+    )
     role_capability_conformance = _role_capability_conformance(
         plan,
         evidence,
         evidence_contract,
     )
-    agent_fabric_captures = _read_agent_fabric_captures(evidence)
+    observer_signature_anchors_by_assurance: dict[str, set[str]] = {}
+    agent_fabric_captures = _read_agent_fabric_captures(
+        evidence,
+        observer_signature_anchors_by_assurance,
+    )
     review_signals = _read_review_signals(evidence)
     handoffs_spec = plan.get("handoffs", [])
 
@@ -727,6 +791,11 @@ def run_verification(
     else:
         overall = "verified"
 
+    assurance = _assurance_for_report(agent_fabric_captures)
+    observer_signature_anchors = observer_signature_anchors_by_assurance.get(
+        assurance,
+        set(),
+    )
     return VerificationReport(
         plan_hash=plan_hash,
         framework=framework,
@@ -734,7 +803,17 @@ def run_verification(
         phases=phase_verdicts,
         evidence_contract=evidence_contract,
         decision=_decision_for_verdict(overall),
-        assurance=_assurance_for_report(agent_fabric_captures),
+        assurance=assurance,
+        signature_checked=bool(
+            contract_signature_anchors
+            or any(observer_signature_anchors_by_assurance.values())
+        ),
+        trust_anchor=_trust_anchor_for_assurance(
+            assurance,
+            evidence,
+            agent_fabric_captures,
+            observer_signature_anchors,
+        ),
         agent_fabric_captures=agent_fabric_captures,
         claim_evaluations=claim_evals,
         review_signals=review_signals,

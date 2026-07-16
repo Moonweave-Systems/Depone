@@ -86,6 +86,7 @@ class SuperflowArtifactTests(unittest.TestCase):
 
         self.assertEqual(verdict["decision"], "pass")
         self.assertEqual(verdict["errors"], [])
+        self.assertIs(verdict["signature_checked"], False)
         self.assertFalse(verdict["boundary"]["executes_commands"])
         self.assertFalse(verdict["boundary"]["calls_live_mcp"])
         self.assertFalse(verdict["boundary"]["raises_assurance"])
@@ -154,8 +155,10 @@ class SuperflowArtifactTests(unittest.TestCase):
         self.assertEqual(summary["command"], "proofcheck")
         self.assertEqual(summary["verifier_command"], "team-ledger")
         self.assertEqual(summary["decision"], "pass")
+        self.assertIs(summary["signature_checked"], False)
         self.assertEqual(verdict["kind"], "depone-team-ledger-verdict")
         self.assertEqual(verdict["decision"], "pass")
+        self.assertIs(verdict["signature_checked"], False)
 
     def test_missing_evidence_dir_blocks(self) -> None:
         fixture = self.root / "missing"

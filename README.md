@@ -9,9 +9,9 @@
 ![Depone hero](assets/dwm-hero.svg)
 
 **Depone** is the verifier engine inside ORRO, the Observed Run & Review
-Orchestrator, published under the Moonweave account. It re-derives A0/A1/A2,
-blocked, or refuted from signed evidence bytes, offline, and cannot raise the
-grade beyond what those bytes support.
+Orchestrator, published under the Moonweave account. Default `proofcheck` checks
+structure and content-hash consistency; the evidence-contract `depone verify`
+track checks DSSE signatures under a configured trust anchor when required.
 
 Depone verifies; witnessd executes; ORRO exposes the workflow.
 

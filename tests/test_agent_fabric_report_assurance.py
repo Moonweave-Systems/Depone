@@ -115,6 +115,19 @@ def _a1_manifest() -> dict:
     )
 
 
+def _a2_manifest() -> dict:
+    return build_capture_manifest(
+        _fixture(),
+        observer_capture=_a1_manifest()["observer_capture"],
+        allowed_touched_files=["depone/example.py"],
+        isolation={
+            "runner_uid": 1001,
+            "observer_uid": 1002,
+            "observer_dir_writable_by_runner": False,
+        },
+    )
+
+
 def _trusted_raw(manifest: dict) -> dict:
     key = b"trusted-observer-key"
     seal = seal_capture(
@@ -262,8 +275,22 @@ def _forged_isolated_manifest() -> dict:
 
 
 class VerificationReportAssuranceTests(unittest.TestCase):
+    def test_a0_report_does_not_claim_a_signature_or_trust_anchor(self) -> None:
+        evidence = EvidenceContext(
+            run_id="assurance-test-run",
+            files=_base_evidence_files(_a1_manifest())[:-1],
+            raw={"metadata": {"run_id": "assurance-test-run"}},
+        )
+
+        report = run_verification(_plan(), evidence)
+
+        self.assertEqual(report.assurance, "A0-claims-only")
+        self.assertIs(report.signature_checked, False)
+        self.assertIsNone(report.trust_anchor)
+
     def test_valid_a1_capture_surfaces_pass_decision_and_a1_assurance(self) -> None:
         manifest = _a1_manifest()
+        seal_key = _trusted_raw(manifest)["trusted_observer_seal_key"]
         evidence = EvidenceContext(
             run_id="assurance-test-run",
             files=_base_evidence_files(manifest),
@@ -275,6 +302,14 @@ class VerificationReportAssuranceTests(unittest.TestCase):
         self.assertEqual(report.verdict, "verified")
         self.assertEqual(report.decision, "pass")
         self.assertEqual(report.assurance, "A1-local-observed")
+        self.assertIs(report.signature_checked, False)
+        self.assertEqual(
+            report.trust_anchor,
+            {
+                "kind": "shared_seal_key",
+                "key_sha256": hashlib.sha256(seal_key).hexdigest(),
+            },
+        )
         self.assertEqual(report.agent_fabric_captures[0].valid, True)
 
     def test_signed_ed25519_provenance_surfaces_a1_assurance(self) -> None:
@@ -293,13 +328,76 @@ class VerificationReportAssuranceTests(unittest.TestCase):
                     public_key_path=public_key,
                 ),
             )
+            expected_key_sha256 = hashlib.sha256(public_key.read_bytes()).hexdigest()
 
             report = run_verification(_plan(), evidence)
 
         self.assertEqual(report.verdict, "verified")
         self.assertEqual(report.decision, "pass")
         self.assertEqual(report.assurance, "A1-local-observed")
+        self.assertIs(report.signature_checked, True)
+        self.assertEqual(
+            report.trust_anchor,
+            {
+                "kind": "public_key",
+                "public_key_path": str(public_key),
+                "public_key_sha256": expected_key_sha256,
+            },
+        )
         self.assertTrue(report.agent_fabric_captures[0].trusted_observer_provenance)
+
+    def test_valid_a2_capture_records_shared_seal_anchor(self) -> None:
+        manifest = _a2_manifest()
+        raw = _trusted_raw(manifest)
+        seal_key = raw["trusted_observer_seal_key"]
+        evidence = EvidenceContext(
+            run_id="assurance-test-run",
+            files=_base_evidence_files(manifest),
+            raw=raw,
+        )
+
+        report = run_verification(_plan(), evidence)
+
+        self.assertEqual(report.assurance, "A2-isolated-observed")
+        self.assertIs(report.signature_checked, False)
+        self.assertEqual(
+            report.trust_anchor,
+            {
+                "kind": "shared_seal_key",
+                "key_sha256": hashlib.sha256(seal_key).hexdigest(),
+            },
+        )
+
+    def test_signed_a2_capture_records_public_key_anchor(self) -> None:
+        if openssl_path() is None:
+            self.skipTest("openssl unavailable")
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_dir = Path(tmp)
+            private_key, public_key = _generate_ed25519_keypair(temp_dir)
+            manifest = _a2_manifest()
+            evidence = EvidenceContext(
+                run_id="assurance-test-run",
+                files=_base_evidence_files(manifest),
+                raw=_signed_trusted_raw(
+                    manifest,
+                    private_key_path=private_key,
+                    public_key_path=public_key,
+                ),
+            )
+            expected_key_sha256 = hashlib.sha256(public_key.read_bytes()).hexdigest()
+
+            report = run_verification(_plan(), evidence)
+
+        self.assertEqual(report.assurance, "A2-isolated-observed")
+        self.assertIs(report.signature_checked, True)
+        self.assertEqual(
+            report.trust_anchor,
+            {
+                "kind": "public_key",
+                "public_key_path": str(public_key),
+                "public_key_sha256": expected_key_sha256,
+            },
+        )
 
     def test_public_key_only_dsse_provenance_cannot_raise_assurance(self) -> None:
         if openssl_path() is None:

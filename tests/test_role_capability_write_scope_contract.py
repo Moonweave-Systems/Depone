@@ -417,6 +417,8 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         )
 
         self.assertEqual(report.verdict, "verified")
+        self.assertIs(report.signature_checked, True)
+        self.assertIsNone(report.trust_anchor)
         self.assertEqual(report.role_capability_conformance[0].axis, "write_scope")
         self.assertEqual(report.role_capability_conformance[0].status, "pass")
 

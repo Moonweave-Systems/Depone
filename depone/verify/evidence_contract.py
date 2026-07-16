@@ -25,13 +25,9 @@ class EvidenceContractEntry:
 _EVIDENCE_CONTRACT_FILENAME = "evidence-contract.json"
 _CONTRACT_SCHEMA_VERSION = "v105.verify_wedge"
 _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION = "v106.role_capability_write_scope"
-_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION = (
-    "v107.role_capability_tool_calls"
-)
+_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION = "v107.role_capability_tool_calls"
 _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION = "v108.advisory_provenance"
-_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION = (
-    "v110.advisory_provenance"
-)
+_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION = "v110.advisory_provenance"
 _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION = (
     "v109.role_capability_write_scope"
 )
@@ -49,24 +45,14 @@ _ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING = "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSIN
 _ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID = "ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID"
 _ERR_ROLE_CAPABILITY_SIGNATURE_MISSING = "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"
 _ERR_ROLE_CAPABILITY_SIGNATURE_INVALID = "ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"
-_ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING = (
-    "ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"
-)
-_ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = (
-    "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
-)
-_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND = (
-    "ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"
-)
+_ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING = "ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"
+_ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
+_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND = "ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"
 _ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH = (
     "ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"
 )
-_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING = (
-    "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING"
-)
-_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID = (
-    "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID"
-)
+_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING = "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_MISSING"
+_ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID = "ERR_ROLE_CAPABILITY_TOOL_RECEIPTS_INVALID"
 _ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING = "ERR_ROLE_CAPABILITY_TOOL_GRANT_MISSING"
 _ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH = (
     "ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH"
@@ -74,9 +60,7 @@ _ERR_ROLE_CAPABILITY_TOOL_DECISION_MISMATCH = (
 _ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT = (
     "ERR_ROLE_CAPABILITY_TOOL_ALLOW_OUTSIDE_GRANT"
 )
-_ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING = (
-    "ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING"
-)
+_ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING = "ERR_ROLE_CAPABILITY_TOOL_RECEIPT_MISSING"
 _ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED = "ERR_ROLE_CAPABILITY_TOOL_DENY_EXECUTED"
 _ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH = (
     "ERR_ROLE_CAPABILITY_TOOL_REQUEST_HASH_MISMATCH"
@@ -85,29 +69,19 @@ _ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP = "ERR_ROLE_CAPABILITY_TOOL_SEQUENCE_GAP"
 _ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH = (
     "ERR_ROLE_CAPABILITY_TOOL_BUNDLE_DIGEST_MISMATCH"
 )
-_ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID = (
-    "ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID"
-)
+_ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID = "ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID"
 _ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES = (
     "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES"
 )
-_ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED = (
-    "ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED"
-)
+_ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED = "ERR_ADVISORY_SKETCH_CHOSEN_ALSO_REJECTED"
 _ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING = (
     "ERR_ADVISORY_SKETCH_REJECTED_REASON_MISSING"
 )
 _ERR_ADVISORY_SKETCH_TAMPER = "ERR_ADVISORY_SKETCH_TAMPER"
-_ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED = (
-    "ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED"
-)
+_ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED = "ERR_ADVISORY_TRACE_CONFIRMED_UNBACKED"
 _ERR_ADVISORY_TRACE_UNRELATED_RED = "ERR_ADVISORY_TRACE_UNRELATED_RED"
-_ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT = (
-    "ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT"
-)
-_ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH = (
-    "ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH"
-)
+_ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT = "ERR_ADVISORY_TRACE_RIVAL_NOT_RULED_OUT"
+_ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH = "ERR_ADVISORY_TRACE_RECEIPT_HASH_MISMATCH"
 _ERR_ADVISORY_TRACE_RED_NOT_EXECUTED = "ERR_ADVISORY_TRACE_RED_NOT_EXECUTED"
 _ERR_ADVISORY_TRACE_TAMPER = "ERR_ADVISORY_TRACE_TAMPER"
 
@@ -249,8 +223,7 @@ def _validate_contract_semantics(
         )
     if (
         isinstance(contract.get("role_capability_write_scope"), dict)
-        and schema_version
-        != _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
+        and schema_version != _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
     ):
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
@@ -262,26 +235,27 @@ def _validate_contract_semantics(
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
-    if (
-        isinstance(contract.get("role_capability_tool_calls"), dict)
-        and schema_version != _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION
-    ):
+    if isinstance(
+        contract.get("role_capability_tool_calls"), dict
+    ) and schema_version not in {
+        _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
+    }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
                 "role_capability_tool_calls requires schema_version "
-                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r} "
+                "(the bound-observation schema, for contracts that also carry a "
+                "bound write_scope directive)"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
-    if (
-        isinstance(contract.get("advisory_provenance"), dict)
-        and schema_version
-        not in {
-            _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
-            _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
-        }
-    ):
+    if isinstance(contract.get("advisory_provenance"), dict) and schema_version not in {
+        _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
+        _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
+    }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
@@ -380,8 +354,7 @@ def _subject_digest(bundle: dict[str, Any], name: str) -> str | None:
 
 def _path_allowed_by_scope(path: str, write_scope: list[str]) -> bool:
     return any(
-        path == pattern or fnmatch.fnmatchcase(path, pattern)
-        for pattern in write_scope
+        path == pattern or fnmatch.fnmatchcase(path, pattern) for pattern in write_scope
     )
 
 
@@ -430,9 +403,7 @@ def _role_capability_signature_entry(
 ) -> EvidenceContractEntry:
     return EvidenceContractEntry(
         code=code,
-        message=(
-            f"{detail}; this does not assess whether the work itself is correct"
-        ),
+        message=(f"{detail}; this does not assess whether the work itself is correct"),
         evidence_path=bundle_path,
     )
 
@@ -639,13 +610,17 @@ def _load_bound_run_intent(
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[EvidenceContractEntry]]:
     run_intent_entry = _evidence_file_entry(evidence, run_intent_path)
     if run_intent_entry is None:
-        return None, None, [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING,
-                message=f"role capability verification requires {run_intent_path}",
-                evidence_path=run_intent_path,
-            )
-        ]
+        return (
+            None,
+            None,
+            [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING,
+                    message=f"role capability verification requires {run_intent_path}",
+                    evidence_path=run_intent_path,
+                )
+            ],
+        )
 
     run_intent_artifact, invalid = _json_object(
         run_intent_entry.content,
@@ -656,13 +631,17 @@ def _load_bound_run_intent(
 
     bundle_entry = _evidence_file_entry(evidence, bundle_path)
     if bundle_entry is None:
-        return None, None, [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message=f"role capability verification requires {bundle_path}",
-                evidence_path=bundle_path,
-            )
-        ]
+        return (
+            None,
+            None,
+            [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                    message=f"role capability verification requires {bundle_path}",
+                    evidence_path=bundle_path,
+                )
+            ],
+        )
     bundle, invalid = _json_object(bundle_entry.content, bundle_path)
     if invalid is not None:
         return None, None, [invalid]
@@ -679,44 +658,60 @@ def _load_bound_run_intent(
 
     intent = run_intent_artifact.get("intent")
     if not isinstance(intent, dict):
-        return None, None, [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="run-intent.json must contain intent object",
-                evidence_path=run_intent_path,
-            )
-        ]
+        return (
+            None,
+            None,
+            [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                    message="run-intent.json must contain intent object",
+                    evidence_path=run_intent_path,
+                )
+            ],
+        )
     payload = _run_intent_payload(run_intent_artifact)
     if payload != intent:
-        return None, None, [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="run-intent DSSE payload must match intent object",
-                evidence_path=run_intent_path,
-            )
-        ]
+        return (
+            None,
+            None,
+            [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                    message="run-intent DSSE payload must match intent object",
+                    evidence_path=run_intent_path,
+                )
+            ],
+        )
 
     expected_digest = _subject_digest(bundle, "run-intent")
     if expected_digest is None:
-        return None, None, [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="bundle.json must bind run-intent as a subject",
-                evidence_path=bundle_path,
-            )
-        ]
+        return (
+            None,
+            None,
+            [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                    message="bundle.json must bind run-intent as a subject",
+                    evidence_path=bundle_path,
+                )
+            ],
+        )
     if not _run_intent_digest_matches(
         expected_digest,
         run_intent_entry.content,
         intent,
     ):
-        return None, None, [
-            EvidenceContractEntry(
-                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
-                message="bundle run-intent subject digest does not match run-intent",
-                evidence_path=bundle_path,
-            )
-        ]
+        return (
+            None,
+            None,
+            [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                    message="bundle run-intent subject digest does not match run-intent",
+                    evidence_path=bundle_path,
+                )
+            ],
+        )
     return intent, bundle, []
 
 
@@ -842,9 +837,10 @@ def _validate_role_capability_tool_calls(
                     evidence_path=receipts_path,
                 )
             ]
-        if item.get("sequence") != index or item.get(
-            "previous_decision_sha256"
-        ) != previous_hash:
+        if (
+            item.get("sequence") != index
+            or item.get("previous_decision_sha256") != previous_hash
+        ):
             _append_unique_entry(
                 results,
                 EvidenceContractEntry(
@@ -1071,11 +1067,15 @@ def _validate_advisory_sketch(
 ) -> list[EvidenceContractEntry]:
     candidates = decision.get("candidates")
     chosen = decision.get("chosen")
-    candidate_axes = {
-        item.get("axis")
-        for item in candidates
-        if isinstance(item, dict) and isinstance(item.get("axis"), str)
-    } if isinstance(candidates, list) else set()
+    candidate_axes = (
+        {
+            item.get("axis")
+            for item in candidates
+            if isinstance(item, dict) and isinstance(item.get("axis"), str)
+        }
+        if isinstance(candidates, list)
+        else set()
+    )
     direction = chosen.get("direction") if isinstance(chosen, dict) else None
     if not isinstance(direction, str) or direction not in candidate_axes:
         return [
@@ -1121,7 +1121,9 @@ def _trace_receipt_reference(
     if not isinstance(reproduction, dict):
         return None
     receipt_sha256 = reproduction.get("receipt_sha256")
-    return receipt_sha256 if isinstance(receipt_sha256, str) and receipt_sha256 else None
+    return (
+        receipt_sha256 if isinstance(receipt_sha256, str) and receipt_sha256 else None
+    )
 
 
 def _trace_execution_receipt(
@@ -1167,12 +1169,10 @@ def _trace_execution_receipt(
         isinstance(transcript, str)
         and bool(transcript)
         and isinstance(transcript_sha256, str)
-        and transcript_sha256
-        == hashlib.sha256(transcript.encode("utf-8")).hexdigest()
+        and transcript_sha256 == hashlib.sha256(transcript.encode("utf-8")).hexdigest()
     )
     recorded_failure = (
-        isinstance(execution.get("exit_code"), int)
-        and execution.get("exit_code") != 0
+        isinstance(execution.get("exit_code"), int) and execution.get("exit_code") != 0
     ) or execution.get("status") == "failed"
     if (
         validate_runner_receipt(execution)
@@ -1342,14 +1342,10 @@ def validate_advisory_provenance(
 
     directive = contract.get("advisory_provenance")
     schema_version = contract.get("schema_version")
-    if (
-        schema_version
-        not in {
-            _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
-            _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
-        }
-        or not isinstance(directive, dict)
-    ):
+    if schema_version not in {
+        _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
+        _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
+    } or not isinstance(directive, dict):
         return [
             _advisory_entry(
                 _ERR_ADVISORY_PROVENANCE_CONTRACT_INVALID,
@@ -1425,8 +1421,7 @@ def validate_advisory_provenance(
         decision,
         decision_path,
         statement,
-        schema_version
-        == _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
+        schema_version == _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
     )
 
 

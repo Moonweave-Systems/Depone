@@ -4,6 +4,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,12 @@ from depone.agent_fabric.paired_run import build_runner_receipt
 from depone.agent_fabric.sign import _generate_ed25519_keypair, sign_dsse_envelope
 from depone.verify import evidence_contract
 from depone.verify.adapters.base import EvidenceContext, EvidenceFile
+from depone.verify.adapters.generic import read_evidence
+from depone.verify.engine import run_verification
+from depone.verify.operator_view import render_operator_view
+
+
+_ADVISORY_FIXTURE_ROOT = Path("depone/fixtures/advisory")
 
 
 def _file(path: str, value: object) -> EvidenceFile:
@@ -213,6 +220,46 @@ def _validate(
     if validator is None:
         raise AssertionError("validate_advisory_provenance is not implemented")
     return validator(evidence, contract)
+
+
+def _plan() -> dict[str, Any]:
+    return {
+        "schema_version": "0.5",
+        "plan_id": "advisory-provenance-pipeline-test",
+        "created_by": "depone",
+        "source_prompt": "test isolated advisory provenance",
+        "activation": {"decision": "activate", "matched_thresholds": []},
+        "phases": [{"id": "phase-1", "title": "Phase 1"}],
+        "handoffs": [],
+        "risk_gates": [],
+        "verification": [],
+        "budget": {},
+    }
+
+
+def _without_advisory_directive(evidence: EvidenceContext) -> EvidenceContext:
+    baseline_contract = {
+        "schema_version": "v105.verify_wedge",
+        "required_evidence": ["orro-sketch.json"],
+    }
+    return EvidenceContext(
+        run_id=evidence.run_id,
+        files=[
+            _file("evidence-contract.json", baseline_contract)
+            if entry.path == "evidence-contract.json"
+            else entry
+            for entry in evidence.files
+        ],
+        raw=dict(evidence.raw),
+    )
+
+
+def _fixture_evidence(name: str) -> EvidenceContext:
+    evidence = read_evidence(str(_ADVISORY_FIXTURE_ROOT / name))
+    evidence.raw["trusted_observer_public_key_file"] = str(
+        (_ADVISORY_FIXTURE_ROOT / "advisory-public-key.pem").resolve()
+    )
+    return evidence
 
 
 class AdvisoryProvenanceContractTests(unittest.TestCase):
@@ -461,6 +508,53 @@ class AdvisoryProvenanceContractTests(unittest.TestCase):
             "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES",
         )
         self.assertEqual(evidence_contract.validate_evidence_contract(evidence), [])
+
+    def test_pipeline_surfaces_invalid_advisory_without_changing_verdict(self) -> None:
+        evidence = _fixture_evidence("sketch_fail_chosen_not_in_candidates")
+
+        baseline = run_verification(_plan(), _without_advisory_directive(evidence))
+        report = run_verification(_plan(), evidence)
+
+        self.assertEqual(
+            [finding.code for finding in report.advisory_findings],
+            ["ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES"],
+        )
+        self.assertEqual(report.evidence_contract, [])
+        self.assertEqual(
+            (report.decision, report.verdict, report.assurance),
+            (baseline.decision, baseline.verdict, baseline.assurance),
+        )
+        self.assertEqual(
+            (report.decision, report.verdict, report.assurance),
+            ("pass", "verified", "A0-claims-only"),
+        )
+
+    def test_pipeline_valid_advisory_has_no_findings(self) -> None:
+        evidence = _fixture_evidence("sketch_pass")
+
+        report = run_verification(_plan(), evidence)
+
+        self.assertEqual(report.advisory_findings, [])
+        self.assertEqual(report.decision, "pass")
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(report.assurance, "A0-claims-only")
+
+    def test_advisory_findings_are_machine_readable_and_operator_labeled(self) -> None:
+        evidence = _fixture_evidence("sketch_fail_chosen_not_in_candidates")
+
+        report = run_verification(_plan(), evidence)
+
+        report_data = asdict(report)
+        self.assertEqual(
+            report_data["advisory_findings"][0]["code"],
+            "ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES",
+        )
+        operator_view = render_operator_view(report)
+        self.assertIn(
+            "## Advisory findings — does not affect the verdict",
+            operator_view,
+        )
+        self.assertIn("ERR_ADVISORY_SKETCH_CHOSEN_NOT_IN_CANDIDATES", operator_view)
 
 
 if __name__ == "__main__":

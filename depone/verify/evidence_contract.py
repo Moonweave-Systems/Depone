@@ -250,19 +250,15 @@ def _validate_contract_semantics(
     if (
         isinstance(contract.get("role_capability_write_scope"), dict)
         and schema_version
-        not in {
-            _ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION,
-            _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
-            _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
-        }
+        != _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
     ):
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
                 "role_capability_write_scope requires schema_version "
-                f"{_ROLE_CAPABILITY_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r}"
+                " (the bound-observation schema); earlier versions cannot bind "
+                "the git-diff observation to the signed bundle and are refused"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )

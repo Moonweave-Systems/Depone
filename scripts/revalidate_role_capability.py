@@ -9,10 +9,13 @@ from depone.verify.evidence_contract import validate_evidence_contract
 
 FIXTURE_ROOT = Path("depone/fixtures/role_capability")
 CASES = {
-    "write_scope_pass": ("PASS", []),
+    "write_scope_pass": (
+        "REFUTE",
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
+    ),
     "write_scope_fail": (
         "REFUTE",
-        ["ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"],
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
     ),
     "tool_calls_pass": ("PASS", []),
     "tool_calls_fail_allow_outside_grant": (
@@ -21,15 +24,15 @@ CASES = {
     ),
     "write_scope_fail_unsigned": (
         "REFUTE",
-        ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
     ),
     "write_scope_fail_bad_signature": (
         "REFUTE",
-        ["ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"],
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
     ),
     "write_scope_fail_no_trust_anchor": (
         "REFUTE",
-        ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
     ),
     "write_scope_pass_bound_observation": ("PASS", []),
     "write_scope_fail_observation_unbound": (

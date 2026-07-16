@@ -57,21 +57,16 @@ def _sign_bundle(bundle: dict[str, object]) -> dict[str, object]:
     return signed
 
 
-def _fixture_evidence(
-    name: str,
-    *,
-    include_trust_anchor: bool = True,
-) -> EvidenceContext:
+def _fixture_evidence(name: str) -> EvidenceContext:
     evidence = read_evidence(str(FIXTURE_ROOT / name))
-    if include_trust_anchor:
-        public_key_name = (
-            "observation-public-key.pem"
-            if "observation" in name
-            else "advisory-public-key.pem"
-        )
-        evidence.raw["trusted_observer_public_key_file"] = str(
-            (FIXTURE_ROOT / public_key_name).resolve()
-        )
+    public_key_name = (
+        "observation-public-key.pem"
+        if "observation" in name
+        else "advisory-public-key.pem"
+    )
+    evidence.raw["trusted_observer_public_key_file"] = str(
+        (FIXTURE_ROOT / public_key_name).resolve()
+    )
     return evidence
 
 
@@ -110,28 +105,43 @@ def _run_intent(write_scope: list[str]) -> dict[str, object]:
     }
 
 
-def _bundle_for(run_intent_artifact: dict[str, object]) -> dict[str, object]:
+def _bundle_for(
+    run_intent_artifact: dict[str, object],
+    git_diff_text: str | None = None,
+) -> dict[str, object]:
     run_intent_text = json.dumps(
         run_intent_artifact,
         sort_keys=True,
         separators=(",", ":"),
     )
+    subjects = [
+        {
+            "name": "run-intent",
+            "digest": {
+                "sha256": hashlib.sha256(
+                    run_intent_text.encode("utf-8")
+                ).hexdigest()
+            },
+        }
+    ]
+    if git_diff_text is not None:
+        subjects.append(
+            {
+                "name": "git-diff-name-only.txt",
+                "digest": {
+                    "sha256": hashlib.sha256(
+                        git_diff_text.encode("utf-8")
+                    ).hexdigest()
+                },
+            }
+        )
     return _sign_bundle(
         {
             "kind": "depone-evidence-substrate-bundle",
             "schema_version": "1.0",
             "statement": {
                 "_type": "https://in-toto.io/Statement/v1",
-                "subject": [
-                    {
-                        "name": "run-intent",
-                        "digest": {
-                            "sha256": hashlib.sha256(
-                                run_intent_text.encode("utf-8")
-                            ).hexdigest()
-                        },
-                    }
-                ],
+                "subject": subjects,
                 "predicateType": "https://depone.dev/attestations/evidence/v1",
                 "predicate": {"schema_version": "1.0"},
             },
@@ -280,37 +290,58 @@ def _observed_tool_call(
     }
 
 
-def _canonical_bundle_for(run_intent_artifact: dict[str, object]) -> dict[str, object]:
+def _canonical_bundle_for(
+    run_intent_artifact: dict[str, object],
+    git_diff_text: str,
+) -> dict[str, object]:
     intent = run_intent_artifact["intent"]
     if not isinstance(intent, dict):
         raise AssertionError("test run-intent must contain an intent object")
-    return _sign_bundle(
-        build_evidence_bundle(
-            {
-                "kind": "agent-fabric-capture-manifest",
-                "assurance": "A1-local-observed",
-                "decision": "observed-local-capture",
+    bundle = build_evidence_bundle(
+        {
+            "kind": "agent-fabric-capture-manifest",
+            "assurance": "A1-local-observed",
+            "decision": "observed-local-capture",
+            "source_fixture_hash": "fixture-hash",
+            "observer_capture": {
+                "observed_by": "depone-observer",
                 "source_fixture_hash": "fixture-hash",
-                "observer_capture": {
-                    "observed_by": "depone-observer",
-                    "source_fixture_hash": "fixture-hash",
-                    "touched_files": ["pkg/a.py"],
-                    "test_output": {"status": "passed"},
-                    "command_receipts": [],
-                },
-                "observer_capture_hash": "observer-hash",
-                "allowed_touched_files": ["pkg/a.py"],
-                "schema_version": "1.0",
+                "touched_files": ["pkg/a.py"],
+                "test_output": {"status": "passed"},
+                "command_receipts": [],
             },
-            run_intent=intent,
-        )
+            "observer_capture_hash": "observer-hash",
+            "allowed_touched_files": ["pkg/a.py"],
+            "schema_version": "1.0",
+        },
+        run_intent=intent,
     )
+    statement = bundle.get("statement")
+    if not isinstance(statement, dict):
+        raise AssertionError("test bundle must contain a statement object")
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list):
+        raise AssertionError("test bundle statement must contain subjects")
+    subjects.append(
+        {
+            "name": "git-diff-name-only.txt",
+            "digest": {"sha256": _sha(git_diff_text)},
+        }
+    )
+    return _sign_bundle(bundle)
 
 
-def _evidence(write_scope: list[str], touched_files: list[str]) -> EvidenceContext:
+def _evidence(
+    write_scope: list[str],
+    touched_files: list[str],
+    *,
+    schema_version: str = "v109.role_capability_write_scope",
+    bind_observation: bool = True,
+) -> EvidenceContext:
     run_intent = _run_intent(write_scope)
+    git_diff_text = "".join(f"{path}\n" for path in touched_files)
     contract = {
-        "schema_version": "v106.role_capability_write_scope",
+        "schema_version": schema_version,
         "role_capability_write_scope": {"run_intent_path": "run-intent.json"},
         "expected_exit_code": 0,
     }
@@ -319,8 +350,14 @@ def _evidence(write_scope: list[str], touched_files: list[str]) -> EvidenceConte
         files=[
             _file("evidence-contract.json", contract),
             _file("run-intent.json", run_intent),
-            _file("bundle.json", _bundle_for(run_intent)),
-            _file("git-diff-name-only.txt", "".join(f"{path}\n" for path in touched_files)),
+            _file(
+                "bundle.json",
+                _bundle_for(
+                    run_intent,
+                    git_diff_text if bind_observation else None,
+                ),
+            ),
+            _file("git-diff-name-only.txt", git_diff_text),
             _file("exit-code.txt", "0\n"),
         ],
         raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
@@ -389,6 +426,35 @@ def _tool_evidence(
 
 
 class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
+    def test_v106_unbound_write_scope_downgrade_is_invalid(self) -> None:
+        evidence = _evidence(
+            ["pkg/**"],
+            ["pkg/a.py"],
+            schema_version="v106.role_capability_write_scope",
+            bind_observation=False,
+        )
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            evidence,
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.decision, "fail")
+        self.assertEqual(len(report.role_capability_conformance), 1)
+        self.assertEqual(report.role_capability_conformance[0].axis, "write_scope")
+        self.assertEqual(report.role_capability_conformance[0].status, "fail")
+        self.assertEqual(
+            report.role_capability_conformance[0].error_code,
+            "ERR_EVIDENCE_CONTRACT_INVALID",
+        )
+        errors = validate_evidence_contract(evidence)
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        )
+        self.assertIn("bound-observation schema", errors[0].message)
+        self.assertIn("git-diff observation", errors[0].message)
+
     def test_plan_required_write_scope_omission_fails_closed(self) -> None:
         report = run_verification(
             _verification_plan(require_write_scope=True),
@@ -503,7 +569,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                     "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID",
                 )
 
-    def test_v106_write_scope_violation_refutes_from_run_intent(self) -> None:
+    def test_v109_write_scope_violation_refutes_from_run_intent(self) -> None:
         errors = validate_evidence_contract(_evidence(["pkg/**"], ["secrets.txt"]))
 
         self.assertTrue(
@@ -515,20 +581,21 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             errors,
         )
 
-    def test_v106_write_scope_allows_declared_globs(self) -> None:
+    def test_v109_write_scope_allows_declared_globs(self) -> None:
         errors = validate_evidence_contract(_evidence(["pkg/**"], ["pkg/a.py"]))
 
         self.assertEqual(errors, [])
 
-    def test_v106_accepts_existing_canonical_run_intent_subject_digest(self) -> None:
+    def test_v109_accepts_existing_canonical_run_intent_subject_digest(self) -> None:
         run_intent = _run_intent(["pkg/**"])
+        git_diff_text = "pkg/a.py\n"
         evidence = EvidenceContext(
             run_id="role-capability-test",
             files=[
                 _file(
                     "evidence-contract.json",
                     {
-                        "schema_version": "v106.role_capability_write_scope",
+                        "schema_version": "v109.role_capability_write_scope",
                         "role_capability_write_scope": {
                             "run_intent_path": "run-intent.json"
                         },
@@ -536,8 +603,11 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                     },
                 ),
                 _file("run-intent.json", run_intent),
-                _file("bundle.json", _canonical_bundle_for(run_intent)),
-                _file("git-diff-name-only.txt", "pkg/a.py\n"),
+                _file(
+                    "bundle.json",
+                    _canonical_bundle_for(run_intent, git_diff_text),
+                ),
+                _file("git-diff-name-only.txt", git_diff_text),
                 _file("exit-code.txt", "0\n"),
             ],
             raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
@@ -545,7 +615,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
 
         self.assertEqual(validate_evidence_contract(evidence), [])
 
-    def test_v106_write_scope_violation_refutes_verification_report(self) -> None:
+    def test_v109_write_scope_violation_refutes_verification_report(self) -> None:
         report = run_verification(
             {
                 "schema_version": "0.5",
@@ -564,7 +634,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION",
         )
 
-    def test_v106_write_scope_pass_surfaces_verdict_axis(self) -> None:
+    def test_v109_write_scope_pass_surfaces_verdict_axis(self) -> None:
         report = run_verification(
             {
                 "schema_version": "0.5",
@@ -605,14 +675,18 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             "ERR_EVIDENCE_CONTRACT_INVALID",
         )
 
-    def test_committed_write_scope_fixtures_capture_pass_and_fail(self) -> None:
-        pass_errors = validate_evidence_contract(_fixture_evidence("write_scope_pass"))
-        fail_errors = validate_evidence_contract(_fixture_evidence("write_scope_fail"))
+    def test_committed_write_scope_fixtures_capture_bound_pass_and_fail(self) -> None:
+        pass_errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_pass_bound_observation")
+        )
+        fail_errors = validate_evidence_contract(
+            _fixture_evidence("write_scope_fail_observation_tampered")
+        )
 
         self.assertEqual(pass_errors, [])
         self.assertTrue(
             any(
-                error.code == "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
+                error.code == "ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"
                 for error in fail_errors
             ),
             fail_errors,
@@ -680,10 +754,21 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             fail_errors,
         )
 
-    def test_v106_unsigned_bundle_refutes_before_subject_digest(self) -> None:
-        errors = validate_evidence_contract(
-            _fixture_evidence("write_scope_fail_unsigned")
+    def test_v109_unsigned_bundle_refutes_before_subject_digest(self) -> None:
+        evidence = _evidence(["pkg/**"], ["pkg/a.py"])
+        bundle = next(
+            entry for entry in evidence.files if entry.path == "bundle.json"
         )
+        unsigned_bundle = json.loads(bundle.content)
+        unsigned_bundle.pop("dsse_envelope")
+        evidence.files = [
+            _file("bundle.json", unsigned_bundle)
+            if entry.path == "bundle.json"
+            else entry
+            for entry in evidence.files
+        ]
+
+        errors = validate_evidence_contract(evidence)
 
         self.assertEqual(
             [error.code for error in errors],
@@ -691,10 +776,26 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         )
         self.assertIn("not re-derivable from a trusted anchor", errors[0].message)
 
-    def test_v106_bad_signature_refutes_before_subject_digest(self) -> None:
-        errors = validate_evidence_contract(
-            _fixture_evidence("write_scope_fail_bad_signature")
+    def test_v109_bad_signature_refutes_before_subject_digest(self) -> None:
+        evidence = _evidence(["pkg/**"], ["pkg/a.py"])
+        bundle = next(
+            entry for entry in evidence.files if entry.path == "bundle.json"
         )
+        bad_bundle = json.loads(bundle.content)
+        envelope = bad_bundle.get("dsse_envelope")
+        if not isinstance(envelope, dict):
+            raise AssertionError("test bundle must contain a DSSE envelope")
+        envelope["signatures"] = [
+            {"keyid": "wrong", "sig": base64.b64encode(b"wrong").decode("ascii")}
+        ]
+        evidence.files = [
+            _file("bundle.json", bad_bundle)
+            if entry.path == "bundle.json"
+            else entry
+            for entry in evidence.files
+        ]
+
+        errors = validate_evidence_contract(evidence)
 
         self.assertEqual(
             [error.code for error in errors],
@@ -702,9 +803,9 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         )
         self.assertIn("not verifiable", errors[0].message)
 
-    def test_v106_malformed_signature_refutes_as_missing(self) -> None:
+    def test_v109_malformed_signature_refutes_as_missing(self) -> None:
         run_intent = _run_intent(["pkg/**"])
-        malformed_bundle = _bundle_for(run_intent)
+        malformed_bundle = _bundle_for(run_intent, "pkg/a.py\n")
         envelope = malformed_bundle["dsse_envelope"]
         if not isinstance(envelope, dict):
             raise AssertionError("test bundle must contain a DSSE envelope")
@@ -724,9 +825,9 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
         )
 
-    def test_v106_subject_digest_comes_from_signed_statement(self) -> None:
+    def test_v109_subject_digest_comes_from_signed_statement(self) -> None:
         run_intent = _run_intent(["pkg/**"])
-        bundle = _bundle_for(run_intent)
+        bundle = _bundle_for(run_intent, "pkg/a.py\n")
         statement = bundle["statement"]
         if not isinstance(statement, dict):
             raise AssertionError("test bundle must contain a statement")
@@ -746,13 +847,11 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
 
         self.assertEqual(errors, [])
 
-    def test_v106_missing_trust_anchor_refutes_before_subject_digest(self) -> None:
-        errors = validate_evidence_contract(
-            _fixture_evidence(
-                "write_scope_fail_no_trust_anchor",
-                include_trust_anchor=False,
-            )
-        )
+    def test_v109_missing_trust_anchor_refutes_before_subject_digest(self) -> None:
+        evidence = _evidence(["pkg/**"], ["pkg/a.py"])
+        evidence.raw = {}
+
+        errors = validate_evidence_contract(evidence)
 
         self.assertEqual(
             [error.code for error in errors],
@@ -903,7 +1002,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
 
         self.assertEqual(errors, [])
 
-    def test_v107_tool_calls_can_coexist_with_write_scope_axis(self) -> None:
+    def test_v107_write_scope_directive_is_invalid(self) -> None:
         request_sha = "a" * 64
         errors = validate_evidence_contract(
             _tool_evidence(
@@ -926,7 +1025,10 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual(errors, [])
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        )
 
     def test_v107_tool_calls_reject_allow_outside_grant(self) -> None:
         errors = validate_evidence_contract(
@@ -1138,7 +1240,9 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             "ERR_ROLE_CAPABILITY_RUN_INTENT_MISSING",
         )
 
-    def test_signature_failure_maps_to_both_role_capability_axes(self) -> None:
+    def test_v107_write_scope_downgrade_maps_invalid_contract_to_both_axes(
+        self,
+    ) -> None:
         request_sha = "a" * 64
         decisions = [
             _tool_decision(
@@ -1183,16 +1287,8 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                 for entry in report.role_capability_conformance
             ],
             [
-                (
-                    "tool_calls",
-                    "fail",
-                    "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING",
-                ),
-                (
-                    "write_scope",
-                    "fail",
-                    "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING",
-                ),
+                ("tool_calls", "fail", "ERR_EVIDENCE_CONTRACT_INVALID"),
+                ("write_scope", "fail", "ERR_EVIDENCE_CONTRACT_INVALID"),
             ],
         )
 

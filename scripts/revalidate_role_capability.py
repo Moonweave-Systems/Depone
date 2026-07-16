@@ -9,10 +9,13 @@ from depone.verify.evidence_contract import validate_evidence_contract
 
 FIXTURE_ROOT = Path("depone/fixtures/role_capability")
 CASES = {
-    "write_scope_pass": ("PASS", []),
+    "write_scope_pass": (
+        "REFUTE",
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
+    ),
     "write_scope_fail": (
         "REFUTE",
-        ["ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"],
+        ["ERR_EVIDENCE_CONTRACT_INVALID"],
     ),
     "tool_calls_pass": ("PASS", []),
     "tool_calls_fail_allow_outside_grant": (
@@ -68,8 +71,7 @@ def main() -> None:
             )
         if actual_codes != expected_codes:
             raise AssertionError(
-                f"{name}: expected codes {expected_codes!r}, "
-                f"got {actual_codes!r}"
+                f"{name}: expected codes {expected_codes!r}, got {actual_codes!r}"
             )
         print(f"{name}: {actual_verdict} {actual_codes}")
 

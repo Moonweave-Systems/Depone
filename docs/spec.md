@@ -239,12 +239,14 @@ present, its existing role-capability validation runs unchanged and can still
 refute the verdict. Plans that omit `required_role_capability_axes` retain the
 historical evidence-contract-driven behavior.
 
-`evidence-contract.json` schema versions `v106.role_capability_write_scope` and
-`v109.role_capability_write_scope` add one verdict-bearing axis:
-role-capability write-scope conformance. Version `v109` strengthens that axis by
-binding the git-diff observation into the signed evidence bundle. The prior
-`v106` behavior, including its use in a combined `v107` contract, remains
-unchanged for compatibility while witnessd adopts the new subject.
+`evidence-contract.json` schema version `v109.role_capability_write_scope` adds
+one verdict-bearing axis: role-capability write-scope conformance. Although the
+older `v106.role_capability_write_scope` and `v107.role_capability_tool_calls`
+tokens remain recognized schema versions, a contract that declares
+`role_capability_write_scope` under either version is invalid. Those versions
+cannot bind the git-diff observation into the signed evidence bundle, so Depone
+refuses the directive rather than deriving a write-scope verdict from forgeable
+observation bytes.
 
 The declared write scope is read from the pre-execution `run-intent.json`
 artifact, not from witnessd advisory artifacts. The contract directive is:
@@ -361,11 +363,12 @@ Violations refute the verdict with Depone-owned error codes including:
 witnessd-local `moonweave-tool-call-decision-advisory` remains advisory; it must
 not be trusted as this verdict input.
 
-The v106/v107 signature gate closes audit finding M1: Depone no longer accepts
-role-capability subject digests without checking a signature. It establishes a
-valid signature under the configured trust anchor only. It does not establish
-that the anchor is independent of the executor; closing that separate M7
-boundary requires an operator-provided key plus real observer/runner separation.
+The role-capability signature gate used by valid v107 and v109 directives closes
+audit finding M1: Depone no longer accepts role-capability subject digests
+without checking a signature. It establishes a valid signature under the
+configured trust anchor only. It does not establish that the anchor is
+independent of the executor; closing that separate M7 boundary requires an
+operator-provided key plus real observer/runner separation.
 
 ### 5.3 Advisory provenance consistency
 

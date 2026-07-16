@@ -26,9 +26,7 @@ from depone.verify.evidence_contract import validate_evidence_contract
 FIXTURE_ROOT = Path("depone/fixtures/role_capability")
 _TEST_KEY_DIRECTORY = Path(tempfile.mkdtemp())
 atexit.register(shutil.rmtree, _TEST_KEY_DIRECTORY, ignore_errors=True)
-_TEST_PRIVATE_KEY, _TEST_PUBLIC_KEY = _generate_ed25519_keypair(
-    _TEST_KEY_DIRECTORY
-)
+_TEST_PRIVATE_KEY, _TEST_PUBLIC_KEY = _generate_ed25519_keypair(_TEST_KEY_DIRECTORY)
 
 
 def _sha(text: str) -> str:
@@ -118,9 +116,7 @@ def _bundle_for(
         {
             "name": "run-intent",
             "digest": {
-                "sha256": hashlib.sha256(
-                    run_intent_text.encode("utf-8")
-                ).hexdigest()
+                "sha256": hashlib.sha256(run_intent_text.encode("utf-8")).hexdigest()
             },
         }
     ]
@@ -129,9 +125,7 @@ def _bundle_for(
             {
                 "name": "git-diff-name-only.txt",
                 "digest": {
-                    "sha256": hashlib.sha256(
-                        git_diff_text.encode("utf-8")
-                    ).hexdigest()
+                    "sha256": hashlib.sha256(git_diff_text.encode("utf-8")).hexdigest()
                 },
             }
         )
@@ -394,11 +388,12 @@ def _tool_evidence(
     observed_calls: list[dict[str, object]],
     bundle_override: dict[str, object] | None = None,
     include_write_scope: bool = False,
+    schema_version: str = "v107.role_capability_tool_calls",
 ) -> EvidenceContext:
     run_intent = _tool_run_intent(allow)
     receipts = _tool_receipts(decisions, observed_calls)
     contract: dict[str, object] = {
-        "schema_version": "v107.role_capability_tool_calls",
+        "schema_version": schema_version,
         "role_capability_tool_calls": {
             "run_intent_path": "run-intent.json",
             "bundle_path": "bundle.json",
@@ -416,7 +411,9 @@ def _tool_evidence(
         files=[
             _file("evidence-contract.json", contract),
             _file("run-intent.json", run_intent),
-            _file("bundle.json", bundle_override or _tool_bundle_for(run_intent, receipts)),
+            _file(
+                "bundle.json", bundle_override or _tool_bundle_for(run_intent, receipts)
+            ),
             _file("tool-call-decision-receipts.json", receipts),
             _file("git-diff-name-only.txt", "pkg/a.py\n"),
             _file("exit-code.txt", "0\n"),
@@ -756,9 +753,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
 
     def test_v109_unsigned_bundle_refutes_before_subject_digest(self) -> None:
         evidence = _evidence(["pkg/**"], ["pkg/a.py"])
-        bundle = next(
-            entry for entry in evidence.files if entry.path == "bundle.json"
-        )
+        bundle = next(entry for entry in evidence.files if entry.path == "bundle.json")
         unsigned_bundle = json.loads(bundle.content)
         unsigned_bundle.pop("dsse_envelope")
         evidence.files = [
@@ -778,9 +773,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
 
     def test_v109_bad_signature_refutes_before_subject_digest(self) -> None:
         evidence = _evidence(["pkg/**"], ["pkg/a.py"])
-        bundle = next(
-            entry for entry in evidence.files if entry.path == "bundle.json"
-        )
+        bundle = next(entry for entry in evidence.files if entry.path == "bundle.json")
         bad_bundle = json.loads(bundle.content)
         envelope = bad_bundle.get("dsse_envelope")
         if not isinstance(envelope, dict):
@@ -789,9 +782,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
             {"keyid": "wrong", "sig": base64.b64encode(b"wrong").decode("ascii")}
         ]
         evidence.files = [
-            _file("bundle.json", bad_bundle)
-            if entry.path == "bundle.json"
-            else entry
+            _file("bundle.json", bad_bundle) if entry.path == "bundle.json" else entry
             for entry in evidence.files
         ]
 
@@ -837,9 +828,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         subjects[0]["digest"] = {"sha256": "0" * 64}
         evidence = _evidence(["pkg/**"], ["pkg/a.py"])
         evidence.files = [
-            _file("bundle.json", bundle)
-            if entry.path == "bundle.json"
-            else entry
+            _file("bundle.json", bundle) if entry.path == "bundle.json" else entry
             for entry in evidence.files
         ]
 
@@ -932,9 +921,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         signatures = envelope["signatures"]
         if not isinstance(signatures, list) or not isinstance(signatures[0], dict):
             raise AssertionError("test DSSE envelope must contain a signature")
-        signatures[0]["sig"] = base64.b64encode(b"invalid signature").decode(
-            "ascii"
-        )
+        signatures[0]["sig"] = base64.b64encode(b"invalid signature").decode("ascii")
 
         errors = validate_evidence_contract(
             _tool_evidence(
@@ -1028,6 +1015,42 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         self.assertEqual(
             [error.code for error in errors],
             ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        )
+
+    def test_v109_combined_tool_calls_and_write_scope_is_accepted(self) -> None:
+        # A contract that carries BOTH tool_calls and a bound write_scope directive
+        # is valid at v109 (the bound-observation schema): the schema gate accepts
+        # tool_calls here, and validation proceeds to enforce the write_scope
+        # observation binding rather than short-circuiting on the schema version.
+        # This tool bundle does not bind the git-diff observation, so the run is
+        # still refused — but for the binding, not the schema. Clean end-to-end
+        # validation of a combined contract is covered by witnessd's emitter tests.
+        request_sha = "a" * 64
+        errors = validate_evidence_contract(
+            _tool_evidence(
+                allow=["mcp__neutral_probe__allowed_echo"],
+                decisions=[
+                    _tool_decision(
+                        1,
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                        "allow",
+                    )
+                ],
+                observed_calls=[
+                    _observed_tool_call(
+                        "mcp__neutral_probe__allowed_echo",
+                        request_sha,
+                    )
+                ],
+                include_write_scope=True,
+                schema_version="v109.role_capability_write_scope",
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"],
         )
 
     def test_v107_tool_calls_reject_allow_outside_grant(self) -> None:

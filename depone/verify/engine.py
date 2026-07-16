@@ -18,6 +18,8 @@ from depone.agent_fabric.observer_provenance import (
 from depone.verify.adapters.base import EvidenceContext
 from depone.verify.evidence_contract import (
     EvidenceContractEntry,
+    _read_evidence_contract,
+    validate_advisory_provenance,
     validate_evidence_contract,
 )
 
@@ -127,6 +129,7 @@ class VerificationReport:
     run_id: str | None = None
     phases: list[PhaseVerdict] = field(default_factory=list)
     evidence_contract: list[EvidenceContractEntry] = field(default_factory=list)
+    advisory_findings: list[EvidenceContractEntry] = field(default_factory=list)
     decision: Literal["pass", "fail", "inconclusive"] = "pass"
     assurance: str = "A0-claims-only"
     signature_checked: bool = False
@@ -145,23 +148,15 @@ def _compute_plan_hash(plan: dict[str, Any]) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def _role_capability_contract_axes(evidence: EvidenceContext) -> list[str]:
-    for entry in evidence.files:
-        if entry.path != "evidence-contract.json":
-            continue
-        try:
-            contract = json.loads(entry.content)
-        except json.JSONDecodeError:
-            return []
-        if not isinstance(contract, dict):
-            return []
-        axes: list[str] = []
-        if isinstance(contract.get("role_capability_tool_calls"), dict):
-            axes.append("tool_calls")
-        if isinstance(contract.get("role_capability_write_scope"), dict):
-            axes.append("write_scope")
-        return axes
-    return []
+def _role_capability_contract_axes(contract: dict[str, Any] | None) -> list[str]:
+    if contract is None:
+        return []
+    axes: list[str] = []
+    if isinstance(contract.get("role_capability_tool_calls"), dict):
+        axes.append("tool_calls")
+    if isinstance(contract.get("role_capability_write_scope"), dict):
+        axes.append("write_scope")
+    return axes
 
 
 def _plan_required_role_capability_axes(
@@ -186,10 +181,10 @@ def _plan_required_role_capability_axes(
 
 def _role_capability_conformance(
     plan: dict[str, Any],
-    evidence: EvidenceContext,
+    contract: dict[str, Any] | None,
     evidence_contract: list[EvidenceContractEntry],
 ) -> list[RoleCapabilityConformance]:
-    axes = _role_capability_contract_axes(evidence)
+    axes = _role_capability_contract_axes(contract)
     required_axes, required_axes_invalid = _plan_required_role_capability_axes(plan)
     if not axes and not required_axes and not required_axes_invalid:
         return []
@@ -688,13 +683,20 @@ def run_verification(
     adv_checks = _adversarial_from_claims(claim_evals)
     budget = check_budget_adherence(plan, evidence)
     contract_signature_anchors: set[str] = set()
+    contract, _ = _read_evidence_contract(evidence)
     evidence_contract = validate_evidence_contract(
         evidence,
         verified_signature_anchors=contract_signature_anchors,
     )
+    advisory_findings = (
+        validate_advisory_provenance(evidence, contract)
+        if contract is not None
+        and isinstance(contract.get("advisory_provenance"), dict)
+        else []
+    )
     role_capability_conformance = _role_capability_conformance(
         plan,
-        evidence,
+        contract,
         evidence_contract,
     )
     observer_signature_anchors_by_assurance: dict[str, set[str]] = {}
@@ -802,6 +804,7 @@ def run_verification(
         run_id=evidence.run_id,
         phases=phase_verdicts,
         evidence_contract=evidence_contract,
+        advisory_findings=advisory_findings,
         decision=_decision_for_verdict(overall),
         assurance=assurance,
         signature_checked=bool(

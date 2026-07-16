@@ -68,6 +68,7 @@ def build_superflow_artifact_verdict(
         "kind": "orro-artifact-verdict",
         "schema_version": SCHEMA_VERSION,
         "decision": decision,
+        "signature_checked": False,
         "error_count": len(errors),
         "errors": errors,
         "artifact_hashes": {

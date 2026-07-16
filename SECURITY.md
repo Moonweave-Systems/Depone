@@ -1,7 +1,9 @@
 # Security Policy
 
-Depone is the non-executing verifier and evidence-contract source of truth. It
-re-derives verdicts offline from signed evidence bytes. It never launches
+Depone is the non-executing verifier and evidence-contract source of truth. The
+default `proofcheck` path re-derives structural and content-hash consistency
+from persisted evidence bytes; the evidence-contract track verifies DSSE
+signatures under a configured trust anchor when required. Depone never launches
 workers, mutates worktrees, executes recipes, or calls live APIs.
 
 ```text
@@ -89,10 +91,11 @@ Depone is non-executing. It does not:
   or
 - approve merges.
 
-Depone only decides what persisted, signed evidence bytes support, offline,
-using its own re-derivation. Its assurance vocabulary (A0 / A1 / A2) reflects
-what was actually re-derived from those bytes — nothing else counts as
-evidence.
+Depone only decides what persisted evidence bytes support, offline, using its
+own re-derivation. `proofcheck` checks structure and content-hash consistency;
+the evidence-contract track also checks DSSE signatures under a configured
+trust anchor when required. Its assurance vocabulary (A0 / A1 / A2) reflects
+what was actually re-derived from those bytes — nothing else counts as evidence.
 
 Security reports must not ask Depone to reinterpret missing, failed, stale,
 or forged evidence as `pass`, and must not ask it to upgrade assurance based
@@ -104,7 +107,7 @@ the vulnerability, not the fix.
 
 - Requests to treat wrapper artifacts, run reports, handoff prose, or agent
   session transcripts as proof of anything Depone hasn't independently
-  re-derived from signed evidence bytes.
+  re-derived from the applicable persisted evidence bytes and checks.
 - Theoretical gaps already tracked on the roadmap, such as AAL-4 assurance
   or transparency-log support, unless you can show a concrete exploitable
   path today.

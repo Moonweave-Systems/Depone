@@ -94,6 +94,7 @@ def validate_trusted_observer_provenance(
     provenance: Any,
     key: bytes | None = None,
     public_key_path: str | None = None,
+    verified_signature_anchors: set[str] | None = None,
 ) -> list[str]:
     """Return errors unless trusted provenance matches this manifest exactly."""
 
@@ -117,6 +118,12 @@ def validate_trusted_observer_provenance(
             public_key_path=public_key_path,
         )
         if not errors:
+            if (
+                record.get("scheme") == DSSE_PROVENANCE_SCHEME
+                and isinstance(public_key_path, str)
+                and verified_signature_anchors is not None
+            ):
+                verified_signature_anchors.add(public_key_path)
             return []
         if candidate_errors is None:
             candidate_errors = errors

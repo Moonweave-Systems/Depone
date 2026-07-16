@@ -141,6 +141,7 @@ def build_team_ledger_verdict(
         "kind": TEAM_LEDGER_VERDICT_KIND,
         "schema_version": TEAM_LEDGER_SCHEMA_VERSION,
         "decision": decision,
+        "signature_checked": False,
         "leader_objective": ledger.get("leader_objective"),
         "lane_count": len(lane_results),
         "passed_lane_count": passed,

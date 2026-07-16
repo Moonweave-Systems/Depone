@@ -61,6 +61,7 @@ def run(args: argparse.Namespace) -> None:
             "command": "proofcheck",
             "verifier_command": verifier_command,
             "decision": verdict["decision"],
+            "signature_checked": verdict["signature_checked"],
             "error_count": error_count,
             "evidence_dir": str(evidence_dir),
             **({"out": out_arg} if out_arg else {}),

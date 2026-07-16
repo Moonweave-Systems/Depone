@@ -24,15 +24,15 @@ CASES = {
     ),
     "write_scope_fail_unsigned": (
         "REFUTE",
-        ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
     ),
     "write_scope_fail_bad_signature": (
         "REFUTE",
-        ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        ["ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"],
     ),
     "write_scope_fail_no_trust_anchor": (
         "REFUTE",
-        ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
     ),
     "write_scope_pass_bound_observation": ("PASS", []),
     "write_scope_fail_observation_unbound": (
@@ -71,8 +71,7 @@ def main() -> None:
             )
         if actual_codes != expected_codes:
             raise AssertionError(
-                f"{name}: expected codes {expected_codes!r}, "
-                f"got {actual_codes!r}"
+                f"{name}: expected codes {expected_codes!r}, got {actual_codes!r}"
             )
         print(f"{name}: {actual_verdict} {actual_codes}")
 

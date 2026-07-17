@@ -891,6 +891,113 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
                     {error["code"] for error in verdict["errors"]},
                 )
 
+    def test_verification_only_passed_lane_allows_empty_touched_files(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["lane_intent"] = "verification-only"
+        ledger["lanes"][0]["touched_files"] = []
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertNotIn(
+            "ERR_TEAM_LEDGER_TOUCHED_FILES_REQUIRED",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_invalid_lane_intent_blocks(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["lane_intent"] = "review-only"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_LANE_INTENT_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_verification_only_lane_with_touched_files_reports_mutation(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["lane_intent"] = "verification-only"
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_VERIFICATION_LANE_MUTATED",
+            {error["code"] for error in verdict["errors"]},
+        )
+        mutation_error = next(
+            error
+            for error in verdict["errors"]
+            if error["code"] == "ERR_TEAM_LEDGER_VERIFICATION_LANE_MUTATED"
+        )
+        self.assertIn("docs/depone-cloud-team-control.md", mutation_error["message"])
+
+    def test_verification_only_lane_with_changed_files_reports_mutation(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["lane_intent"] = "verification-only"
+        ledger["lanes"][0]["touched_files"] = []
+        ledger["lanes"][0]["worktree_receipt"] = self._write_worktree_receipt(
+            "lane-evidence/worktree-receipt.json",
+            changed_files=["sample.txt"],
+            evidence_dir="lane-evidence",
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked")
+        self.assertIn(
+            "ERR_TEAM_LEDGER_VERIFICATION_LANE_MUTATED",
+            {error["code"] for error in verdict["errors"]},
+        )
+        mutation_error = next(
+            error
+            for error in verdict["errors"]
+            if error["code"] == "ERR_TEAM_LEDGER_VERIFICATION_LANE_MUTATED"
+        )
+        self.assertIn("sample.txt", mutation_error["message"])
+
+    def test_blocked_lane_allows_receipt_with_empty_changed_files(self) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["verification_state"] = "blocked"
+        ledger["lanes"][0]["blocked_reason"] = "verification could not complete"
+        ledger["lanes"][0]["worktree_receipt"] = self._write_worktree_receipt(
+            "lane-evidence/worktree-receipt.json",
+            changed_files=[],
+            evidence_dir="lane-evidence",
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "blocked-explicit")
+        self.assertNotIn(
+            "ERR_TEAM_LEDGER_WORKTREE_RECEIPT_INVALID",
+            {error["code"] for error in verdict["errors"]},
+        )
+
+    def test_passed_implementation_lane_empty_changed_files_message_is_truthful(
+        self,
+    ) -> None:
+        ledger = self._ledger_with_evidence_next()
+        ledger["lanes"][0]["worktree_receipt"] = self._write_worktree_receipt(
+            "lane-evidence/worktree-receipt.json",
+            changed_files=[],
+            evidence_dir="lane-evidence",
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        receipt_error = next(
+            error
+            for error in verdict["errors"]
+            if error["code"] == "ERR_TEAM_LEDGER_WORKTREE_RECEIPT_INVALID"
+        )
+        self.assertEqual(
+            receipt_error["message"],
+            "worktree_receipt changed_files must not be empty for this lane",
+        )
+
     def test_pr_artifact_allows_passed_lane_with_matching_sha_and_checks(self) -> None:
         ledger = self._ledger_with_evidence_next()
         ledger["lanes"][0]["pr_url"] = (

@@ -65,6 +65,20 @@ class AgentFabricWorktreeReceiptTests(unittest.TestCase):
         self.assertFalse(receipt["dirty"])
         self.assertEqual(receipt["boundary"]["executes_commands"], False)
 
+    def test_build_receipt_reports_no_changes_when_base_equals_head(self) -> None:
+        repo, _base, head = self._init_repo()
+
+        receipt = build_worktree_lane_receipt(
+            worktree=repo,
+            base_commit=head,
+            evidence_dir=Path("lane-evidence"),
+            commands=[{"command": "python3 -m unittest", "exit_code": 0}],
+        )
+
+        self.assertEqual(receipt["base_commit"], head)
+        self.assertEqual(receipt["head_commit"], head)
+        self.assertEqual(receipt["changed_files"], [])
+
     def test_cli_writes_worktree_receipt_json(self) -> None:
         repo, base, head = self._init_repo()
         out = self.root / "receipt.json"
@@ -125,6 +139,40 @@ class AgentFabricWorktreeReceiptTests(unittest.TestCase):
         self.assertEqual(
             verdict["lane_results"][0]["worktree_receipt"]["head_commit"],
             head,
+        )
+
+    def test_read_only_worktree_receipt_allows_verification_only_lane(self) -> None:
+        repo, _base, head = self._init_repo()
+        evidence_dir = self.root / "lane-evidence"
+        self._write_evidence_next(evidence_dir)
+        receipt = build_worktree_lane_receipt(
+            worktree=repo,
+            base_commit=head,
+            evidence_dir=Path("lane-evidence"),
+            commands=[{"command": "python3 -m unittest", "exit_code": 0}],
+        )
+        (evidence_dir / "worktree-receipt.json").write_text(
+            json.dumps(receipt, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        ledger = build_sample_team_ledger("lane-evidence")
+        ledger["lanes"][0]["start_commit"] = head
+        ledger["lanes"][0]["end_commit"] = head
+        ledger["lanes"][0]["lane_intent"] = "verification-only"
+        ledger["lanes"][0]["touched_files"] = []
+        ledger["lanes"][0]["evidence_next_verdict"] = (
+            "lane-evidence/evidence-next-verdict.json"
+        )
+        ledger["lanes"][0]["worktree_receipt"] = (
+            "lane-evidence/worktree-receipt.json"
+        )
+
+        verdict = build_team_ledger_verdict(ledger, base_dir=self.root)
+
+        self.assertEqual(verdict["decision"], "pass")
+        self.assertEqual(
+            verdict["lane_results"][0]["worktree_receipt"]["changed_files"],
+            [],
         )
 
     def test_dirty_worktree_receipt_blocks_passed_lane(self) -> None:

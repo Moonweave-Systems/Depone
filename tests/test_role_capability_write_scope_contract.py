@@ -423,6 +423,62 @@ def _tool_evidence(
 
 
 class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
+    def test_report_echoes_v109_evidence_contract_schema_version(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            _evidence(["docs/**"], ["docs/guide.md"]),
+        )
+
+        self.assertEqual(report.schema_version, "1.0")
+        self.assertEqual(
+            report.evidence_contract_schema_version,
+            "v109.role_capability_write_scope",
+        )
+
+    def test_docs_change_declared_write_scope_passes_conformance(self) -> None:
+        plan = _verification_plan(require_write_scope=True)
+
+        report = run_verification(
+            plan,
+            _evidence(["docs/**"], ["docs/guide.md"]),
+        )
+
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [("write_scope", "pass", None)],
+        )
+
+    def test_docs_change_declared_write_scope_violation_refutes(self) -> None:
+        plan = _verification_plan(require_write_scope=True)
+
+        report = run_verification(
+            plan,
+            _evidence(["docs/approved/**"], ["docs/placeholder.md"]),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(
+            report.evidence_contract_schema_version,
+            "v109.role_capability_write_scope",
+        )
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [
+                (
+                    "write_scope",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION",
+                )
+            ],
+        )
+
     def test_v106_unbound_write_scope_downgrade_is_invalid(self) -> None:
         evidence = _evidence(
             ["pkg/**"],

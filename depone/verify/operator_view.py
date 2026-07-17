@@ -46,6 +46,8 @@ def render_operator_view(report: VerificationReport | Mapping[str, Any]) -> str:
         "",
         f"- Decision: {report_data.get('decision', 'unknown')}",
         f"- Assurance: {report_data.get('assurance', 'unknown')}",
+        "- Evidence contract schema: "
+        f"{report_data.get('evidence_contract_schema_version') or 'none'}",
         f"- Agent Fabric captures: {len(captures)}",
         "",
         "## Agent Fabric captures",

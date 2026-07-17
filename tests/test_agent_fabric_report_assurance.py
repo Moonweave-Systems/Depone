@@ -275,6 +275,63 @@ def _forged_isolated_manifest() -> dict:
 
 
 class VerificationReportAssuranceTests(unittest.TestCase):
+    def test_report_echoes_v105_evidence_contract_schema_version(self) -> None:
+        manifest = _a1_manifest()
+        evidence = EvidenceContext(
+            run_id="assurance-test-run",
+            files=_base_evidence_files(manifest),
+            raw=_trusted_raw(manifest),
+        )
+
+        report = run_verification(_plan(), evidence)
+
+        self.assertEqual(report.schema_version, "1.0")
+        self.assertEqual(
+            report.evidence_contract_schema_version,
+            "v105.verify_wedge",
+        )
+
+    def test_report_omits_schema_version_for_missing_or_invalid_contract(self) -> None:
+        cases = {
+            "missing": [],
+            "malformed": [_file("evidence-contract.json", "{not-json")],
+            "unsupported": [
+                _file(
+                    "evidence-contract.json",
+                    json.dumps(
+                        {
+                            "schema_version": "v999.unknown",
+                            "expected_exit_code": 0,
+                        }
+                    ),
+                )
+            ],
+            "shadowed": [
+                _file(
+                    "evidence-contract.json",
+                    json.dumps(
+                        {
+                            "schema_version": "v105.verify_wedge",
+                            "expected_exit_code": 0,
+                        }
+                    ),
+                ),
+                _file("nested/evidence-contract.json", "{}"),
+            ],
+        }
+
+        for name, files in cases.items():
+            with self.subTest(name=name):
+                evidence = EvidenceContext(
+                    run_id="assurance-test-run",
+                    files=files,
+                    raw={"metadata": {"run_id": "assurance-test-run"}},
+                )
+
+                report = run_verification(_plan(), evidence)
+
+                self.assertIsNone(report.evidence_contract_schema_version)
+
     def test_a0_report_does_not_claim_a_signature_or_trust_anchor(self) -> None:
         evidence = EvidenceContext(
             run_id="assurance-test-run",
@@ -755,6 +812,7 @@ class VerificationReportAssuranceTests(unittest.TestCase):
 
         self.assertIn("- Decision: pass", view)
         self.assertIn("- Assurance: A1-local-observed", view)
+        self.assertIn("- Evidence contract schema: v105.verify_wedge", view)
         self.assertIn("- Agent Fabric captures: 1", view)
         self.assertIn("`agent-fabric-capture-manifest.json`", view)
         self.assertIn("   - Valid: yes", view)
@@ -826,6 +884,12 @@ class VerificationReportAssuranceTests(unittest.TestCase):
                 )
 
             self.assertTrue(report_path.is_file())
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["schema_version"], "1.0")
+            self.assertEqual(
+                report["evidence_contract_schema_version"],
+                "v105.verify_wedge",
+            )
             view = view_path.read_text(encoding="utf-8")
             self.assertIn("# Verification Operator View", view)
             self.assertIn("- Decision: pass", view)

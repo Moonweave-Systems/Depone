@@ -47,6 +47,7 @@ VALID_ADAPTER_KINDS = frozenset(
         "external",
     }
 )
+VALID_LANE_INTENTS = frozenset({"implementation", "verification-only"})
 VALID_LANE_VERIFICATION_STATES = frozenset({"pass", "blocked"})
 VALID_PASSING_PR_MERGE_STATES = frozenset({"CLEAN", "HAS_HOOKS"})
 VALID_RESUME_DECISIONS = frozenset({"skipped_as_proven", "re_executed"})
@@ -420,6 +421,15 @@ def _validate_lane(
         errors,
         lane_id=lane_error_id,
     )
+    lane_intent = _validate_choice(
+        lane,
+        "lane_intent",
+        VALID_LANE_INTENTS,
+        errors,
+        lane_id=lane_error_id,
+        default="implementation",
+        error_code="ERR_TEAM_LEDGER_LANE_INTENT_INVALID",
+    )
     state = _validate_choice(
         lane,
         "verification_state",
@@ -510,12 +520,17 @@ def _validate_lane(
         errors,
         lane_id=lane_error_id,
         required=state == "pass",
+        lane_intent=lane_intent,
     )
 
     touched_files = _validate_touched_files(
         lane.get("touched_files"), errors, lane_id=lane_error_id
     )
-    if state == "pass" and not touched_files:
+    if (
+        state == "pass"
+        and lane_intent != "verification-only"
+        and not touched_files
+    ):
         errors.append(
             {
                 "code": "ERR_TEAM_LEDGER_TOUCHED_FILES_REQUIRED",
@@ -523,6 +538,22 @@ def _validate_lane(
                 "lane_id": lane_error_id,
             }
         )
+    if lane_intent == "verification-only":
+        mutated_files = sorted(
+            set(touched_files)
+            | set(worktree_receipt_summary.get("changed_files", []))
+        )
+        if mutated_files:
+            errors.append(
+                {
+                    "code": "ERR_TEAM_LEDGER_VERIFICATION_LANE_MUTATED",
+                    "message": (
+                        "lane declared verification-only reported mutation in: "
+                        + ", ".join(mutated_files)
+                    ),
+                    "lane_id": lane_error_id,
+                }
+            )
 
     return {
         "lane_id": lane_error_id,
@@ -571,13 +602,15 @@ def _validate_choice(
     errors: list[dict[str, str]],
     *,
     lane_id: str,
+    default: str | None = None,
+    error_code: str = "ERR_TEAM_LEDGER_CHOICE_INVALID",
 ) -> str | None:
-    raw = value.get(field)
+    raw = value.get(field, default)
     if isinstance(raw, str) and raw in valid:
         return raw
     errors.append(
         {
-            "code": "ERR_TEAM_LEDGER_CHOICE_INVALID",
+            "code": error_code,
             "message": f"{field} must be one of {sorted(valid)}",
             "lane_id": lane_id,
         }
@@ -1317,6 +1350,7 @@ def _validate_worktree_receipt(
     *,
     lane_id: str,
     required: bool,
+    lane_intent: str | None,
 ) -> dict[str, Any]:
     summary: dict[str, Any] = {
         "path": worktree_receipt if isinstance(worktree_receipt, str) else None,
@@ -1460,6 +1494,7 @@ def _validate_worktree_receipt(
         errors,
         lane_id=lane_id,
         field="changed_files",
+        allow_empty=not required or lane_intent == "verification-only",
     )
     _validate_worktree_receipt_files(
         dirty_files,
@@ -1563,11 +1598,20 @@ def _validate_worktree_receipt_files(
     field: str,
     allow_empty: bool = False,
 ) -> list[str]:
-    if not isinstance(value, list) or (not value and not allow_empty):
+    if not isinstance(value, list):
         errors.append(
             {
                 "code": "ERR_TEAM_LEDGER_WORKTREE_RECEIPT_INVALID",
                 "message": f"worktree_receipt {field} must be a list of repo-relative paths",
+                "lane_id": lane_id,
+            }
+        )
+        return []
+    if not value and not allow_empty:
+        errors.append(
+            {
+                "code": "ERR_TEAM_LEDGER_WORKTREE_RECEIPT_INVALID",
+                "message": f"worktree_receipt {field} must not be empty for this lane",
                 "lane_id": lane_id,
             }
         )

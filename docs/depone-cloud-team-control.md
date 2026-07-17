@@ -140,6 +140,7 @@ lane ids, or a blocked lane without a reason blocks the ledger.
       "env_kind": "local",
       "runner_adapter_kind": "codex",
       "team_adapter_kind": "omx",
+      "lane_intent": "implementation",
       "start_commit": "abc123",
       "end_commit": "def456",
       "evidence_dir": "out/team/worker-1",
@@ -177,7 +178,8 @@ repo-relative `allowed_post_subject_paths`.
 When a local lane includes `worktree_receipt`, it points at a machine JSON
 receipt captured from read-only git state. The receipt is optional, but once
 present it must match the lane `start_commit`, `end_commit`, `evidence_dir`, and
-`touched_files`. Dirty receipts fail closed for passed-lane fan-in:
+`touched_files`. A blocked lane may report no `changed_files`; a passed
+implementation lane may not. Dirty receipts fail closed for passed-lane fan-in:
 
 ```json
 {
@@ -216,9 +218,14 @@ When `merge_receipt` is required, it points at a machine JSON receipt:
 }
 ```
 
-Passed lanes must include non-empty `touched_files` so the ledger can decide
-whether a merge receipt is required. Omitted or empty `touched_files` fails
-closed instead of treating the lane as non-overlapping.
+`lane_intent` is optional and accepts `implementation` or `verification-only`.
+Omitting it preserves implementation semantics. Passed implementation lanes
+must include non-empty `touched_files` so the ledger can decide whether a merge
+receipt is required; omitted or empty `touched_files` fails closed instead of
+treating the lane as non-overlapping. Verification-only lanes may report empty
+`touched_files` and receipt `changed_files`, but the declaration is falsifiable:
+any non-empty path in either field blocks with
+`ERR_TEAM_LEDGER_VERIFICATION_LANE_MUTATED`, regardless of lane state.
 
 When a lane includes `pr_artifact`, it points at a local JSON artifact captured
 from a PR surface rather than trusting the `pr_url` as prose. The artifact is

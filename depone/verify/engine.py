@@ -31,6 +31,13 @@ _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED = (
 _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID = (
     "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID"
 )
+_INVALID_EVIDENCE_CONTRACT_CODES = frozenset(
+    {
+        "ERR_EVIDENCE_CONTRACT_INVALID",
+        "ERR_EVIDENCE_CONTRACT_MISSING",
+        "ERR_EVIDENCE_CONTRACT_SHADOWED",
+    }
+)
 
 
 @dataclass
@@ -129,6 +136,7 @@ class VerificationReport:
     run_id: str | None = None
     phases: list[PhaseVerdict] = field(default_factory=list)
     evidence_contract: list[EvidenceContractEntry] = field(default_factory=list)
+    evidence_contract_schema_version: str | None = None
     advisory_findings: list[EvidenceContractEntry] = field(default_factory=list)
     decision: Literal["pass", "fail", "inconclusive"] = "pass"
     assurance: str = "A0-claims-only"
@@ -157,6 +165,19 @@ def _role_capability_contract_axes(contract: dict[str, Any] | None) -> list[str]
     if isinstance(contract.get("role_capability_write_scope"), dict):
         axes.append("write_scope")
     return axes
+
+
+def _validated_evidence_contract_schema_version(
+    contract: dict[str, Any] | None,
+    evidence_contract: list[EvidenceContractEntry],
+) -> str | None:
+    if contract is None or any(
+        entry.code in _INVALID_EVIDENCE_CONTRACT_CODES
+        for entry in evidence_contract
+    ):
+        return None
+    schema_version = contract.get("schema_version")
+    return schema_version if isinstance(schema_version, str) else None
 
 
 def _plan_required_role_capability_axes(
@@ -688,6 +709,10 @@ def run_verification(
         evidence,
         verified_signature_anchors=contract_signature_anchors,
     )
+    evidence_contract_schema_version = _validated_evidence_contract_schema_version(
+        contract,
+        evidence_contract,
+    )
     advisory_findings = (
         validate_advisory_provenance(evidence, contract)
         if contract is not None
@@ -804,6 +829,7 @@ def run_verification(
         run_id=evidence.run_id,
         phases=phase_verdicts,
         evidence_contract=evidence_contract,
+        evidence_contract_schema_version=evidence_contract_schema_version,
         advisory_findings=advisory_findings,
         decision=_decision_for_verdict(overall),
         assurance=assurance,

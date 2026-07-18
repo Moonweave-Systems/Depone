@@ -20,7 +20,7 @@ from depone.agent_fabric.sign import (
 from depone.verify.adapters.base import EvidenceContext, EvidenceFile
 from depone.verify.adapters.generic import read_evidence
 from depone.verify.engine import run_verification
-from depone.verify.evidence_contract import validate_evidence_contract
+from depone.verify.evidence_contract import _touched_files, validate_evidence_contract
 
 
 FIXTURE_ROOT = Path("depone/fixtures/role_capability")
@@ -106,6 +106,8 @@ def _run_intent(write_scope: list[str]) -> dict[str, object]:
 def _bundle_for(
     run_intent_artifact: dict[str, object],
     git_diff_text: str | None = None,
+    *,
+    observation_filename: str = "git-diff-name-only.txt",
 ) -> dict[str, object]:
     run_intent_text = json.dumps(
         run_intent_artifact,
@@ -123,7 +125,7 @@ def _bundle_for(
     if git_diff_text is not None:
         subjects.append(
             {
-                "name": "git-diff-name-only.txt",
+                "name": observation_filename,
                 "digest": {
                     "sha256": hashlib.sha256(git_diff_text.encode("utf-8")).hexdigest()
                 },
@@ -331,6 +333,7 @@ def _evidence(
     *,
     schema_version: str = "v109.role_capability_write_scope",
     bind_observation: bool = True,
+    observation_filename: str = "git-diff-name-only.txt",
 ) -> EvidenceContext:
     run_intent = _run_intent(write_scope)
     git_diff_text = "".join(f"{path}\n" for path in touched_files)
@@ -349,9 +352,10 @@ def _evidence(
                 _bundle_for(
                     run_intent,
                     git_diff_text if bind_observation else None,
+                    observation_filename=observation_filename,
                 ),
             ),
-            _file("git-diff-name-only.txt", git_diff_text),
+            _file(observation_filename, git_diff_text),
             _file("exit-code.txt", "0\n"),
         ],
         raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
@@ -638,6 +642,40 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         errors = validate_evidence_contract(_evidence(["pkg/**"], ["pkg/a.py"]))
 
         self.assertEqual(errors, [])
+
+    def test_v109_observation_filenames_resolve_identical_touched_files(self) -> None:
+        touched_files = ["pkg/a.py", "docs/guide.md"]
+        legacy_evidence = _evidence(["**"], touched_files)
+        observed_evidence = _evidence(
+            ["**"],
+            touched_files,
+            observation_filename="observed-touched-files.txt",
+        )
+
+        self.assertEqual(_touched_files(observed_evidence), touched_files)
+        self.assertEqual(
+            _touched_files(observed_evidence),
+            _touched_files(legacy_evidence),
+        )
+        self.assertEqual(validate_evidence_contract(observed_evidence), [])
+        self.assertEqual(validate_evidence_contract(legacy_evidence), [])
+
+    def test_observed_touched_files_nested_shadow_refutes(self) -> None:
+        evidence = _evidence(["pkg/**"], ["pkg/a.py"])
+        evidence.files.append(
+            _file("nested/observed-touched-files.txt", "pkg/shadowed.py\n")
+        )
+
+        errors = validate_evidence_contract(evidence)
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_EVIDENCE_CONTRACT_SHADOWED"],
+        )
+        self.assertEqual(
+            errors[0].evidence_path,
+            "nested/observed-touched-files.txt",
+        )
 
     def test_v109_accepts_existing_canonical_run_intent_subject_digest(self) -> None:
         run_intent = _run_intent(["pkg/**"])

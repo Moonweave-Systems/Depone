@@ -31,8 +31,20 @@ _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION = "v110.advisory_prove
 _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION = (
     "v109.role_capability_write_scope"
 )
+_OBSERVED_TOUCHED_FILES_FILENAME = "observed-touched-files.txt"
+# Deprecated compatibility alias for evidence sealed before the honest rename.
+_LEGACY_TOUCHED_FILES_FILENAME = "git-diff-name-only.txt"
+_OBSERVATION_FILENAMES = (
+    _OBSERVED_TOUCHED_FILES_FILENAME,
+    _LEGACY_TOUCHED_FILES_FILENAME,
+)
 _ROOT_CONTROL_FILENAMES = frozenset(
-    {"evidence-contract.json", "git-diff-name-only.txt", "git-diff.patch"}
+    {
+        "evidence-contract.json",
+        _OBSERVED_TOUCHED_FILES_FILENAME,
+        _LEGACY_TOUCHED_FILES_FILENAME,
+        "git-diff.patch",
+    }
 )
 _ERR_CONTRACT_INVALID = "ERR_EVIDENCE_CONTRACT_INVALID"
 _ERR_CONTRACT_MISSING = "ERR_EVIDENCE_CONTRACT_MISSING"
@@ -106,6 +118,14 @@ def _find_evidence_file(evidence: EvidenceContext, name: str) -> tuple[str, str]
 def _evidence_file_entry(evidence: EvidenceContext, name: str) -> Any | None:
     for entry in evidence.files:
         if entry.path == name:
+            return entry
+    return None
+
+
+def _find_observation_entry(evidence: EvidenceContext) -> Any | None:
+    for filename in _OBSERVATION_FILENAMES:
+        entry = _evidence_file_entry(evidence, filename)
+        if entry is not None:
             return entry
     return None
 
@@ -292,11 +312,10 @@ def _read_exit_code(evidence: EvidenceContext, exit_code_path: str) -> int | Non
 
 
 def _touched_files(evidence: EvidenceContext) -> list[str]:
-    entry = _find_evidence_file(evidence, "git-diff-name-only.txt")
+    entry = _find_observation_entry(evidence)
     if entry is None:
         return []
-    _, content = entry
-    return [line.strip() for line in content.splitlines() if line.strip()]
+    return [line.strip() for line in entry.content.splitlines() if line.strip()]
 
 
 def _json_object(
@@ -349,6 +368,14 @@ def _subject_digest(bundle: dict[str, Any], name: str) -> str | None:
         digest = subject.get("digest")
         if isinstance(digest, dict) and isinstance(digest.get("sha256"), str):
             return digest["sha256"]
+    return None
+
+
+def _find_observation_subject(bundle: dict[str, Any]) -> tuple[str, str] | None:
+    for filename in _OBSERVATION_FILENAMES:
+        digest = _subject_digest(bundle, filename)
+        if digest is not None:
+            return filename, digest
     return None
 
 
@@ -531,25 +558,24 @@ def _validate_role_capability_write_scope(
         contract.get("schema_version")
         == _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
     ):
-        expected_observation_digest = (
-            _subject_digest(bundle, "git-diff-name-only.txt")
-            if bundle is not None
-            else None
+        observation_subject = (
+            _find_observation_subject(bundle) if bundle is not None else None
         )
-        if expected_observation_digest is None:
+        if observation_subject is None:
             return [
                 EvidenceContractEntry(
                     code=_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND,
                     message=(
-                        "git-diff-name-only.txt observation is not bound to the "
-                        "signed bundle as a named digest subject"
+                        f"{_OBSERVED_TOUCHED_FILES_FILENAME} observation is not "
+                        "bound to the signed bundle as a named digest subject"
                     ),
                     evidence_path=bundle_path,
                 )
             ]
+        observation_filename, expected_observation_digest = observation_subject
         observation_entry = _evidence_file_entry(
             evidence,
-            "git-diff-name-only.txt",
+            observation_filename,
         )
         if observation_entry is None or not _raw_artifact_digest_matches(
             expected_observation_digest,
@@ -559,11 +585,11 @@ def _validate_role_capability_write_scope(
                 EvidenceContractEntry(
                     code=_ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH,
                     message=(
-                        "git-diff-name-only.txt observation digest does not match "
-                        "the signed bundle subject; the observation is not "
-                        "re-derivable as tamper-evident"
+                        f"{observation_filename} observation digest does not "
+                        "match the signed bundle subject; the observation is "
+                        "not re-derivable as tamper-evident"
                     ),
-                    evidence_path="git-diff-name-only.txt",
+                    evidence_path=observation_filename,
                 )
             ]
 

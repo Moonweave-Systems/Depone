@@ -73,15 +73,16 @@ change decides what assurance evidence bytes support, put it here.
 Run before claiming work is ready or opening a PR:
 
 ```bash
-python scripts/check_contract.py --tier changed
-python scripts/dwm.py doctor
-python scripts/check_readme_quality.py README.md
+python3 -m unittest discover -s tests
+python3 scripts/check_orro_engine_contract.py
+python3 scripts/check_readme_quality.py README.md
 ```
 
-Full contract sweep:
+Full sweep (all committed checks + revalidators Depone re-derives):
 
 ```bash
-python scripts/check_contract.py
+python3 -m unittest discover -s tests
+for s in scripts/check_*.py scripts/revalidate_*.py; do python3 "$s"; done
 ```
 
 Many scripts also carry a `--self-test`; run the one for any script you touch.

@@ -1,0 +1,45 @@
+{
+  "certificateAuthorities": [
+    {
+      "certChain": {
+        "certificates": [
+          {
+            "rawBytes": "MIIBqDCCAU6gAwIBAgICA+gwCgYIKoZIzj0EAwIwSTEgMB4GA1UECgwXRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8xJTAjBgNVBAMMHERlcG9uZSBTeW50aGV0aWMgRnVsY2lvIFJvb3QwHhcNMjQwMTAyMDAwMDAwWhcNMjYwMTAxMDAwMDAwWjBJMSAwHgYDVQQKDBdEZXBvbmUgU3ludGhldGljIEZ1bGNpbzElMCMGA1UEAwwcRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8gUm9vdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABO93ZEI+w9kf0E/onS2Xg8B5O9GQg8ewOa3A8z8BT+GO2g64RJ6Kwd6DMImIBIuxUd3+wqpXudAuIpoKHB/wKYSjJjAkMBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQDAgGGMAoGCCqGSM49BAMCA0gAMEUCIEt4JA1GUewKXSdUf3+ZYpVdDgSsA+9TjLSO2lVvbA8wAiEAwtrnP14AiqSr8L+Z0u6jxspLAZ9vmsCqv0521YsEPwc="
+          }
+        ]
+      },
+      "operator": "depone.invalid",
+      "subject": {
+        "commonName": "Depone Synthetic Fulcio Root",
+        "organization": "Depone Synthetic Fulcio"
+      },
+      "uri": "https://fulcio.synthetic.depone.invalid",
+      "validFor": {
+        "end": "2026-01-01T00:00:00Z",
+        "start": "2024-01-01T00:00:00Z"
+      }
+    }
+  ],
+  "mediaType": "application/vnd.dev.sigstore.trustedroot.v0.2+json",
+  "tlogs": [
+    {
+      "baseUrl": "rekor.synthetic.depone.invalid",
+      "checkpointKeyId": {
+        "keyId": "vBj6sA=="
+      },
+      "hashAlgorithm": "SHA2_256",
+      "logId": {
+        "keyId": "5XhO0xSV7AJ+4wAZH9BFSxZX6ovX6KQ4dbCzFOl8R98="
+      },
+      "operator": "depone.invalid",
+      "publicKey": {
+        "keyDetails": "PKIX_ED25519",
+        "rawBytes": "MCowBQYDK2VwAyEAWjugFweuJQON6tLs1H61MVSYeu+mN8DUoClBjTgCVZY=",
+        "validFor": {
+          "end": "2026-01-01T00:00:00Z",
+          "start": "2024-01-01T00:00:00Z"
+        }
+      }
+    }
+  ]
+}

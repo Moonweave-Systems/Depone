@@ -1,0 +1,45 @@
+{
+  "dsseEnvelope": {
+    "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiZml4dHVyZSI6InN5bnRoZXRpYy1rZXlsZXNzLXZlcmlmaWNhdGlvbiJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9kZXBvbmUuZGV2L2F0dGVzdGF0aW9ucy9ldmlkZW5jZS92MSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzaGEyNTYiOiIxN2ZmMjRiNDc4ZDhiOGYyNjZlZWM4NmQyOGMxMmQxYWM4M2I4Yzg1OWFlMWIxMjA3ZjE3YmQ0MTE3ZjZlZjNiIn0sIm5hbWUiOiJldmlkZW5jZS5iaW4ifV19",
+    "payloadType": "application/vnd.in-toto+json",
+    "signatures": [
+      {
+        "sig": "MEYCIQDg1N1SQHGIsfDdGrHIfzaXSZutTRnvvc70mjSff4N5xQIhAPsPQfOPWvPtNxf67t6XVxBjwOW6OHeVlWMN0K2zqdzR"
+      }
+    ]
+  },
+  "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+  "verificationMaterial": {
+    "certificate": {
+      "rawBytes": "MIIByTCCAXCgAwIBAgICB9IwCgYIKoZIzj0EAwIwSTEgMB4GA1UECgwXRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8xJTAjBgNVBAMMHERlcG9uZSBTeW50aGV0aWMgRnVsY2lvIFJvb3QwHhcNMjQxMjMxMjM1NTAwWhcNMjUwMTAxMDAwNTAwWjAeMRwwGgYDVQQDDBNvY3RvY2F0QGV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOXkCXXIJlypbuV7AWajJjraeJVg39ZDDysd8/mmG3EAnsj6U/OEGLkSIx+R5+MF0Zy3Ww07XHd+UvtHOo8qhqKNzMHEwDAYDVR0TAQH/BAIwADAOBgNVHQ8BAf8EBAMCB4AwIQYDVR0RAQH/BBcwFYETb2N0b2NhdEBleGFtcGxlLmNvbTAuBgorBgEEAYO/MAEBBCBodHRwczovL29hdXRoMi5zaWdzdG9yZS5kZXYvYXV0aDAKBggqhkjOPQQDAgNHADBEAiBoEVr2QMdlG6uv9XMkRnuS6R8xmMX+Bubq86VQAtsaSAIgHSO/8Jww2v+9HQj2ucVKzHnOm53TrWisf7a1Do9o+E8="
+    },
+    "tlogEntries": [
+      {
+        "canonicalizedBody": "eyJhcGlWZXJzaW9uIjoiMC4wLjEiLCJraW5kIjoiZHNzZSIsInNwZWMiOnsiZW52ZWxvcGVIYXNoIjp7ImFsZ29yaXRobSI6InNoYTI1NiIsInZhbHVlIjoiODllM2EzMGY4ZWQzMmNjMTE1MTlkYTRhZGM2N2JjMmExOTVmNjM2ZDk0MTM1MDBjZWIxNjE2YzYwNGI3NmQyZiJ9LCJwYXlsb2FkSGFzaCI6eyJhbGdvcml0aG0iOiJzaGEyNTYiLCJ2YWx1ZSI6ImEwZTAyYzIxODc5Yjc4ZGQzNjBlNzg1N2E0NDI5MjA1Yjg2NGNmNzE0NThmMmY4YmYzOWU2ZTY4NWRkMjVjNDkifSwic2lnbmF0dXJlcyI6W3sic2lnbmF0dXJlIjoiTUVZQ0lRRGcxTjFTUUhHSXNmRGRHckhJZnphWFNadXRUUm52dmM3MG1qU2ZmNE41eFFJaEFQc1BRZk9QV3ZQdE54ZjY3dDZYVnhCandPVzZPSGVWbFdNTjBLMnpxZHpSIiwidmVyaWZpZXIiOiJMUzB0TFMxQ1JVZEpUaUJEUlZKVVNVWkpRMEZVUlMwdExTMHRDazFKU1VKNVZFTkRRVmhEWjBGM1NVSkJaMGxEUWpsSmQwTm5XVWxMYjFwSmVtb3dSVUYzU1hkVFZFVm5UVUkwUjBFeFZVVkRaM2RZVWtkV2QySXlOV3dLU1VaT05XSnVVbTlhV0ZKd1dYbENSMlJYZUdwaFZ6aDRTbFJCYWtKblRsWkNRVTFOU0VWU2JHTkhPWFZhVTBKVVpWYzFNR0ZIVmpCaFYwMW5VbTVXY3dwWk1teDJTVVpLZG1JelVYZElhR05PVFdwUmVFMXFUWGhOYWsweFRsUkJkMWRvWTA1TmFsVjNUVlJCZUUxRVFYZE9WRUYzVjJwQlpVMVNkM2RIWjFsRUNsWlJVVVJFUWs1MldUTlNkbGt5UmpCUlIxWTBXVmN4ZDJKSFZYVlpNamwwVFVacmQwVjNXVWhMYjFwSmVtb3dRMEZSV1VsTGIxcEplbW93UkVGUlkwUUtVV2RCUlU5WWEwTllXRWxLYkhsd1luVldOMEZYWVdwS2FuSmhaVXBXWnpNNVdrUkVlWE5rT0M5dGJVY3pSVUZ1YzJvMlZTOVBSVWRNYTFOSmVDdFNOUW9yVFVZd1dua3pWM2N3TjFoSVpDdFZkblJJVDI4NGNXaHhTMDU2VFVoRmQwUkJXVVJXVWpCVVFWRklMMEpCU1hkQlJFRlBRbWRPVmtoUk9FSkJaamhGQ2tKQlRVTkNORUYzU1ZGWlJGWlNNRkpCVVVndlFrSmpkMFpaUlZSaU1rNHdZakpPYUdSRlFteGxSMFowWTBkNGJFeHRUblppVkVGMVFtZHZja0puUlVVS1FWbFBMMDFCUlVKQ1EwSnZaRWhTZDJONmIzWk1NamxvWkZoU2IwMXBOWHBoVjJSNlpFYzVlVnBUTld0YVdGbDJXVmhXTUdGRVFVdENaMmR4YUd0cVR3cFFVVkZFUVdkT1NFRkVRa1ZCYVVKdlJWWnlNbEZOWkd4SE5uVjJPVmhOYTFKdWRWTTJVamg0YlUxWUswSjFZbkU0TmxaUlFYUnpZVk5CU1dkSVUwOHZDamhLZDNjeWRpczVTRkZxTW5WalZrdDZTRzVQYlRVelZISlhhWE5tTjJFeFJHODVieXRGT0QwS0xTMHRMUzFGVGtRZ1EwVlNWRWxHU1VOQlZFVXRMUzB0TFFvPSJ9XX19",
+        "inclusionPromise": {
+          "signedEntryTimestamp": "SiLG9HbjQil5gph83FsJfn2wBzFzqpPtTUDcTE5j/yYTgLcZn55iY9Vka5bo9eGe1nXaCj4VwkilxIQEOV+MCw=="
+        },
+        "inclusionProof": {
+          "checkpoint": {
+            "envelope": "rekor.synthetic.depone.invalid\n2\nXekMFYvVRfUVdX930r4jsaSW/cEC8/kR1AFX/oauMOw=\n\n\u2014 rekor.synthetic.depone.invalid vBj6sP/ah8xBvf+WbC5rxK+eKCPBmocXygcatb7Dm0Z89sKuwbGByyeLuoe2AjsWJou8Vk2K2f997ptujl6Nwnu/RAk=\n"
+          },
+          "hashes": [
+            "V9Y08QHQaTPEaC57tWJk3ituq3BObs6O2Ml9YtDw5cw="
+          ],
+          "logIndex": "0",
+          "rootHash": "XekMFYvVRfUVdX930r4jsaSW/cEC8/kR1AFX/oauMOw=",
+          "treeSize": "2"
+        },
+        "integratedTime": "1735689600",
+        "kindVersion": {
+          "kind": "dsse",
+          "version": "0.0.1"
+        },
+        "logId": {
+          "keyId": "5XhO0xSV7AJ+4wAZH9BFSxZX6ovX6KQ4dbCzFOl8R98="
+        },
+        "logIndex": "0"
+      }
+    ]
+  }
+}

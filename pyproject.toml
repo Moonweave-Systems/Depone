@@ -45,6 +45,7 @@ include = ["depone*"]
 depone = [
     "fixtures/**/*.json",
     "fixtures/**/*.bin",
+    "fixtures/**/*.whl",
     "fixtures/**/*.md",
     "fixtures/**/*.sha256",
 ]

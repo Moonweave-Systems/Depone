@@ -4,7 +4,7 @@
       "certChain": {
         "certificates": [
           {
-            "rawBytes": "MIIBqDCCAU6gAwIBAgICA+gwCgYIKoZIzj0EAwIwSTEgMB4GA1UECgwXRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8xJTAjBgNVBAMMHERlcG9uZSBTeW50aGV0aWMgRnVsY2lvIFJvb3QwHhcNMjQwMTAyMDAwMDAwWhcNMjYwMTAxMDAwMDAwWjBJMSAwHgYDVQQKDBdEZXBvbmUgU3ludGhldGljIEZ1bGNpbzElMCMGA1UEAwwcRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8gUm9vdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABO93ZEI+w9kf0E/onS2Xg8B5O9GQg8ewOa3A8z8BT+GO2g64RJ6Kwd6DMImIBIuxUd3+wqpXudAuIpoKHB/wKYSjJjAkMBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQDAgGGMAoGCCqGSM49BAMCA0gAMEUCIEt4JA1GUewKXSdUf3+ZYpVdDgSsA+9TjLSO2lVvbA8wAiEAwtrnP14AiqSr8L+Z0u6jxspLAZ9vmsCqv0521YsEPwc="
+            "rawBytes": "MIIBqTCCAU6gAwIBAgICA+gwCgYIKoZIzj0EAwIwSTEgMB4GA1UECgwXRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8xJTAjBgNVBAMMHERlcG9uZSBTeW50aGV0aWMgRnVsY2lvIFJvb3QwHhcNMjQwMTAyMDAwMDAwWhcNMjYwMTAxMDAwMDAwWjBJMSAwHgYDVQQKDBdEZXBvbmUgU3ludGhldGljIEZ1bGNpbzElMCMGA1UEAwwcRGVwb25lIFN5bnRoZXRpYyBGdWxjaW8gUm9vdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJy24SL9ZYVwbeAq3J4l4K12xC+amFUQA6skOvxrznCSTCw2CkoG1G+YaQm5zI6fsCy3dnVqQiOS5iewqlsR7zGjJjAkMBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQDAgGGMAoGCCqGSM49BAMCA0kAMEYCIQCbq0wJgm3u+8H9HflqT/mlk3rO6Klx4MSaKDQSUeI8aQIhAMvzdE10k4ODmHpdE2apW+VnG+wvZFx4MEgTA2guc65m"
           }
         ]
       },
@@ -23,18 +23,15 @@
   "mediaType": "application/vnd.dev.sigstore.trustedroot.v0.2+json",
   "tlogs": [
     {
-      "baseUrl": "rekor.synthetic.depone.invalid",
-      "checkpointKeyId": {
-        "keyId": "vBj6sA=="
-      },
+      "baseUrl": "https://rekor.synthetic.depone.invalid",
       "hashAlgorithm": "SHA2_256",
       "logId": {
-        "keyId": "5XhO0xSV7AJ+4wAZH9BFSxZX6ovX6KQ4dbCzFOl8R98="
+        "keyId": "AonJlTzygwae0NCB6fj4VME/S2+/keM8qHJp63jVl7Y="
       },
       "operator": "depone.invalid",
       "publicKey": {
         "keyDetails": "PKIX_ED25519",
-        "rawBytes": "MCowBQYDK2VwAyEAWjugFweuJQON6tLs1H61MVSYeu+mN8DUoClBjTgCVZY=",
+        "rawBytes": "MCowBQYDK2VwAyEAb+PxFypxK8dOYloyZQKB3eAy3A8HSkjhwz1ENzLef9A=",
         "validFor": {
           "end": "2026-01-01T00:00:00Z",
           "start": "2024-01-01T00:00:00Z"

@@ -21,6 +21,8 @@ ISSUER = "https://oauth2.sigstore.dev/auth"
 SUBJECT = "octocat@example.com"
 INTEGRATED_TIME = 1_735_689_600  # 2025-01-01T00:00:00Z
 LOG_ORIGIN = "rekor.synthetic.depone.invalid"
+GLOBAL_LOG_INDEX = 17
+PROOF_LOG_INDEX = 0
 PAYLOAD_TYPE = "application/vnd.in-toto+json"
 
 
@@ -119,7 +121,6 @@ def _verification_material(
     payload: bytes,
     log_key: ed25519.Ed25519PrivateKey,
     log_id: bytes,
-    checkpoint_key_id: bytes,
 ) -> dict[str, object]:
     certificate_der = certificate.public_bytes(serialization.Encoding.DER)
     certificate_pem = certificate.public_bytes(serialization.Encoding.PEM)
@@ -149,14 +150,16 @@ def _verification_material(
             "body": _b64(canonicalized_body),
             "integratedTime": INTEGRATED_TIME,
             "logID": log_id.hex(),
-            "logIndex": 0,
+            "logIndex": GLOBAL_LOG_INDEX,
         }
     )
     set_signature = log_key.sign(set_payload)
     decoy_leaf = _leaf_hash(b"depone synthetic second log leaf")
     root_hash = _node_hash(_leaf_hash(canonicalized_body), decoy_leaf)
-    checkpoint_body = f"{LOG_ORIGIN}\n2\n{_b64(root_hash)}\n".encode("utf-8")
-    checkpoint_signature = checkpoint_key_id + log_key.sign(checkpoint_body)
+    checkpoint_body = f"{LOG_ORIGIN} - 123456789\n2\n{_b64(root_hash)}\n".encode(
+        "utf-8"
+    )
+    checkpoint_signature = log_id[:4] + log_key.sign(checkpoint_body)
     checkpoint = (
         checkpoint_body
         + b"\n\xe2\x80\x94 "
@@ -169,13 +172,13 @@ def _verification_material(
         "certificate": {"rawBytes": _b64(certificate_der)},
         "tlogEntries": [
             {
-                "logIndex": "0",
+                "logIndex": str(GLOBAL_LOG_INDEX),
                 "logId": {"keyId": _b64(log_id)},
                 "kindVersion": {"kind": "dsse", "version": "0.0.1"},
                 "integratedTime": str(INTEGRATED_TIME),
                 "inclusionPromise": {"signedEntryTimestamp": _b64(set_signature)},
                 "inclusionProof": {
-                    "logIndex": "0",
+                    "logIndex": str(PROOF_LOG_INDEX),
                     "rootHash": _b64(root_hash),
                     "treeSize": "2",
                     "hashes": [_b64(decoy_leaf)],
@@ -272,14 +275,7 @@ def main() -> None:
     log_public_der = log_key.public_key().public_bytes(
         serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
     )
-    log_public_raw = log_key.public_key().public_bytes(
-        serialization.Encoding.Raw, serialization.PublicFormat.Raw
-    )
     log_id = hashlib.sha256(log_public_der).digest()
-    checkpoint_key_id = hashlib.sha256(
-        LOG_ORIGIN.encode("utf-8") + b"\n\x01" + log_public_raw
-    ).digest()[:4]
-
     bundle = {
         "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
         "verificationMaterial": _verification_material(
@@ -288,7 +284,6 @@ def main() -> None:
             payload=payload,
             log_key=log_key,
             log_id=log_id,
-            checkpoint_key_id=checkpoint_key_id,
         ),
         "dsseEnvelope": envelope,
     }
@@ -300,7 +295,6 @@ def main() -> None:
             payload=payload,
             log_key=log_key,
             log_id=log_id,
-            checkpoint_key_id=checkpoint_key_id,
         ),
         "dsseEnvelope": envelope,
     }
@@ -312,7 +306,6 @@ def main() -> None:
             payload=payload,
             log_key=log_key,
             log_id=log_id,
-            checkpoint_key_id=checkpoint_key_id,
         ),
         "dsseEnvelope": envelope,
     }
@@ -321,7 +314,7 @@ def main() -> None:
         "mediaType": "application/vnd.dev.sigstore.trustedroot.v0.2+json",
         "tlogs": [
             {
-                "baseUrl": LOG_ORIGIN,
+                "baseUrl": f"https://{LOG_ORIGIN}",
                 "hashAlgorithm": "SHA2_256",
                 "publicKey": {
                     "rawBytes": _b64(log_public_der),
@@ -332,7 +325,6 @@ def main() -> None:
                     },
                 },
                 "logId": {"keyId": _b64(log_id)},
-                "checkpointKeyId": {"keyId": _b64(checkpoint_key_id)},
                 "operator": "depone.invalid",
             }
         ],

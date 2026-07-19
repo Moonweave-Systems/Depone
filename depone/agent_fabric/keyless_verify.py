@@ -8,12 +8,16 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 
 ANCHOR_CLASS_KEYLESS_TRANSPARENCY_LOGGED = "keyless-transparency-logged"
 
 _BUNDLE_MEDIA_TYPE = "application/vnd.dev.sigstore.bundle.v0.3+json"
-_TRUSTED_ROOT_MEDIA_TYPE = "application/vnd.dev.sigstore.trustedroot.v0.2+json"
+_TRUSTED_ROOT_MEDIA_TYPES = {
+    "application/vnd.dev.sigstore.trustedroot.v0.2+json",
+    "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
+}
 _DSSE_PAYLOAD_TYPE = "application/vnd.in-toto+json"
 _OIDC_ISSUER_V2_OID = "1.3.6.1.4.1.57264.1.8"
 _OIDC_ISSUER_LEGACY_OID = "1.3.6.1.4.1.57264.1.1"
@@ -179,16 +183,14 @@ def _parse_structure(bundle: dict[str, Any], trusted_root: dict[str, Any]) -> di
     canonicalized_body = _decode_base64(
         entry.get("canonicalizedBody"), "canonicalizedBody"
     )
-    if proof_index != log_index:
-        raise _VerificationFailure("bundle structure invalid: Rekor log indexes disagree")
-    if tree_size <= 0 or log_index >= tree_size:
+    if tree_size <= 0 or proof_index >= tree_size:
         raise _VerificationFailure("bundle structure invalid: Rekor log index is out of range")
     if len(root_hash) != hashlib.sha256().digest_size or any(
         len(item) != hashlib.sha256().digest_size for item in proof_hashes
     ):
         raise _VerificationFailure("bundle structure invalid: Rekor hashes must be SHA-256")
 
-    if trusted_root.get("mediaType") != _TRUSTED_ROOT_MEDIA_TYPE:
+    if trusted_root.get("mediaType") not in _TRUSTED_ROOT_MEDIA_TYPES:
         raise _VerificationFailure("trusted root invalid: unsupported mediaType")
     if not isinstance(trusted_root.get("tlogs"), list):
         raise _VerificationFailure("trusted root invalid: tlogs must be a list")
@@ -206,6 +208,7 @@ def _parse_structure(bundle: dict[str, Any], trusted_root: dict[str, Any]) -> di
         "log_id": log_id,
         "integrated_time": integrated_time,
         "log_index": log_index,
+        "proof_index": proof_index,
         "set_signature": set_signature,
         "tree_size": tree_size,
         "root_hash": root_hash,
@@ -284,6 +287,60 @@ def _trusted_log(
     raise _VerificationFailure("Rekor log key not trusted")
 
 
+def _load_log_public_key(trusted_log: dict[str, Any], *, serialization: Any) -> Any:
+    public_key_bytes = _decode_base64(
+        trusted_log["publicKey"].get("rawBytes"), "trusted log public key"
+    )
+    try:
+        return serialization.load_der_public_key(public_key_bytes)
+    except ValueError:
+        return serialization.load_pem_public_key(public_key_bytes)
+
+
+def _verify_log_signature(
+    public_key: Any,
+    key_details: str,
+    signature: bytes,
+    data: bytes,
+    *,
+    ec: Any,
+    ed25519: Any,
+    hashes: Any,
+) -> None:
+    if key_details == "PKIX_ECDSA_P256_SHA_256":
+        if not isinstance(public_key, ec.EllipticCurvePublicKey) or not isinstance(
+            public_key.curve, ec.SECP256R1
+        ):
+            raise ValueError("Rekor log key does not match keyDetails")
+        public_key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
+        return
+    if key_details == "PKIX_ED25519":
+        if not isinstance(public_key, ed25519.Ed25519PublicKey):
+            raise ValueError("Rekor log key does not match keyDetails")
+        public_key.verify(signature, data)
+        return
+    raise ValueError("unsupported Rekor log keyDetails")
+
+
+def _log_key_hint(public_key: Any, *, serialization: Any) -> bytes:
+    normalized_key = public_key.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return hashlib.sha256(normalized_key).digest()[:4]
+
+
+def _checkpoint_name(base_url: Any) -> str:
+    if not isinstance(base_url, str) or not base_url:
+        raise ValueError("checkpoint base URL")
+    if "://" not in base_url:
+        return base_url.rstrip("/")
+    parsed = urlsplit(base_url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.path not in ("", "/"):
+        raise ValueError("checkpoint base URL")
+    return parsed.hostname
+
+
 def _verify_checkpoint(
     checkpoint: str,
     *,
@@ -291,7 +348,9 @@ def _verify_checkpoint(
     tree_size: int,
     root_hash: bytes,
     serialization: Any,
+    ec: Any,
     ed25519: Any,
+    hashes: Any,
 ) -> Any:
     try:
         body_text, signatures_text = checkpoint.split("\n\n", 1)
@@ -302,46 +361,32 @@ def _verify_checkpoint(
         origin = lines[0]
         checkpoint_size = int(lines[1])
         checkpoint_root = base64.b64decode(lines[2].encode("ascii"), validate=True)
-        if origin != trusted_log.get("baseUrl"):
+        signer_name = _checkpoint_name(trusted_log.get("baseUrl"))
+        if origin != signer_name and not origin.startswith(f"{signer_name} - "):
             raise ValueError("checkpoint origin")
         if checkpoint_size != tree_size or checkpoint_root != root_hash:
             raise ValueError("checkpoint root")
         public_key_record = trusted_log["publicKey"]
-        if public_key_record.get("keyDetails") != "PKIX_ED25519":
-            raise ValueError("checkpoint algorithm")
-        public_key_bytes = _decode_base64(
-            public_key_record.get("rawBytes"), "trusted log public key"
-        )
-        try:
-            public_key = serialization.load_der_public_key(public_key_bytes)
-        except ValueError:
-            public_key = serialization.load_pem_public_key(public_key_bytes)
-        if not isinstance(public_key, ed25519.Ed25519PublicKey):
-            raise ValueError("checkpoint key")
-        expected_hint_record = trusted_log.get("checkpointKeyId")
-        if not isinstance(expected_hint_record, dict):
-            raise ValueError("checkpoint key hint")
-        expected_hint = _decode_base64(
-            expected_hint_record.get("keyId"), "checkpointKeyId.keyId"
-        )
-        actual_hint = hashlib.sha256(
-            origin.encode("utf-8")
-            + b"\n\x01"
-            + public_key.public_bytes(
-                serialization.Encoding.Raw, serialization.PublicFormat.Raw
-            )
-        ).digest()[:4]
-        if expected_hint != actual_hint:
-            raise ValueError("checkpoint key hint")
+        key_details = public_key_record.get("keyDetails")
+        public_key = _load_log_public_key(trusted_log, serialization=serialization)
+        expected_hint = _log_key_hint(public_key, serialization=serialization)
         for line in signatures_text.splitlines():
-            prefix = f"— {origin} "
+            prefix = f"— {signer_name} "
             if not line.startswith(prefix):
                 continue
             signature = base64.b64decode(line[len(prefix) :].encode("ascii"), validate=True)
-            if len(signature) != 68 or signature[:4] != expected_hint:
+            if len(signature) <= 4 or signature[:4] != expected_hint:
                 continue
-            public_key.verify(signature[4:], body)
-            return public_key
+            _verify_log_signature(
+                public_key,
+                key_details,
+                signature[4:],
+                body,
+                ec=ec,
+                ed25519=ed25519,
+                hashes=hashes,
+            )
+            return public_key, key_details
     except Exception as exc:
         raise _VerificationFailure("Rekor checkpoint signature invalid") from exc
     raise _VerificationFailure("Rekor checkpoint signature invalid")
@@ -353,11 +398,13 @@ def _verify_rekor(
     *,
     x509: Any,
     serialization: Any,
+    ec: Any,
     ed25519: Any,
+    hashes: Any,
 ) -> datetime:
     calculated_root = _root_from_inclusion_proof(
         _leaf_hash(parsed["canonicalized_body"]),
-        parsed["log_index"],
+        parsed["proof_index"],
         parsed["tree_size"],
         parsed["proof_hashes"],
     )
@@ -371,13 +418,15 @@ def _verify_rekor(
         trusted_time,
         serialization=serialization,
     )
-    public_key = _verify_checkpoint(
+    public_key, key_details = _verify_checkpoint(
         parsed["checkpoint"],
         trusted_log=log,
         tree_size=parsed["tree_size"],
         root_hash=parsed["root_hash"],
         serialization=serialization,
+        ec=ec,
         ed25519=ed25519,
+        hashes=hashes,
     )
     set_payload = _canonical_json(
         {
@@ -388,7 +437,15 @@ def _verify_rekor(
         }
     )
     try:
-        public_key.verify(parsed["set_signature"], set_payload)
+        _verify_log_signature(
+            public_key,
+            key_details,
+            parsed["set_signature"],
+            set_payload,
+            ec=ec,
+            ed25519=ed25519,
+            hashes=hashes,
+        )
     except Exception as exc:
         raise _VerificationFailure("Rekor signed entry timestamp invalid") from exc
 
@@ -523,9 +580,14 @@ def _verify_fulcio_chain(
                 leaf_key.curve, ec.SECP256R1
             ):
                 raise ValueError("leaf key algorithm")
-            constraints = leaf.extensions.get_extension_for_class(x509.BasicConstraints).value
-            if constraints.ca:
-                raise ValueError("leaf constraints")
+            try:
+                constraints = leaf.extensions.get_extension_for_class(
+                    x509.BasicConstraints
+                ).value
+                if constraints.ca:
+                    raise ValueError("leaf constraints")
+            except x509.ExtensionNotFound:
+                pass
             try:
                 usage = leaf.extensions.get_extension_for_class(x509.KeyUsage).value
                 if not usage.digital_signature:
@@ -661,7 +723,9 @@ def verify_keyless_bundle(
             trusted_root,
             x509=x509,
             serialization=serialization,
+            ec=ec,
             ed25519=ed25519,
+            hashes=hashes,
         )
         leaf = _verify_fulcio_chain(
             parsed["leaf_der"], trusted_root, trusted_time, x509=x509, ec=ec

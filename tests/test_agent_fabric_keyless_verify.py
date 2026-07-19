@@ -13,6 +13,13 @@ from depone.agent_fabric.keyless_verify import (
     verify_keyless_bundle,
 )
 
+try:
+    import cryptography  # noqa: F401
+
+    HAS_CRYPTOGRAPHY = True
+except ImportError:
+    HAS_CRYPTOGRAPHY = False
+
 
 FIXTURE_ROOT = "fixtures/agent_fabric/keyless/verify"
 IDENTITY_POLICY = {
@@ -21,6 +28,9 @@ IDENTITY_POLICY = {
 }
 
 
+@unittest.skipUnless(
+    HAS_CRYPTOGRAPHY, "requires the depone[keyless] extra (cryptography)"
+)
 class AgentFabricKeylessVerifyTest(unittest.TestCase):
     def _bundle(self) -> dict[str, object]:
         return json.loads(resource_text(f"{FIXTURE_ROOT}/valid-bundle.json"))
@@ -102,9 +112,9 @@ class AgentFabricKeylessVerifyTest(unittest.TestCase):
 
     def test_bad_checkpoint_signature_fails_closed(self) -> None:
         bundle = self._bundle()
-        checkpoint = bundle["verificationMaterial"]["tlogEntries"][0][
-            "inclusionProof"
-        ]["checkpoint"]
+        checkpoint = bundle["verificationMaterial"]["tlogEntries"][0]["inclusionProof"][
+            "checkpoint"
+        ]
         body, signature_line = checkpoint["envelope"].split("\n\n", 1)
         prefix, encoded = signature_line.strip().rsplit(" ", 1)
         signature = bytearray(base64.b64decode(encoded))
@@ -122,9 +132,7 @@ class AgentFabricKeylessVerifyTest(unittest.TestCase):
 
     def test_bad_signed_entry_timestamp_fails_closed(self) -> None:
         bundle = self._bundle()
-        promise = bundle["verificationMaterial"]["tlogEntries"][0][
-            "inclusionPromise"
-        ]
+        promise = bundle["verificationMaterial"]["tlogEntries"][0]["inclusionPromise"]
         signature = bytearray(base64.b64decode(promise["signedEntryTimestamp"]))
         signature[-1] ^= 1
         promise["signedEntryTimestamp"] = base64.b64encode(signature).decode("ascii")
@@ -150,8 +158,11 @@ class AgentFabricKeylessVerifyTest(unittest.TestCase):
         )
 
     def test_valid_bundle_verifies_without_network(self) -> None:
-        with mock.patch.object(socket, "socket", side_effect=AssertionError("network")), mock.patch.object(
-            socket, "create_connection", side_effect=AssertionError("network")
+        with (
+            mock.patch.object(socket, "socket", side_effect=AssertionError("network")),
+            mock.patch.object(
+                socket, "create_connection", side_effect=AssertionError("network")
+            ),
         ):
             self.assertEqual(self._verify()["decision"], "pass")
 

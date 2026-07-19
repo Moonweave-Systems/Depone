@@ -25,6 +25,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install keyless extra (exercises the offline Fulcio/Rekor verifier)
+        run: python3 -m pip install --disable-pip-version-check '.[keyless]'
+
       - name: Run unit tests
         run: python3 -m unittest discover -s tests -p 'test_*.py'
 

@@ -32,7 +32,8 @@ Documentation = "https://github.com/Moonweave-Systems/Depone#readme"
 
 [project.optional-dependencies]
 conductor = []
-all = []
+keyless = ["cryptography>=42"]
+all = ["cryptography>=42"]
 
 [project.scripts]
 depone = "depone.__main__:main"

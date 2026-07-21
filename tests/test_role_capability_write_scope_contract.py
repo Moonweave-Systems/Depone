@@ -57,11 +57,14 @@ def _sign_bundle(bundle: dict[str, object]) -> dict[str, object]:
 
 def _fixture_evidence(name: str) -> EvidenceContext:
     evidence = read_evidence(str(FIXTURE_ROOT / name))
-    public_key_name = (
-        "observation-public-key.pem"
-        if "observation" in name
-        else "advisory-public-key.pem"
-    )
+    if name.endswith("_no_trust_anchor"):
+        return evidence
+    if name.startswith("skill_routing_"):
+        public_key_name = "skill-routing-public-key.pem"
+    elif "observation" in name:
+        public_key_name = "observation-public-key.pem"
+    else:
+        public_key_name = "advisory-public-key.pem"
     evidence.raw["trusted_observer_public_key_file"] = str(
         (FIXTURE_ROOT / public_key_name).resolve()
     )
@@ -94,6 +97,41 @@ def _run_intent(write_scope: list[str]) -> dict[str, object]:
     return {
         "kind": "moonweave-run-intent-artifact",
         "schema_version": "1.1",
+        "intent": intent,
+        "dsse_envelope": {
+            "payloadType": "application/vnd.moonweave.run-intent+json",
+            "payload": base64.b64encode(payload).decode("ascii"),
+            "signatures": [{"keyid": "test", "sig": "not-verified-here"}],
+        },
+    }
+
+
+def _skill_run_intent() -> dict[str, object]:
+    intent = {
+        "schema_version": "1.3",
+        "run_id": "role-capability-skill-test",
+        "allowed_paths": ["figures/**"],
+        "approval": {"policy": "never"},
+        "sandbox": {"mode": "workspace-write"},
+        "provider": {"name": "codex", "adapter_version": "test"},
+        "instruction_hashes": {},
+        "budgets": {},
+        "capture_profile": "full",
+        "role_capability": {
+            "schema_version": "1.2",
+            "role_id": "runner",
+            "capability": "execute",
+            "declared_write_scope": ["figures/**"],
+        },
+    }
+    payload = json.dumps(
+        intent,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return {
+        "kind": "moonweave-run-intent-artifact",
+        "schema_version": "1.3",
         "intent": intent,
         "dsse_envelope": {
             "payloadType": "application/vnd.moonweave.run-intent+json",
@@ -362,6 +400,54 @@ def _evidence(
     )
 
 
+def _skill_evidence(
+    observed_skills: list[str],
+    *,
+    forbidden_skills: list[str] | None = None,
+    preferred_skills: list[str] | None = None,
+    enforcement: str = "block",
+    schema_version: str = "v110.role_capability_skill_routing",
+    bind_observation: bool = True,
+    tamper_observation: bool = False,
+) -> EvidenceContext:
+    run_intent = _skill_run_intent()
+    observed_text = "".join(f"{skill}\n" for skill in observed_skills)
+    bound_text = observed_text
+    if tamper_observation:
+        observed_text = observed_text + "tikz-refine\n"
+    directive: dict[str, object] = {
+        "run_intent_path": "run-intent.json",
+        "bundle_path": "bundle.json",
+        "forbidden_skills": list(forbidden_skills or []),
+        "enforcement": enforcement,
+    }
+    if preferred_skills is not None:
+        directive["preferred_skills"] = list(preferred_skills)
+    contract = {
+        "schema_version": schema_version,
+        "role_capability_skill_routing": directive,
+        "expected_exit_code": 0,
+    }
+    return EvidenceContext(
+        run_id="role-capability-skill-test",
+        files=[
+            _file("evidence-contract.json", contract),
+            _file("run-intent.json", run_intent),
+            _file(
+                "bundle.json",
+                _bundle_for(
+                    run_intent,
+                    bound_text if bind_observation else None,
+                    observation_filename="observed-skills.txt",
+                ),
+            ),
+            _file("observed-skills.txt", observed_text),
+            _file("exit-code.txt", "0\n"),
+        ],
+        raw={"trusted_observer_public_key_file": str(_TEST_PUBLIC_KEY)},
+    )
+
+
 def _evidence_with_contract(contract: dict[str, object]) -> EvidenceContext:
     return EvidenceContext(
         run_id="role-capability-test",
@@ -437,6 +523,238 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
         self.assertEqual(
             report.evidence_contract_schema_version,
             "v109.role_capability_write_scope",
+        )
+
+    def test_report_echoes_v110_skill_routing_schema_version(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-skill-plan",
+                "phases": [{"id": "phase-1"}],
+                "required_role_capability_axes": ["skill_routing"],
+            },
+            _skill_evidence(["figure-agent"], forbidden_skills=["tikz-refine"]),
+        )
+
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(
+            report.evidence_contract_schema_version,
+            "v110.role_capability_skill_routing",
+        )
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [("skill_routing", "pass", None)],
+        )
+
+    def test_skill_routing_forbidden_exact_match_refutes(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-skill-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _skill_evidence(["tikz-refine"], forbidden_skills=["tikz-refine"]),
+        )
+
+        self.assertEqual(report.verdict, "refuted")
+        self.assertEqual(report.decision, "fail")
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [
+                (
+                    "skill_routing",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION",
+                )
+            ],
+        )
+
+    def test_skill_routing_forbidden_glob_match_refutes(self) -> None:
+        errors = validate_evidence_contract(
+            _skill_evidence(["tikz/refine"], forbidden_skills=["tikz/*"])
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"],
+        )
+        self.assertEqual(errors[0].evidence_path, "observed-skills.txt")
+
+    def test_skill_routing_preferred_skills_are_advisory_only(self) -> None:
+        errors = validate_evidence_contract(
+            _skill_evidence(
+                ["figure-agent"],
+                forbidden_skills=["tikz-refine"],
+                preferred_skills=["tikz-refine"],
+            )
+        )
+
+        self.assertEqual(errors, [])
+
+    def test_skill_routing_advisory_violation_surfaces_without_blocking(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-skill-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _skill_evidence(
+                ["tikz-refine"],
+                forbidden_skills=["tikz-refine"],
+                enforcement="advisory",
+            ),
+        )
+
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(report.decision, "pass")
+        self.assertEqual(
+            [entry.code for entry in report.evidence_contract],
+            ["ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"],
+        )
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [
+                (
+                    "skill_routing",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION",
+                )
+            ],
+        )
+
+    def test_skill_routing_requires_v110_schema(self) -> None:
+        errors = validate_evidence_contract(
+            _skill_evidence(
+                ["figure-agent"],
+                forbidden_skills=["tikz-refine"],
+                schema_version="v109.role_capability_write_scope",
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_EVIDENCE_CONTRACT_INVALID"],
+        )
+        self.assertIn("role_capability_skill_routing", errors[0].message)
+
+    def test_skill_routing_unbound_observation_refutes(self) -> None:
+        errors = validate_evidence_contract(
+            _skill_evidence(
+                ["figure-agent"],
+                forbidden_skills=["tikz-refine"],
+                bind_observation=False,
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"],
+        )
+        self.assertIn("observed-skills.txt", errors[0].message)
+
+    def test_skill_routing_tampered_observation_refutes(self) -> None:
+        errors = validate_evidence_contract(
+            _skill_evidence(
+                ["figure-agent"],
+                forbidden_skills=["tikz-refine"],
+                tamper_observation=True,
+            )
+        )
+
+        self.assertEqual(
+            [error.code for error in errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"],
+        )
+        self.assertEqual(errors[0].evidence_path, "observed-skills.txt")
+
+    def test_plan_required_skill_routing_omission_fails_closed(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-plan",
+                "phases": [{"id": "phase-1"}],
+                "required_role_capability_axes": ["skill_routing"],
+            },
+            _evidence_with_contract(
+                {
+                    "schema_version": "v105.verify_wedge",
+                    "expected_exit_code": 0,
+                }
+            ),
+        )
+
+        self.assertEqual(report.verdict, "insufficient-evidence")
+        self.assertEqual(report.decision, "inconclusive")
+        self.assertEqual(
+            [
+                (entry.axis, entry.status, entry.error_code)
+                for entry in report.role_capability_conformance
+            ],
+            [
+                (
+                    "skill_routing",
+                    "fail",
+                    "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED",
+                )
+            ],
+        )
+
+    def test_committed_skill_routing_fixtures_capture_bound_pass_and_fail(self) -> None:
+        pass_errors = validate_evidence_contract(_fixture_evidence("skill_routing_pass"))
+        bound_pass_errors = validate_evidence_contract(
+            _fixture_evidence("skill_routing_pass_bound_observation")
+        )
+        fail_errors = validate_evidence_contract(_fixture_evidence("skill_routing_fail"))
+        unbound_errors = validate_evidence_contract(
+            _fixture_evidence("skill_routing_fail_observation_unbound")
+        )
+        tampered_errors = validate_evidence_contract(
+            _fixture_evidence("skill_routing_fail_observation_tampered")
+        )
+        unsigned_errors = validate_evidence_contract(
+            _fixture_evidence("skill_routing_fail_unsigned")
+        )
+        bad_signature_errors = validate_evidence_contract(
+            _fixture_evidence("skill_routing_fail_bad_signature")
+        )
+        no_trust_anchor_errors = validate_evidence_contract(
+            _fixture_evidence("skill_routing_fail_no_trust_anchor")
+        )
+
+        self.assertEqual(pass_errors, [])
+        self.assertEqual(bound_pass_errors, [])
+        self.assertEqual(
+            [error.code for error in fail_errors],
+            ["ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"],
+        )
+        self.assertEqual(
+            [error.code for error in unbound_errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"],
+        )
+        self.assertEqual(
+            [error.code for error in tampered_errors],
+            ["ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"],
+        )
+        self.assertEqual(
+            [error.code for error in unsigned_errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
+        )
+        self.assertEqual(
+            [error.code for error in bad_signature_errors],
+            ["ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"],
+        )
+        self.assertEqual(
+            [error.code for error in no_trust_anchor_errors],
+            ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
         )
 
     def test_docs_change_declared_write_scope_passes_conformance(self) -> None:

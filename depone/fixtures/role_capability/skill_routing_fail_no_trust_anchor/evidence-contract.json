@@ -1,0 +1,1 @@
+{"expected_exit_code":0,"role_capability_skill_routing":{"bundle_path":"bundle.json","enforcement":"block","forbidden_skills":["tikz-refine","tikz/*"],"preferred_skills":["figure-agent"],"run_intent_path":"run-intent.json"},"schema_version":"v110.role_capability_skill_routing"}

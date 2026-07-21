@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from depone.verify.adapters.generic import read_evidence
 from depone.verify.evidence_contract import validate_evidence_contract
 
 
-FIXTURE_ROOT = Path("depone/fixtures/role_capability")
+FIXTURE_ROOT = ROOT / "depone/fixtures/role_capability"
 CASES = {
     "write_scope_pass": (
         "REFUTE",
@@ -43,6 +47,32 @@ CASES = {
         "REFUTE",
         ["ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"],
     ),
+    "skill_routing_pass": ("PASS", []),
+    "skill_routing_pass_bound_observation": ("PASS", []),
+    "skill_routing_fail": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"],
+    ),
+    "skill_routing_fail_observation_unbound": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"],
+    ),
+    "skill_routing_fail_observation_tampered": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"],
+    ),
+    "skill_routing_fail_unsigned": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"],
+    ),
+    "skill_routing_fail_bad_signature": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"],
+    ),
+    "skill_routing_fail_no_trust_anchor": (
+        "REFUTE",
+        ["ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"],
+    ),
 }
 
 
@@ -52,12 +82,13 @@ def main() -> None:
     # this out-of-band boundary in the generic adapter.
     for name, (expected_verdict, expected_codes) in CASES.items():
         evidence = read_evidence(str(FIXTURE_ROOT / name))
-        if name != "write_scope_fail_no_trust_anchor":
-            public_key_name = (
-                "observation-public-key.pem"
-                if "observation" in name
-                else "advisory-public-key.pem"
-            )
+        if not name.endswith("_no_trust_anchor"):
+            if name.startswith("skill_routing_"):
+                public_key_name = "skill-routing-public-key.pem"
+            elif "observation" in name:
+                public_key_name = "observation-public-key.pem"
+            else:
+                public_key_name = "advisory-public-key.pem"
             public_key = (FIXTURE_ROOT / public_key_name).resolve()
             evidence.raw["trusted_observer_public_key_file"] = str(public_key)
 

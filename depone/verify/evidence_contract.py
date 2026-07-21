@@ -31,7 +31,11 @@ _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION = "v110.advisory_prove
 _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION = (
     "v109.role_capability_write_scope"
 )
+_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION = (
+    "v110.role_capability_skill_routing"
+)
 _OBSERVED_TOUCHED_FILES_FILENAME = "observed-touched-files.txt"
+_OBSERVED_SKILLS_FILENAME = "observed-skills.txt"
 # Deprecated compatibility alias for evidence sealed before the honest rename.
 _LEGACY_TOUCHED_FILES_FILENAME = "git-diff-name-only.txt"
 _OBSERVATION_FILENAMES = (
@@ -42,6 +46,7 @@ _ROOT_CONTROL_FILENAMES = frozenset(
     {
         "evidence-contract.json",
         _OBSERVED_TOUCHED_FILES_FILENAME,
+        _OBSERVED_SKILLS_FILENAME,
         _LEGACY_TOUCHED_FILES_FILENAME,
         "git-diff.patch",
     }
@@ -59,6 +64,9 @@ _ERR_ROLE_CAPABILITY_SIGNATURE_MISSING = "ERR_ROLE_CAPABILITY_SIGNATURE_MISSING"
 _ERR_ROLE_CAPABILITY_SIGNATURE_INVALID = "ERR_ROLE_CAPABILITY_SIGNATURE_INVALID"
 _ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING = "ERR_ROLE_CAPABILITY_TRUST_ANCHOR_MISSING"
 _ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION"
+_ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION = (
+    "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"
+)
 _ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND = "ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"
 _ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH = (
     "ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"
@@ -208,6 +216,8 @@ def _has_enforcement_directive(contract: dict[str, Any]) -> bool:
         return True
     if isinstance(contract.get("role_capability_tool_calls"), dict):
         return True
+    if isinstance(contract.get("role_capability_skill_routing"), dict):
+        return True
     if isinstance(contract.get("advisory_provenance"), dict):
         return True
     return contract.get("forbid_test_weakening") is True and _has_non_empty_str_list(
@@ -227,6 +237,7 @@ def _validate_contract_semantics(
         _ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION,
         _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
@@ -237,20 +248,26 @@ def _validate_contract_semantics(
                 f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
     if (
         isinstance(contract.get("role_capability_write_scope"), dict)
-        and schema_version != _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
+        and schema_version
+        not in {
+            _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
+            _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION,
+        }
     ):
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
             message=(
                 "role_capability_write_scope requires schema_version "
-                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r}"
-                " (the bound-observation schema); earlier versions cannot bind "
+                f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r} "
+                "(the bound-observation schemas); earlier versions cannot bind "
                 "the git-diff observation to the signed bundle and are refused"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
@@ -260,6 +277,7 @@ def _validate_contract_semantics(
     ) and schema_version not in {
         _ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
@@ -267,8 +285,21 @@ def _validate_contract_semantics(
                 "role_capability_tool_calls requires schema_version "
                 f"{_ROLE_CAPABILITY_TOOL_CALLS_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r} "
-                "(the bound-observation schema, for contracts that also carry a "
-                "bound write_scope directive)"
+                f"or {_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r} "
+                "(the bound-observation schemas, for contracts that also carry "
+                "bound observation directives)"
+            ),
+            evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+        )
+    if (
+        isinstance(contract.get("role_capability_skill_routing"), dict)
+        and schema_version != _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION
+    ):
+        return EvidenceContractEntry(
+            code=_ERR_CONTRACT_INVALID,
+            message=(
+                "role_capability_skill_routing requires schema_version "
+                f"{_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -313,6 +344,13 @@ def _read_exit_code(evidence: EvidenceContext, exit_code_path: str) -> int | Non
 
 def _touched_files(evidence: EvidenceContext) -> list[str]:
     entry = _find_observation_entry(evidence)
+    if entry is None:
+        return []
+    return [line.strip() for line in entry.content.splitlines() if line.strip()]
+
+
+def _observed_skills(evidence: EvidenceContext) -> list[str]:
+    entry = _evidence_file_entry(evidence, _OBSERVED_SKILLS_FILENAME)
     if entry is None:
         return []
     return [line.strip() for line in entry.content.splitlines() if line.strip()]
@@ -371,8 +409,11 @@ def _subject_digest(bundle: dict[str, Any], name: str) -> str | None:
     return None
 
 
-def _find_observation_subject(bundle: dict[str, Any]) -> tuple[str, str] | None:
-    for filename in _OBSERVATION_FILENAMES:
+def _find_observation_subject(
+    bundle: dict[str, Any],
+    filenames: tuple[str, ...] = _OBSERVATION_FILENAMES,
+) -> tuple[str, str] | None:
+    for filename in filenames:
         digest = _subject_digest(bundle, filename)
         if digest is not None:
             return filename, digest
@@ -383,6 +424,10 @@ def _path_allowed_by_scope(path: str, write_scope: list[str]) -> bool:
     return any(
         path == pattern or fnmatch.fnmatchcase(path, pattern) for pattern in write_scope
     )
+
+
+def _matches_any_pattern(value: str, patterns: list[str]) -> bool:
+    return any(value == pattern or fnmatch.fnmatchcase(value, pattern) for pattern in patterns)
 
 
 def _run_intent_digest_matches(
@@ -526,6 +571,49 @@ def _verified_role_capability_bundle(
     return verified_bundle, None
 
 
+def _validate_bound_observation(
+    evidence: EvidenceContext,
+    bundle: dict[str, Any] | None,
+    bundle_path: str,
+    *,
+    filenames: tuple[str, ...],
+    display_filename: str,
+) -> list[EvidenceContractEntry]:
+    observation_subject = _find_observation_subject(bundle, filenames) if bundle else None
+    if observation_subject is None:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND,
+                message=(
+                    f"{display_filename} observation is not bound to the signed "
+                    "bundle as a named digest subject"
+                ),
+                evidence_path=bundle_path,
+            )
+        ]
+    observation_filename, expected_observation_digest = observation_subject
+    observation_entry = _evidence_file_entry(
+        evidence,
+        observation_filename,
+    )
+    if observation_entry is None or not _raw_artifact_digest_matches(
+        expected_observation_digest,
+        observation_entry.content,
+    ):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH,
+                message=(
+                    f"{observation_filename} observation digest does not match "
+                    "the signed bundle subject; the observation is not "
+                    "re-derivable as tamper-evident"
+                ),
+                evidence_path=observation_filename,
+            )
+        ]
+    return []
+
+
 def _validate_role_capability_write_scope(
     evidence: EvidenceContext,
     contract: dict[str, Any],
@@ -554,44 +642,19 @@ def _validate_role_capability_write_scope(
     if intent is None:
         return []
 
-    if (
-        contract.get("schema_version")
-        == _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION
-    ):
-        observation_subject = (
-            _find_observation_subject(bundle) if bundle is not None else None
-        )
-        if observation_subject is None:
-            return [
-                EvidenceContractEntry(
-                    code=_ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND,
-                    message=(
-                        f"{_OBSERVED_TOUCHED_FILES_FILENAME} observation is not "
-                        "bound to the signed bundle as a named digest subject"
-                    ),
-                    evidence_path=bundle_path,
-                )
-            ]
-        observation_filename, expected_observation_digest = observation_subject
-        observation_entry = _evidence_file_entry(
+    if contract.get("schema_version") in {
+        _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
+        _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION,
+    }:
+        errors = _validate_bound_observation(
             evidence,
-            observation_filename,
+            bundle,
+            bundle_path,
+            filenames=_OBSERVATION_FILENAMES,
+            display_filename=_OBSERVED_TOUCHED_FILES_FILENAME,
         )
-        if observation_entry is None or not _raw_artifact_digest_matches(
-            expected_observation_digest,
-            observation_entry.content,
-        ):
-            return [
-                EvidenceContractEntry(
-                    code=_ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH,
-                    message=(
-                        f"{observation_filename} observation digest does not "
-                        "match the signed bundle subject; the observation is "
-                        "not re-derivable as tamper-evident"
-                    ),
-                    evidence_path=observation_filename,
-                )
-            ]
+        if errors:
+            return errors
 
     role_capability = intent.get("role_capability")
     if not isinstance(role_capability, dict):
@@ -622,6 +685,70 @@ def _validate_role_capability_write_scope(
                         f"write_scope: {touched}"
                     ),
                     evidence_path=touched,
+                )
+            ]
+    return []
+
+
+def _validate_role_capability_skill_routing(
+    evidence: EvidenceContext,
+    contract: dict[str, Any],
+    observed_skills: list[str],
+    *,
+    verified_signature_anchors: set[str] | None = None,
+) -> list[EvidenceContractEntry]:
+    directive = contract.get("role_capability_skill_routing")
+    if not isinstance(directive, dict):
+        return []
+
+    run_intent_path = directive.get("run_intent_path")
+    if not isinstance(run_intent_path, str) or not run_intent_path:
+        run_intent_path = "run-intent.json"
+    bundle_path = directive.get("bundle_path")
+    if not isinstance(bundle_path, str) or not bundle_path:
+        bundle_path = "bundle.json"
+    intent, bundle, errors = _load_bound_run_intent(
+        evidence,
+        run_intent_path,
+        bundle_path,
+        verified_signature_anchors=verified_signature_anchors,
+    )
+    if errors:
+        return errors
+    if intent is None:
+        return []
+
+    errors = _validate_bound_observation(
+        evidence,
+        bundle,
+        bundle_path,
+        filenames=(_OBSERVED_SKILLS_FILENAME,),
+        display_filename=_OBSERVED_SKILLS_FILENAME,
+    )
+    if errors:
+        return errors
+
+    role_capability = intent.get("role_capability")
+    if not isinstance(role_capability, dict):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_ROLE_CAPABILITY_RUN_INTENT_INVALID,
+                message="run-intent role_capability is required",
+                evidence_path=run_intent_path,
+            )
+        ]
+
+    forbidden_skills = _as_str_list(directive.get("forbidden_skills"))
+    for observed_skill in observed_skills:
+        if _matches_any_pattern(observed_skill, forbidden_skills):
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION,
+                    message=(
+                        "observed skill is forbidden by declared role capability "
+                        f"skill_routing: {observed_skill}"
+                    ),
+                    evidence_path=_OBSERVED_SKILLS_FILENAME,
                 )
             ]
     return []
@@ -1589,6 +1716,7 @@ def validate_evidence_contract(
             )
 
     touched_files = _touched_files(evidence)
+    observed_skills = _observed_skills(evidence)
     allowed_files = set(_as_str_list(contract.get("allowed_touched_files")))
     if not allowed_files:
         allowed_files = set(_as_str_list(contract.get("allowed_files")))
@@ -1619,6 +1747,13 @@ def validate_evidence_contract(
     for entry in _validate_role_capability_tool_calls(
         evidence,
         contract,
+        verified_signature_anchors=verified_signature_anchors,
+    ):
+        _append_unique_entry(results, entry)
+    for entry in _validate_role_capability_skill_routing(
+        evidence,
+        contract,
+        observed_skills,
         verified_signature_anchors=verified_signature_anchors,
     ):
         _append_unique_entry(results, entry)

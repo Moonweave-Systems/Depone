@@ -7,6 +7,7 @@ import json
 import shutil
 import tempfile
 import unittest
+from dataclasses import asdict
 from pathlib import Path
 
 from depone.agent_fabric.evidence_substrate import (
@@ -21,6 +22,7 @@ from depone.verify.adapters.base import EvidenceContext, EvidenceFile
 from depone.verify.adapters.generic import read_evidence
 from depone.verify.engine import run_verification
 from depone.verify.evidence_contract import _touched_files, validate_evidence_contract
+from depone.verify.operator_view import render_operator_view
 
 
 FIXTURE_ROOT = Path("depone/fixtures/role_capability")
@@ -513,6 +515,190 @@ def _tool_evidence(
 
 
 class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
+    def test_policy_conformance_write_scope_violation_blocks_handoff(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            _evidence(["pkg/**"], ["secrets.txt"]),
+        )
+
+        self.assertEqual(report.decision, "fail")
+        self.assertEqual(report.policy_conformance.overall, "fail")
+        self.assertEqual(
+            [
+                (
+                    axis.axis,
+                    axis.status,
+                    axis.enforcement,
+                    axis.blocks_handoff,
+                    axis.error_code,
+                    axis.evidence_path,
+                )
+                for axis in report.policy_conformance.axes
+            ],
+            [
+                (
+                    "write_scope",
+                    "fail",
+                    "block",
+                    True,
+                    "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION",
+                    "secrets.txt",
+                )
+            ],
+        )
+
+    def test_policy_conformance_advisory_skill_violation_fails_without_blocking(
+        self,
+    ) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-skill-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _skill_evidence(
+                ["tikz-refine"],
+                forbidden_skills=["tikz-refine"],
+                enforcement="advisory",
+            ),
+        )
+
+        self.assertEqual(report.policy_conformance.overall, "fail")
+        self.assertEqual(report.decision, "pass")
+        self.assertEqual(
+            [
+                (
+                    axis.axis,
+                    axis.status,
+                    axis.enforcement,
+                    axis.blocks_handoff,
+                )
+                for axis in report.policy_conformance.axes
+            ],
+            [("skill_routing", "fail", "advisory", False)],
+        )
+
+    def test_policy_conformance_passes_when_declared_axes_pass(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-skill-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _fixture_evidence("skill_routing_pass_bound_observation"),
+        )
+
+        self.assertEqual(report.policy_conformance.overall, "pass")
+        self.assertEqual(
+            [
+                (
+                    axis.axis,
+                    axis.status,
+                    axis.enforcement,
+                    axis.blocks_handoff,
+                )
+                for axis in report.policy_conformance.axes
+            ],
+            [("skill_routing", "pass", "block", False)],
+        )
+        self.assertIn("Policy conformance: PASS", render_operator_view(report))
+
+    def test_policy_conformance_is_inconclusive_for_undeclared_required_axis(
+        self,
+    ) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=True),
+            _evidence_with_contract(
+                {
+                    "schema_version": "v105.verify_wedge",
+                    "expected_exit_code": 0,
+                }
+            ),
+        )
+
+        self.assertEqual(report.decision, "inconclusive")
+        self.assertEqual(report.policy_conformance.overall, "inconclusive")
+        self.assertEqual(
+            [
+                (
+                    axis.axis,
+                    axis.status,
+                    axis.enforcement,
+                    axis.blocks_handoff,
+                    axis.error_code,
+                )
+                for axis in report.policy_conformance.axes
+            ],
+            [
+                (
+                    "write_scope",
+                    "fail",
+                    "block",
+                    True,
+                    "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED",
+                )
+            ],
+        )
+        self.assertIn(
+            "Policy conformance: INCONCLUSIVE — write_scope guardrail not installed "
+            "(blocks handoff)",
+            render_operator_view(report),
+        )
+
+    def test_policy_conformance_is_none_without_role_capability_policy(self) -> None:
+        report = run_verification(
+            _verification_plan(require_write_scope=False),
+            _evidence_with_contract(
+                {
+                    "schema_version": "v105.verify_wedge",
+                    "expected_exit_code": 0,
+                }
+            ),
+        )
+        report_data = asdict(report)
+
+        self.assertIsNone(report.policy_conformance)
+        self.assertEqual(report_data["policy_conformance"], None)
+        self.assertEqual(report.decision, "pass")
+        self.assertEqual(report.verdict, "verified")
+        self.assertEqual(report.role_capability_conformance, [])
+
+    def test_policy_conformance_serializes_and_renders_advisory_seam(self) -> None:
+        report = run_verification(
+            {
+                "schema_version": "0.5",
+                "plan_id": "role-capability-skill-plan",
+                "phases": [{"id": "phase-1"}],
+            },
+            _skill_evidence(
+                ["tikz-refine"],
+                forbidden_skills=["tikz-refine"],
+                enforcement="advisory",
+            ),
+        )
+
+        self.assertEqual(
+            asdict(report)["policy_conformance"],
+            {
+                "overall": "fail",
+                "axes": [
+                    {
+                        "axis": "skill_routing",
+                        "status": "fail",
+                        "enforcement": "advisory",
+                        "blocks_handoff": False,
+                        "error_code": "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION",
+                        "evidence_path": "observed-skills.txt",
+                    }
+                ],
+            },
+        )
+        self.assertIn(
+            "Policy conformance: FAIL — skill_routing violated "
+            "(advisory; did not block handoff)",
+            render_operator_view(report),
+        )
+
     def test_report_echoes_v109_evidence_contract_schema_version(self) -> None:
         report = run_verification(
             _verification_plan(require_write_scope=True),
@@ -943,6 +1129,7 @@ class RoleCapabilityWriteScopeContractTests(unittest.TestCase):
                     report.role_capability_conformance[0].error_code,
                     "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID",
                 )
+                self.assertEqual(report.policy_conformance.overall, "inconclusive")
 
     def test_v109_write_scope_violation_refutes_from_run_intent(self) -> None:
         errors = validate_evidence_contract(_evidence(["pkg/**"], ["secrets.txt"]))

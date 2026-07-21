@@ -123,6 +123,22 @@ class RoleCapabilityConformance:
 
 
 @dataclass
+class PolicyAxisConformance:
+    axis: str
+    status: Literal["pass", "fail"]
+    enforcement: Literal["block", "advisory"]
+    blocks_handoff: bool
+    error_code: str | None = None
+    evidence_path: str | None = None
+
+
+@dataclass
+class PolicyConformance:
+    overall: Literal["pass", "fail", "inconclusive"]
+    axes: list[PolicyAxisConformance] = field(default_factory=list)
+
+
+@dataclass
 class VerificationReport:
     """Verification result.
 
@@ -148,6 +164,7 @@ class VerificationReport:
     role_capability_conformance: list[RoleCapabilityConformance] = field(
         default_factory=list
     )
+    policy_conformance: PolicyConformance | None = None
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
 
@@ -292,6 +309,54 @@ def _role_capability_conformance(
             )
         )
     return results
+
+
+def _policy_conformance(
+    role_capability_conformance: list[RoleCapabilityConformance],
+    contract: dict[str, Any] | None,
+) -> PolicyConformance | None:
+    if not role_capability_conformance:
+        return None
+
+    axes: list[PolicyAxisConformance] = []
+    for entry in role_capability_conformance:
+        enforcement: Literal["block", "advisory"] = "block"
+        if entry.axis == "skill_routing" and contract is not None:
+            directive = contract.get("role_capability_skill_routing")
+            if (
+                isinstance(directive, dict)
+                and directive.get("enforcement") == "advisory"
+            ):
+                enforcement = "advisory"
+        advisory_violation = (
+            entry.error_code == "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"
+            and enforcement == "advisory"
+        )
+        axes.append(
+            PolicyAxisConformance(
+                axis=entry.axis,
+                status=entry.status,
+                enforcement=enforcement,
+                blocks_handoff=entry.status == "fail" and not advisory_violation,
+                error_code=entry.error_code,
+                evidence_path=entry.evidence_path,
+            )
+        )
+
+    if any(
+        axis.error_code
+        in {
+            _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED,
+            _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID,
+        }
+        for axis in axes
+    ):
+        overall: Literal["pass", "fail", "inconclusive"] = "inconclusive"
+    elif any(axis.status == "fail" for axis in axes):
+        overall = "fail"
+    else:
+        overall = "pass"
+    return PolicyConformance(overall=overall, axes=axes)
 
 
 def _resolve_handoff_path(
@@ -877,5 +942,6 @@ def run_verification(
         claim_evaluations=claim_evals,
         review_signals=review_signals,
         role_capability_conformance=role_capability_conformance,
+        policy_conformance=_policy_conformance(role_capability_conformance, contract),
         verdict=overall,
     )

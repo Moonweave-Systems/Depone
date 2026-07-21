@@ -29,6 +29,37 @@ def _finding_mapping(finding: Any) -> Mapping[str, Any]:
     return {}
 
 
+def _policy_conformance_summary(policy: Mapping[str, Any]) -> str:
+    overall = str(policy.get("overall", "inconclusive")).upper()
+    if overall == "PASS":
+        return "Policy conformance: PASS"
+
+    details: list[str] = []
+    for raw_axis in policy.get("axes", []):
+        axis = _finding_mapping(raw_axis)
+        if axis.get("status") != "fail":
+            continue
+        axis_name = str(axis.get("axis", "unknown"))
+        error_code = axis.get("error_code")
+        if error_code in {
+            "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED",
+            "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXES_INVALID",
+        }:
+            details.append(f"{axis_name} guardrail not installed (blocks handoff)")
+        elif axis.get("enforcement") == "advisory" and not axis.get(
+            "blocks_handoff", True
+        ):
+            details.append(
+                f"{axis_name} violated (advisory; did not block handoff)"
+            )
+        elif axis.get("blocks_handoff") is True:
+            details.append(f"{axis_name} violated (block; blocks handoff)")
+        else:
+            details.append(f"{axis_name} violated")
+    suffix = f" — {', '.join(details)}" if details else ""
+    return f"Policy conformance: {overall}{suffix}"
+
+
 def render_operator_view(report: VerificationReport | Mapping[str, Any]) -> str:
     """Render the operator-facing V111 summary for a verification report."""
     report_data = _report_mapping(report)
@@ -40,6 +71,7 @@ def render_operator_view(report: VerificationReport | Mapping[str, Any]) -> str:
         _finding_mapping(finding)
         for finding in report_data.get("advisory_findings", [])
     ]
+    policy_conformance = _finding_mapping(report_data.get("policy_conformance"))
 
     lines = [
         "# Verification Operator View",
@@ -49,9 +81,10 @@ def render_operator_view(report: VerificationReport | Mapping[str, Any]) -> str:
         "- Evidence contract schema: "
         f"{report_data.get('evidence_contract_schema_version') or 'none'}",
         f"- Agent Fabric captures: {len(captures)}",
-        "",
-        "## Agent Fabric captures",
     ]
+    if policy_conformance:
+        lines.append(f"- {_policy_conformance_summary(policy_conformance)}")
+    lines.extend(["", "## Agent Fabric captures"])
 
     if not captures:
         lines.append("- None")

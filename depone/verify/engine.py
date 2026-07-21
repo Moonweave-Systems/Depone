@@ -24,7 +24,7 @@ from depone.verify.evidence_contract import (
 )
 
 
-_ROLE_CAPABILITY_AXES = frozenset({"tool_calls", "write_scope"})
+_ROLE_CAPABILITY_AXES = frozenset({"skill_routing", "tool_calls", "write_scope"})
 _ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED = (
     "ERR_ROLE_CAPABILITY_PLAN_REQUIRED_AXIS_UNDECLARED"
 )
@@ -164,7 +164,32 @@ def _role_capability_contract_axes(contract: dict[str, Any] | None) -> list[str]
         axes.append("tool_calls")
     if isinstance(contract.get("role_capability_write_scope"), dict):
         axes.append("write_scope")
+    if isinstance(contract.get("role_capability_skill_routing"), dict):
+        axes.append("skill_routing")
     return axes
+
+
+def _is_advisory_skill_routing_entry(
+    contract: dict[str, Any] | None,
+    entry: EvidenceContractEntry,
+) -> bool:
+    if entry.code != "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION":
+        return False
+    if contract is None:
+        return False
+    directive = contract.get("role_capability_skill_routing")
+    return isinstance(directive, dict) and directive.get("enforcement") == "advisory"
+
+
+def _blocking_evidence_contract_entries(
+    contract: dict[str, Any] | None,
+    evidence_contract: list[EvidenceContractEntry],
+) -> list[EvidenceContractEntry]:
+    return [
+        entry
+        for entry in evidence_contract
+        if not _is_advisory_skill_routing_entry(contract, entry)
+    ]
 
 
 def _validated_evidence_contract_schema_version(
@@ -214,9 +239,14 @@ def _role_capability_conformance(
     for axis in axes:
         if axis == "tool_calls":
             prefixes = ("ERR_ROLE_CAPABILITY_TOOL_",)
-        else:
+        elif axis == "write_scope":
             prefixes = (
                 "ERR_ROLE_CAPABILITY_WRITE_SCOPE",
+                "ERR_ROLE_CAPABILITY_OBSERVATION_",
+            )
+        else:
+            prefixes = (
+                "ERR_ROLE_CAPABILITY_SKILL_ROUTING_",
                 "ERR_ROLE_CAPABILITY_OBSERVATION_",
             )
         failure = next(
@@ -779,7 +809,7 @@ def run_verification(
             )
         )
 
-    if evidence_contract:
+    if _blocking_evidence_contract_entries(contract, evidence_contract):
         any_refuted = True
     if any(
         entry.error_code

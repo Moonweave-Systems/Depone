@@ -16,4 +16,25 @@ _SCRIPTS = _REPO_ROOT / "scripts"
 if _SCRIPTS.is_dir() and str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-__version__ = "0.1.0"
+
+# Single source of truth is the installed package metadata (pyproject version).
+# Fall back to a source-tree read of pyproject.toml so an uninstalled checkout
+# still reports the real version instead of a hardcoded value that drifts.
+def _resolve_version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("depone")
+    except PackageNotFoundError:
+        pyproject = _REPO_ROOT / "pyproject.toml"
+        try:
+            for line in pyproject.read_text(encoding="utf-8").splitlines():
+                stripped = line.strip()
+                if stripped.startswith("version"):
+                    return stripped.split("=", 1)[1].strip().strip('"')
+        except OSError:
+            pass
+        return "0+unknown"
+
+
+__version__ = _resolve_version()

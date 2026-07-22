@@ -555,7 +555,7 @@ def _validate_lane(
                 }
             )
 
-    return {
+    lane_result = {
         "lane_id": lane_error_id,
         "env_kind": lane.get("env_kind"),
         "runner_adapter_kind": lane.get("runner_adapter_kind"),
@@ -576,6 +576,9 @@ def _validate_lane(
         "touched_file_count": len(touched_files),
         "errors": errors,
     }
+    if state == "blocked":
+        lane_result["blocked_reason"] = blocked_reason
+    return lane_result
 
 
 def _require_non_empty_string(

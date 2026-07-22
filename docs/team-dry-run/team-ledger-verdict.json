@@ -14,6 +14,7 @@
   "lane_count": 2,
   "lane_results": [
     {
+      "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
       "decision": "blocked",
       "env_kind": "local",
       "errors": [],
@@ -59,6 +60,7 @@
       }
     },
     {
+      "blocked_reason": "dry-run plan only; no lane evidence has been captured and no worker was launched",
       "decision": "blocked",
       "env_kind": "local",
       "errors": [],

@@ -427,6 +427,7 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
         self.assertEqual(verdict["kind"], "depone-team-ledger-verdict")
         self.assertEqual(verdict["decision"], "pass")
         self.assertEqual(verdict["passed_lane_count"], 1)
+        self.assertNotIn("blocked_reason", verdict["lane_results"][0])
         self.assertFalse(verdict["boundary"]["executes_commands"])
         self.assertFalse(verdict["boundary"]["raises_assurance"])
 
@@ -610,6 +611,10 @@ class AgentFabricTeamLedgerTests(unittest.TestCase):
 
         self.assertEqual(verdict["decision"], "blocked-explicit")
         self.assertEqual(verdict["blocked_lane_count"], 1)
+        self.assertEqual(
+            verdict["lane_results"][0]["blocked_reason"],
+            "lane hit a merge conflict",
+        )
         self.assertEqual(verdict["errors"], [])
 
     def test_blocked_lane_allows_planned_missing_worktree_receipt(self) -> None:

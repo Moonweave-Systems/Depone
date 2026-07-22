@@ -34,6 +34,7 @@ _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION = (
 _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION = (
     "v110.role_capability_skill_routing"
 )
+_CODE_HEALTH_CONTRACT_SCHEMA_VERSION = "v111.code_health"
 _OBSERVED_TOUCHED_FILES_FILENAME = "observed-touched-files.txt"
 _OBSERVED_SKILLS_FILENAME = "observed-skills.txt"
 # Deprecated compatibility alias for evidence sealed before the honest rename.
@@ -67,6 +68,7 @@ _ERR_ROLE_CAPABILITY_WRITE_SCOPE_VIOLATION = "ERR_ROLE_CAPABILITY_WRITE_SCOPE_VI
 _ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION = (
     "ERR_ROLE_CAPABILITY_SKILL_ROUTING_VIOLATION"
 )
+_ERR_HEALTH_GATE_VIOLATION = "ERR_HEALTH_GATE_VIOLATION"
 _ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND = "ERR_ROLE_CAPABILITY_OBSERVATION_UNBOUND"
 _ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH = (
     "ERR_ROLE_CAPABILITY_OBSERVATION_DIGEST_MISMATCH"
@@ -218,6 +220,8 @@ def _has_enforcement_directive(contract: dict[str, Any]) -> bool:
         return True
     if isinstance(contract.get("role_capability_skill_routing"), dict):
         return True
+    if "code_health" in contract:
+        return True
     if isinstance(contract.get("advisory_provenance"), dict):
         return True
     return contract.get("forbid_test_weakening") is True and _has_non_empty_str_list(
@@ -238,6 +242,7 @@ def _validate_contract_semantics(
         _ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION,
         _ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION,
+        _CODE_HEALTH_CONTRACT_SCHEMA_VERSION,
     }:
         return EvidenceContractEntry(
             code=_ERR_CONTRACT_INVALID,
@@ -249,7 +254,8 @@ def _validate_contract_semantics(
                 f"{_ADVISORY_PROVENANCE_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ADVISORY_PROVENANCE_EXECUTED_RED_CONTRACT_SCHEMA_VERSION!r} or "
                 f"{_ROLE_CAPABILITY_BOUND_OBSERVATION_CONTRACT_SCHEMA_VERSION!r} or "
-                f"{_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r}"
+                f"{_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r} or "
+                f"{_CODE_HEALTH_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -300,6 +306,18 @@ def _validate_contract_semantics(
             message=(
                 "role_capability_skill_routing requires schema_version "
                 f"{_ROLE_CAPABILITY_SKILL_ROUTING_CONTRACT_SCHEMA_VERSION!r}"
+            ),
+            evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+        )
+    if (
+        "code_health" in contract
+        and schema_version != _CODE_HEALTH_CONTRACT_SCHEMA_VERSION
+    ):
+        return EvidenceContractEntry(
+            code=_ERR_CONTRACT_INVALID,
+            message=(
+                "code_health requires schema_version "
+                f"{_CODE_HEALTH_CONTRACT_SCHEMA_VERSION!r}"
             ),
             evidence_path=_EVIDENCE_CONTRACT_FILENAME,
         )
@@ -752,6 +770,91 @@ def _validate_role_capability_skill_routing(
                 )
             ]
     return []
+
+
+def _validate_code_health(
+    evidence: EvidenceContext,
+    contract: dict[str, Any],
+) -> list[EvidenceContractEntry]:
+    if "code_health" not in contract:
+        return []
+    directive = contract.get("code_health")
+    if not isinstance(directive, dict):
+        return [
+            EvidenceContractEntry(
+                code=_ERR_CONTRACT_INVALID,
+                message="code_health must be an object",
+                evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+            )
+        ]
+
+    gates = directive.get("gates")
+    if not isinstance(gates, list) or not gates:
+        return [
+            EvidenceContractEntry(
+                code=_ERR_CONTRACT_INVALID,
+                message="code_health.gates must be a non-empty list",
+                evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+            )
+        ]
+
+    results: list[EvidenceContractEntry] = []
+    for index, gate in enumerate(gates):
+        prefix = f"code_health.gates[{index}]"
+        if not isinstance(gate, dict):
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_CONTRACT_INVALID,
+                    message=f"{prefix} must be an object",
+                    evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+                )
+            ]
+        for key in ("gate", "tool", "exit_code_path", "log_path"):
+            if not isinstance(gate.get(key), str) or not gate[key]:
+                return [
+                    EvidenceContractEntry(
+                        code=_ERR_CONTRACT_INVALID,
+                        message=f"{prefix}.{key} must be a non-empty string",
+                        evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+                    )
+                ]
+        enforcement = gate.get("enforcement")
+        if enforcement not in {"block", "advisory"}:
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_CONTRACT_INVALID,
+                    message=(
+                        f"{prefix}.enforcement must be 'block' or 'advisory'"
+                    ),
+                    evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+                )
+            ]
+        expected_exit_code = gate.get("expected_exit_code")
+        if type(expected_exit_code) is not int:
+            return [
+                EvidenceContractEntry(
+                    code=_ERR_CONTRACT_INVALID,
+                    message=f"{prefix}.expected_exit_code must be an integer",
+                    evidence_path=_EVIDENCE_CONTRACT_FILENAME,
+                )
+            ]
+
+        exit_code_path = gate["exit_code_path"]
+        actual_exit_code = _read_exit_code(evidence, exit_code_path)
+        if actual_exit_code != expected_exit_code:
+            results.append(
+                EvidenceContractEntry(
+                    code=_ERR_HEALTH_GATE_VIOLATION,
+                    message=(
+                        "code health gate exit code mismatch: "
+                        f"gate={gate['gate']!r}, tool={gate['tool']!r}, "
+                        f"enforcement={enforcement!r}, "
+                        f"expected={expected_exit_code}, got={actual_exit_code}"
+                    ),
+                    evidence_path=exit_code_path,
+                )
+            )
+    return results
 
 
 def _load_bound_run_intent(
@@ -1756,6 +1859,8 @@ def validate_evidence_contract(
         observed_skills,
         verified_signature_anchors=verified_signature_anchors,
     ):
+        _append_unique_entry(results, entry)
+    for entry in _validate_code_health(evidence, contract):
         _append_unique_entry(results, entry)
 
     test_patterns = _as_str_list(contract.get("test_file_patterns"))

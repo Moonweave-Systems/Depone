@@ -1,0 +1,39 @@
+{
+  "decision": "fail",
+  "error_codes": [
+    "ERR_HEALTH_GATE_VIOLATION",
+    "ERR_HEALTH_GATE_VIOLATION"
+  ],
+  "health_conformance": {
+    "overall": "fail",
+    "axes": [
+      {
+        "gate": "format",
+        "tool": "black",
+        "status": "pass",
+        "enforcement": "block",
+        "blocks_handoff": false,
+        "error_code": null,
+        "evidence_path": null
+      },
+      {
+        "gate": "complexity",
+        "tool": "ruff-c901",
+        "status": "fail",
+        "enforcement": "advisory",
+        "blocks_handoff": false,
+        "error_code": "ERR_HEALTH_GATE_VIOLATION",
+        "evidence_path": "health/complexity.exit"
+      },
+      {
+        "gate": "architecture",
+        "tool": "import-linter",
+        "status": "fail",
+        "enforcement": "block",
+        "blocks_handoff": true,
+        "error_code": "ERR_HEALTH_GATE_VIOLATION",
+        "evidence_path": "health/architecture.exit"
+      }
+    ]
+  }
+}

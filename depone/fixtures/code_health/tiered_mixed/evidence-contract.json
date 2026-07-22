@@ -1,0 +1,31 @@
+{
+  "schema_version": "v111.code_health",
+  "code_health": {
+    "gates": [
+      {
+        "gate": "format",
+        "tool": "black",
+        "enforcement": "block",
+        "expected_exit_code": 0,
+        "exit_code_path": "health/format.exit",
+        "log_path": "health/format.log"
+      },
+      {
+        "gate": "complexity",
+        "tool": "ruff-c901",
+        "enforcement": "advisory",
+        "expected_exit_code": 0,
+        "exit_code_path": "health/complexity.exit",
+        "log_path": "health/complexity.log"
+      },
+      {
+        "gate": "architecture",
+        "tool": "import-linter",
+        "enforcement": "block",
+        "expected_exit_code": 0,
+        "exit_code_path": "health/architecture.exit",
+        "log_path": "health/architecture.log"
+      }
+    ]
+  }
+}

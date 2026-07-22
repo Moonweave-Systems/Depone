@@ -139,6 +139,23 @@ class PolicyConformance:
 
 
 @dataclass
+class HealthAxisConformance:
+    gate: str
+    tool: str
+    status: Literal["pass", "fail"]
+    enforcement: Literal["block", "advisory"]
+    blocks_handoff: bool
+    error_code: str | None = None
+    evidence_path: str | None = None
+
+
+@dataclass
+class HealthConformance:
+    overall: Literal["pass", "fail"]
+    axes: list[HealthAxisConformance] = field(default_factory=list)
+
+
+@dataclass
 class VerificationReport:
     """Verification result.
 
@@ -165,6 +182,7 @@ class VerificationReport:
         default_factory=list
     )
     policy_conformance: PolicyConformance | None = None
+    health_conformance: HealthConformance | None = None
     verdict: Literal["verified", "refuted", "insufficient-evidence"] = "verified"
 
 
@@ -198,6 +216,39 @@ def _is_advisory_skill_routing_entry(
     return isinstance(directive, dict) and directive.get("enforcement") == "advisory"
 
 
+def _health_entry_matches_gate(
+    entry: EvidenceContractEntry,
+    gate: dict[str, Any],
+) -> bool:
+    return (
+        entry.code == "ERR_HEALTH_GATE_VIOLATION"
+        and gate.get("exit_code_path") == entry.evidence_path
+        and f"gate={gate.get('gate')!r}" in entry.message
+        and f"tool={gate.get('tool')!r}" in entry.message
+        and f"enforcement={gate.get('enforcement')!r}" in entry.message
+    )
+
+
+def _is_advisory_health_entry(
+    contract: dict[str, Any] | None,
+    entry: EvidenceContractEntry,
+) -> bool:
+    if entry.code != "ERR_HEALTH_GATE_VIOLATION" or contract is None:
+        return False
+    directive = contract.get("code_health")
+    if not isinstance(directive, dict):
+        return False
+    gates = directive.get("gates")
+    if not isinstance(gates, list):
+        return False
+    return any(
+        isinstance(gate, dict)
+        and gate.get("enforcement") == "advisory"
+        and _health_entry_matches_gate(entry, gate)
+        for gate in gates
+    )
+
+
 def _blocking_evidence_contract_entries(
     contract: dict[str, Any] | None,
     evidence_contract: list[EvidenceContractEntry],
@@ -206,6 +257,7 @@ def _blocking_evidence_contract_entries(
         entry
         for entry in evidence_contract
         if not _is_advisory_skill_routing_entry(contract, entry)
+        and not _is_advisory_health_entry(contract, entry)
     ]
 
 
@@ -357,6 +409,61 @@ def _policy_conformance(
     else:
         overall = "pass"
     return PolicyConformance(overall=overall, axes=axes)
+
+
+def _health_conformance(
+    contract: dict[str, Any] | None,
+    evidence_contract: list[EvidenceContractEntry],
+) -> HealthConformance | None:
+    if contract is None:
+        return None
+    directive = contract.get("code_health")
+    if not isinstance(directive, dict):
+        return None
+    gates = directive.get("gates")
+    if not isinstance(gates, list):
+        return None
+
+    axes: list[HealthAxisConformance] = []
+    for gate in gates:
+        if not isinstance(gate, dict):
+            continue
+        gate_id = gate.get("gate")
+        tool = gate.get("tool")
+        enforcement = gate.get("enforcement")
+        exit_code_path = gate.get("exit_code_path")
+        if (
+            not isinstance(gate_id, str)
+            or not isinstance(tool, str)
+            or enforcement not in {"block", "advisory"}
+            or not isinstance(exit_code_path, str)
+        ):
+            continue
+        failure = next(
+            (
+                entry
+                for entry in evidence_contract
+                if _health_entry_matches_gate(entry, gate)
+            ),
+            None,
+        )
+        status: Literal["pass", "fail"] = "fail" if failure else "pass"
+        axes.append(
+            HealthAxisConformance(
+                gate=gate_id,
+                tool=tool,
+                status=status,
+                enforcement=enforcement,
+                blocks_handoff=status == "fail" and enforcement == "block",
+                error_code=failure.code if failure else None,
+                evidence_path=failure.evidence_path if failure else None,
+            )
+        )
+
+    overall: Literal["pass", "fail"] = (
+        "fail" if any(axis.status == "fail" for axis in axes) else "pass"
+    )
+    return HealthConformance(overall=overall, axes=axes)
 
 
 def _resolve_handoff_path(
@@ -943,5 +1050,6 @@ def run_verification(
         review_signals=review_signals,
         role_capability_conformance=role_capability_conformance,
         policy_conformance=_policy_conformance(role_capability_conformance, contract),
+        health_conformance=_health_conformance(contract, evidence_contract),
         verdict=overall,
     )

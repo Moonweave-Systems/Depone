@@ -223,9 +223,11 @@ def _health_entry_matches_gate(
     return (
         entry.code == "ERR_HEALTH_GATE_VIOLATION"
         and gate.get("exit_code_path") == entry.evidence_path
-        and f"gate={gate.get('gate')!r}" in entry.message
-        and f"tool={gate.get('tool')!r}" in entry.message
-        and f"enforcement={gate.get('enforcement')!r}" in entry.message
+        and entry.health_gate == {
+            "gate": gate.get("gate"),
+            "tool": gate.get("tool"),
+            "enforcement": gate.get("enforcement"),
+        }
     )
 
 

@@ -20,6 +20,7 @@ class EvidenceContractEntry:
     code: str
     message: str
     evidence_path: str
+    health_gate: dict[str, str] | None = None
 
 
 _EVIDENCE_CONTRACT_FILENAME = "evidence-contract.json"
@@ -852,6 +853,11 @@ def _validate_code_health(
                         f"expected={expected_exit_code}, got={actual_exit_code}"
                     ),
                     evidence_path=exit_code_path,
+                    health_gate={
+                        "gate": gate["gate"],
+                        "tool": gate["tool"],
+                        "enforcement": enforcement,
+                    },
                 )
             )
     return results

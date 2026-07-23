@@ -8,8 +8,13 @@ from pathlib import Path
 
 from depone.verify.adapters.base import EvidenceContext, EvidenceFile
 from depone.verify.adapters.generic import read_evidence
-from depone.verify.engine import _health_conformance, run_verification
-from depone.verify.evidence_contract import validate_evidence_contract
+from depone.verify.engine import (
+    _health_conformance,
+    _health_entry_matches_gate,
+    _is_advisory_health_entry,
+    run_verification,
+)
+from depone.verify.evidence_contract import EvidenceContractEntry, validate_evidence_contract
 
 
 def _sha(text: str) -> str:
@@ -94,9 +99,52 @@ class CodeHealthContractTests(unittest.TestCase):
 
         self.assertEqual([entry.code for entry in errors], ["ERR_HEALTH_GATE_VIOLATION"])
         self.assertEqual(errors[0].evidence_path, "health/complexity.exit")
+        self.assertEqual(
+            errors[0].health_gate,
+            {
+                "gate": "complexity",
+                "tool": "ruff-c901",
+                "enforcement": "advisory",
+            },
+        )
         self.assertIn("gate='complexity'", errors[0].message)
         self.assertIn("tool='ruff-c901'", errors[0].message)
         self.assertIn("enforcement='advisory'", errors[0].message)
+
+    def test_health_classification_uses_typed_metadata_not_message(self) -> None:
+        gate = _gate("complexity", "ruff-c901", "advisory")
+        matching = EvidenceContractEntry(
+            code="ERR_HEALTH_GATE_VIOLATION",
+            message="mangled operator message",
+            evidence_path="health/complexity.exit",
+            health_gate={
+                "gate": "complexity",
+                "tool": "ruff-c901",
+                "enforcement": "advisory",
+            },
+        )
+        conflicting = EvidenceContractEntry(
+            code="ERR_HEALTH_GATE_VIOLATION",
+            message=(
+                "code health gate exit code mismatch: gate='complexity', "
+                "tool='ruff-c901', enforcement='advisory'"
+            ),
+            evidence_path="health/complexity.exit",
+            health_gate={
+                "gate": "complexity",
+                "tool": "ruff-c901",
+                "enforcement": "block",
+            },
+        )
+
+        self.assertTrue(_health_entry_matches_gate(matching, gate))
+        self.assertTrue(
+            _is_advisory_health_entry({"code_health": {"gates": [gate]}}, matching)
+        )
+        self.assertFalse(_health_entry_matches_gate(conflicting, gate))
+        self.assertFalse(
+            _is_advisory_health_entry({"code_health": {"gates": [gate]}}, conflicting)
+        )
 
     def test_block_gate_failure_records_health_violation(self) -> None:
         errors = validate_evidence_contract(
